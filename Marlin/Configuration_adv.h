@@ -76,7 +76,6 @@
 // the fan will turn on when any selected extruder is above the threshold.
 #define EXTRUDER_0_AUTO_FAN_PIN   -1
 #define EXTRUDER_1_AUTO_FAN_PIN   -1
-#define EXTRUDER_2_AUTO_FAN_PIN   -1
 #define EXTRUDER_AUTO_FAN_TEMPERATURE 50
 #define EXTRUDER_AUTO_FAN_SPEED   255  // == full speed
 
@@ -254,10 +253,6 @@ const unsigned int dropsegments=5; //everything with less than this number of st
   #error "You cannot use TEMP_SENSOR_1_AS_REDUNDANT if EXTRUDERS > 1"
 #endif
 
-#if EXTRUDERS > 1 && defined HEATERS_PARALLEL
-  #error "You cannot use HEATERS_PARALLEL if EXTRUDERS > 1"
-#endif
-
 #if TEMP_SENSOR_0 > 0
   #define THERMISTORHEATER_0 TEMP_SENSOR_0
   #define HEATER_0_USES_THERMISTOR
@@ -265,10 +260,6 @@ const unsigned int dropsegments=5; //everything with less than this number of st
 #if TEMP_SENSOR_1 > 0
   #define THERMISTORHEATER_1 TEMP_SENSOR_1
   #define HEATER_1_USES_THERMISTOR
-#endif
-#if TEMP_SENSOR_2 > 0
-  #define THERMISTORHEATER_2 TEMP_SENSOR_2
-  #define HEATER_2_USES_THERMISTOR
 #endif
 #if TEMP_SENSOR_BED > 0
   #define THERMISTORBED TEMP_SENSOR_BED
@@ -279,9 +270,6 @@ const unsigned int dropsegments=5; //everything with less than this number of st
 #endif
 #if TEMP_SENSOR_1 == -1
   #define HEATER_1_USES_AD595
-#endif
-#if TEMP_SENSOR_2 == -1
-  #define HEATER_2_USES_AD595
 #endif
 #if TEMP_SENSOR_BED == -1
   #define BED_USES_AD595
@@ -296,10 +284,6 @@ const unsigned int dropsegments=5; //everything with less than this number of st
 #if TEMP_SENSOR_1 == 0
   #undef HEATER_1_MINTEMP
   #undef HEATER_1_MAXTEMP
-#endif
-#if TEMP_SENSOR_2 == 0
-  #undef HEATER_2_MINTEMP
-  #undef HEATER_2_MAXTEMP
 #endif
 #if TEMP_SENSOR_BED == 0
   #undef BED_MINTEMP

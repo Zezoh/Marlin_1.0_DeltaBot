@@ -87,7 +87,7 @@ float extrude_min_temp = EXTRUDE_MINTEMP;
 #endif
 
 // Number of moves of each extruder since it was last used, to disable inactive extruders
-static unsigned char extruder_last_move[3] = {0, 0, 0};
+static unsigned char extruder_last_move[2] = {0, 0};
 
 #ifdef FILAMENT_SENSOR
 static char meas_sample;  // temporary variable to hold filament measurement sample
@@ -349,7 +349,6 @@ void check_axes_activity()
   {
     disable_e0();
     disable_e1();
-    disable_e2();
   }
 #if defined(FAN_PIN) && FAN_PIN > -1
   #ifdef FAN_KICKSTART_TIME
@@ -468,7 +467,7 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   {
     if (DISABLE_INACTIVE_EXTRUDER)  // enable only the selected extruder
     {
-      for (uint8_t i = 0; i < 3; i++)
+      for (uint8_t i = 0; i < 2; i++)
       {
         if (extruder_last_move[i] > 0) extruder_last_move[i]--;
       }
@@ -478,19 +477,11 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
           enable_e0();
           extruder_last_move[0] = BLOCK_BUFFER_SIZE*2;
           if (extruder_last_move[1] == 0) disable_e1();
-          if (extruder_last_move[2] == 0) disable_e2();
           break;
         case 1:
           enable_e1();
           extruder_last_move[1] = BLOCK_BUFFER_SIZE*2;
           if (extruder_last_move[0] == 0) disable_e0();
-          if (extruder_last_move[2] == 0) disable_e2();
-          break;
-        case 2:
-          enable_e2();
-          extruder_last_move[2] = BLOCK_BUFFER_SIZE*2;
-          if (extruder_last_move[0] == 0) disable_e0();
-          if (extruder_last_move[1] == 0) disable_e1();
           break;
       }
     }
@@ -498,7 +489,6 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
     {
       enable_e0();
       enable_e1();
-      enable_e2();
     }
   }
 

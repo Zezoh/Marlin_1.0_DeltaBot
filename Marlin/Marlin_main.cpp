@@ -186,26 +186,17 @@ int extrudemultiply=100; //100->1 200->2
 int extruder_multiply[EXTRUDERS] = {100
   #if EXTRUDERS > 1
     , 100
-    #if EXTRUDERS > 2
-      , 100
-    #endif
   #endif
 };
 bool volumetric_enabled = false;
 float filament_size[EXTRUDERS] = { DEFAULT_NOMINAL_FILAMENT_DIA
   #if EXTRUDERS > 1
       , DEFAULT_NOMINAL_FILAMENT_DIA
-    #if EXTRUDERS > 2
-       , DEFAULT_NOMINAL_FILAMENT_DIA
-    #endif
   #endif
 };
 float volumetric_multiplier[EXTRUDERS] = {1.0
   #if EXTRUDERS > 1
     , 1.0
-    #if EXTRUDERS > 2
-      , 1.0
-    #endif
   #endif
 };
 float current_position[NUM_AXIS] = { 0.0, 0.0, 0.0, 0.0 };
@@ -238,17 +229,11 @@ int fanSpeed=0;
   bool retracted[EXTRUDERS]={false
     #if EXTRUDERS > 1
     , false
-     #if EXTRUDERS > 2
-      , false
-     #endif
   #endif
   };
   bool retracted_swap[EXTRUDERS]={false
     #if EXTRUDERS > 1
     , false
-     #if EXTRUDERS > 2
-      , false
-     #endif
   #endif
   };
 
@@ -1507,7 +1492,6 @@ void process_commands()
         enable_z();
         enable_e0();
         enable_e1();
-        enable_e2();
       break;
 
 #ifdef SDSUPPORT
@@ -2162,7 +2146,6 @@ Sigma_Exit:
         st_synchronize();
         disable_e0();
         disable_e1();
-        disable_e2();
         finishAndDisableSteppers();
         fanSpeed = 0;
         delay(1000); // Wait a little before to switch off
@@ -2194,7 +2177,6 @@ Sigma_Exit:
           st_synchronize();
           disable_e0();
           disable_e1();
-          disable_e2();
           finishAndDisableSteppers();
         }
         else
@@ -2207,7 +2189,6 @@ Sigma_Exit:
             if(code_seen('E')) {
               disable_e0();
               disable_e1();
-              disable_e2();
             }
           #endif
         }
@@ -2341,9 +2322,6 @@ Sigma_Exit:
 			filament_size[0] = (filament_size[0] == 0.0 ? DEFAULT_NOMINAL_FILAMENT_DIA : filament_size[0]);
             #if EXTRUDERS > 1
 			filament_size[1] = (filament_size[1] == 0.0 ? DEFAULT_NOMINAL_FILAMENT_DIA : filament_size[1]);
-            #if EXTRUDERS > 2
-			filament_size[2] = (filament_size[2] == 0.0 ? DEFAULT_NOMINAL_FILAMENT_DIA : filament_size[2]);
-            #endif
             #endif
 			volumetric_enabled = true;
 		  }
@@ -2365,13 +2343,6 @@ Sigma_Exit:
       // steps per sq second need to be updated to agree with the units per sq second (as they are what is used in the planner)
       reset_acceleration_rates();
       break;
-    #if 0 // Not used for Sprinter/grbl gen6
-    case 202: // M202
-      for(int8_t i=0; i < NUM_AXIS; i++) {
-        if(code_seen(axis_codes[i])) axis_travel_steps_per_sqr_second[i] = code_value() * axis_steps_per_unit[i];
-      }
-      break;
-    #endif
     case 203: // M203 max feedrate mm/sec
       for(int8_t i=0; i < NUM_AXIS; i++) {
         if(code_seen(axis_codes[i])) max_feedrate[i] = code_value();
@@ -2458,9 +2429,6 @@ Sigma_Exit:
             #if EXTRUDERS > 1
               retracted[1]=false;
             #endif
-            #if EXTRUDERS > 2
-              retracted[2]=false;
-            #endif
           }break;
           case 1: 
           {
@@ -2468,9 +2436,6 @@ Sigma_Exit:
             retracted[0]=false;
             #if EXTRUDERS > 1
               retracted[1]=false;
-            #endif
-            #if EXTRUDERS > 2
-              retracted[2]=false;
             #endif
           }break;
           default:
@@ -3126,9 +3091,6 @@ void controllerFan()
     lastMotorCheck = millis();
 
     if(!READ(X_ENABLE_PIN) || !READ(Y_ENABLE_PIN) || !READ(Z_ENABLE_PIN) || (soft_pwm_bed > 0)
-    #if EXTRUDERS > 2
-       || !READ(E2_ENABLE_PIN)
-    #endif
     #if EXTRUDERS > 1
        || !READ(E1_ENABLE_PIN)
     #endif
@@ -3214,7 +3176,6 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) //default argument s
         disable_z();
         disable_e0();
         disable_e1();
-        disable_e2();
       }
     }
   }
@@ -3308,7 +3269,6 @@ void kill()
   disable_z();
   disable_e0();
   disable_e1();
-  disable_e2();
 
 #if defined(PS_ON_PIN) && PS_ON_PIN > -1
   pinMode(PS_ON_PIN,INPUT);
@@ -3454,9 +3414,6 @@ void calculate_volumetric_multipliers() {
 	volumetric_multiplier[0] = calculate_volumetric_multiplier(filament_size[0]);
 #if EXTRUDERS > 1
 	volumetric_multiplier[1] = calculate_volumetric_multiplier(filament_size[1]);
-#if EXTRUDERS > 2
-	volumetric_multiplier[2] = calculate_volumetric_multiplier(filament_size[2]);
-#endif
 #endif
 }
 

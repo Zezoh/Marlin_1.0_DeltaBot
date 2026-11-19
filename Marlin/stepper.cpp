@@ -184,7 +184,6 @@ void checkHitEndstops()
       quickStop();
       setTargetHotend0(0);
       setTargetHotend1(0);
-      setTargetHotend2(0);
     }
 #endif
   }
@@ -456,9 +455,6 @@ void st_init()
 #if defined(E1_DIR_PIN) && (E1_DIR_PIN > -1)
   SET_OUTPUT(E1_DIR_PIN);
 #endif
-#if defined(E2_DIR_PIN) && (E2_DIR_PIN > -1)
-  SET_OUTPUT(E2_DIR_PIN);
-#endif
 
   // Enable pins - steppers default to disabled.
 #if defined(X_ENABLE_PIN) && X_ENABLE_PIN > -1
@@ -480,10 +476,6 @@ void st_init()
 #if defined(E1_ENABLE_PIN) && (E1_ENABLE_PIN > -1)
   SET_OUTPUT(E1_ENABLE_PIN);
   if (!E_ENABLE_ON) WRITE(E1_ENABLE_PIN, HIGH);
-#endif
-#if defined(E2_ENABLE_PIN) && (E2_ENABLE_PIN > -1)
-  SET_OUTPUT(E2_ENABLE_PIN);
-  if (!E_ENABLE_ON) WRITE(E2_ENABLE_PIN, HIGH);
 #endif
 
   // Endstops and pullups
@@ -549,11 +541,6 @@ void st_init()
   SET_OUTPUT(E1_STEP_PIN);
   WRITE(E1_STEP_PIN, INVERT_E_STEP_PIN);
   disable_e1();
-#endif
-#if defined(E2_STEP_PIN) && (E2_STEP_PIN > -1)
-  SET_OUTPUT(E2_STEP_PIN);
-  WRITE(E2_STEP_PIN, INVERT_E_STEP_PIN);
-  disable_e2();
 #endif
 
   // waveform generation = 0100 = CTC
@@ -631,7 +618,6 @@ void finishAndDisableSteppers()
   disable_z();
   disable_e0();
   disable_e1();
-  disable_e2();
 }
 
 void quickStop()

@@ -92,9 +92,6 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i, filament_size[0]);
   #if EXTRUDERS > 1
   EEPROM_WRITE_VAR(i, filament_size[1]);
-  #if EXTRUDERS > 2
-  EEPROM_WRITE_VAR(i, filament_size[2]);
-  #endif
   #endif
   
   char ver2[4]=EEPROM_VERSION;
@@ -221,11 +218,6 @@ void Config_PrintSettings()
 		SERIAL_ECHO_START;
         SERIAL_ECHOPAIR("   M200 T1 D", filament_size[1]);
         SERIAL_ECHOLN(""); 
-#if EXTRUDERS > 2
-		SERIAL_ECHO_START;
-        SERIAL_ECHOPAIR("   M200 T2 D", filament_size[2]);
-		SERIAL_ECHOLN("");
-#endif
 #endif
     } else {
         SERIAL_ECHOLNPGM("Filament settings: Disabled");
@@ -293,9 +285,6 @@ void Config_RetrieveSettings()
 		EEPROM_READ_VAR(i, filament_size[0]);
 #if EXTRUDERS > 1
 		EEPROM_READ_VAR(i, filament_size[1]);
-#if EXTRUDERS > 2
-		EEPROM_READ_VAR(i, filament_size[2]);
-#endif
 #endif
 		calculate_volumetric_multipliers();
 		// Call updatePID (similar to when we have processed M301)
@@ -376,9 +365,6 @@ void Config_ResetDefault()
 	filament_size[0] = DEFAULT_NOMINAL_FILAMENT_DIA;
 #if EXTRUDERS > 1
 	filament_size[1] = DEFAULT_NOMINAL_FILAMENT_DIA;
-#if EXTRUDERS > 2
-	filament_size[2] = DEFAULT_NOMINAL_FILAMENT_DIA;
-#endif
 #endif
 	calculate_volumetric_multipliers();
 
