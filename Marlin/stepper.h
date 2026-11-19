@@ -69,7 +69,6 @@ void endstops_hit_on_purpose(); //avoid creation of the message, i.e. after homi
 
 void enable_endstops(bool check); // Enable/disable endstop checking
 
-void checkStepperErrors(); //Print errors detected by the stepper
 
 void finishAndDisableSteppers();
 
@@ -77,15 +76,7 @@ extern block_t *current_block;  // A pointer to the block currently being traced
 
 void quickStop();
 
-void digitalPotWrite(int address, int value);
-void microstep_ms(uint8_t driver, int8_t ms1, int8_t ms2);
-void microstep_mode(uint8_t driver, uint8_t stepping);
-void microstep_init();
-void microstep_readings();
 
-#ifdef BABYSTEPPING
-  void babystep(const uint8_t axis,const bool direction); // perform a short step with a single stepper motor, outside of any convention
-#endif
      
 
 

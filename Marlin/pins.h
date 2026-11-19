@@ -3,16 +3,6 @@
 
 #include "boards.h"
 
-#define X_MS1_PIN -1
-#define X_MS2_PIN -1
-#define Y_MS1_PIN -1
-#define Y_MS2_PIN -1
-#define Z_MS1_PIN -1
-#define Z_MS2_PIN -1
-#define E0_MS1_PIN -1
-#define E0_MS2_PIN -1
-#define E1_MS1_PIN -1
-#define E1_MS2_PIN -1
 
 /****************************************************************************************
 * Arduino Mega pin assignment
@@ -260,14 +250,20 @@
 #endif
 
 #ifdef DISABLE_MAX_ENDSTOPS
+#undef X_MAX_PIN
 #define X_MAX_PIN          -1
+#undef Y_MAX_PIN
 #define Y_MAX_PIN          -1
+#undef Z_MAX_PIN
 #define Z_MAX_PIN          -1
 #endif
 
 #ifdef DISABLE_MIN_ENDSTOPS
+#undef X_MIN_PIN
 #define X_MIN_PIN          -1
+#undef Y_MIN_PIN
 #define Y_MIN_PIN          -1
+#undef Z_MIN_PIN
 #define Z_MIN_PIN          -1
 #endif
 
