@@ -50,7 +50,13 @@
 #define E1_ENABLE_PIN      30
 
 #define SDPOWER            -1
-#define PS_ON_PIN          12
+
+// One button (D3, the RAMPS X-MIN header, active low with pullup) and status LED (D12, the RAMPS PS_ON header)
+#define BUTTON_PIN          3
+#define STATUS_LED_PIN     12
+
+// FSR (force sensing resistor) Z probe analog input A14 (the RAMPS bed thermistor input)
+#define FSR_PIN            14  // ANALOG NUMBERING
 
 // Power outputs: D8 (bed), D9, D10
 #if MB(RAMPS_13_EFB) || MB(RAMPS_13_EFF)
@@ -81,7 +87,7 @@
 
 #define TEMP_0_PIN         13  // ANALOG NUMBERING
 #define TEMP_1_PIN         15  // ANALOG NUMBERING
-#define TEMP_BED_PIN       14  // ANALOG NUMBERING
+#define TEMP_BED_PIN       -1  // A14 is the FSR input
 
 
 // List of pins which to ignore when asked to change by gcode, 0 and 1 are RX and TX, do not mess with those!
@@ -92,9 +98,9 @@
   #define _E1_PINS
 #endif
 
-#define SENSITIVE_PINS {0, 1, X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MAX_PIN, Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, Y_MAX_PIN, Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, Z_MAX_PIN, PS_ON_PIN, \
+#define SENSITIVE_PINS {0, 1, X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MAX_PIN, Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, Y_MAX_PIN, Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, Z_MAX_PIN, BUTTON_PIN, STATUS_LED_PIN, \
                         HEATER_BED_PIN, FAN_PIN,                  \
                         _E0_PINS _E1_PINS             \
-                        analogInputToDigitalPin(TEMP_0_PIN), analogInputToDigitalPin(TEMP_1_PIN), analogInputToDigitalPin(TEMP_BED_PIN) }
+                        analogInputToDigitalPin(TEMP_0_PIN), analogInputToDigitalPin(TEMP_1_PIN), analogInputToDigitalPin(FSR_PIN) }
 
 #endif //__PINS_H

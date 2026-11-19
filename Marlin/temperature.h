@@ -30,6 +30,7 @@ void manage_heater(); //it is critical that this is called periodically.
 
 // low level conversion routines
 // do not use these routines and variables outside of temperature.cpp
+extern volatile unsigned int fsr_raw; // latest FSR (Z probe) ADC reading, 0..1023
 extern int target_temperature[EXTRUDERS];
 extern float current_temperature[EXTRUDERS];
 extern int target_temperature_bed;

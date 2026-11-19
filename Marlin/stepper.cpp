@@ -70,6 +70,13 @@ static bool old_z_max_endstop = false;
 
 static bool check_endstops = true;
 
+// FSR Z probe: while armed, a reading that differs from the reference by the threshold stops the block.
+static volatile bool probe_armed = false;
+static volatile bool probe_hit = false;
+static volatile unsigned int probe_reference = 0;
+static volatile unsigned int probe_threshold = 0;
+static volatile unsigned int probe_peak = 0;
+
 volatile long count_position[NUM_AXIS] = { 0, 0, 0, 0 };
 volatile signed char count_direction[NUM_AXIS] = { 1, 1, 1, 1 };
 
@@ -191,6 +198,28 @@ void enable_endstops(bool check)
 {
   check_endstops = check;
 }
+
+// Arm the probe: the reference is the reading now, the threshold is in ADC counts.
+void st_probe_arm(unsigned int threshold)
+{
+  CRITICAL_SECTION_START;
+  probe_reference = fsr_raw;
+  probe_threshold = threshold;
+  probe_peak = 0;
+  probe_hit = false;
+  probe_armed = true;
+  CRITICAL_SECTION_END;
+}
+
+void st_probe_disarm()
+{
+  probe_armed = false;
+}
+
+bool st_probe_hit() { return probe_hit; }
+
+// Largest deviation from the reference seen since arming (ADC counts)
+unsigned int st_probe_peak() { return probe_peak; }
 
 //         __________________________
 //        /|                        |\     _________________         ^
@@ -336,6 +365,16 @@ ISR(TIMER1_COMPA_vect)
 #if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
   if (!(out_bits & (1<<Z_AXIS))) CHECK_ENDSTOP(Z, z, MAX, max)
 #endif
+
+  if (probe_armed) {
+    unsigned int raw = fsr_raw;
+    unsigned int delta = raw > probe_reference ? raw - probe_reference : probe_reference - raw;
+    if (delta > probe_peak) probe_peak = delta;
+    if (delta >= probe_threshold) {
+      probe_hit = true;
+      step_events_completed = current_block->step_event_count;
+    }
+  }
 
   for (int8_t i = 0; i < step_loops; i++) {  // Take multiple steps per interrupt (for high speed moves)
     MSerial.checkRx();  // Check for serial chars.

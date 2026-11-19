@@ -10,9 +10,9 @@
 #define CRITICAL_SECTION_START
 #define CRITICAL_SECTION_END
 #define PSTR(x) x
+#define PROGMEM
 #include "Configuration.h"
 #include "Configuration_adv.h"
-#define PROGMEM
 #define pgm_read_word(x) (*(x))
 #define pgm_read_byte(x) (*(x))
 #define PGM_P const char*

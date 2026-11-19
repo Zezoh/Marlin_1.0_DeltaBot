@@ -2,6 +2,7 @@
 #include "planner.h"
 #include "temperature.h"
 #include "ConfigurationStore.h"
+#include "probe.h"
 
 void _EEPROM_writeData(int &pos, uint8_t* value, uint8_t size)
 {
@@ -37,7 +38,7 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
 // wrong data being written to the variables.
 // ALSO:  always make sure the variables in the Store and retrieve sections are in the same order.
 
-#define EEPROM_VERSION "V18"
+#define EEPROM_VERSION "V19"
 
 void Config_StoreSettings() 
 {
@@ -59,6 +60,10 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i,delta_radius);
   EEPROM_WRITE_VAR(i,delta_diagonal_rod);
   EEPROM_WRITE_VAR(i,delta_segments_per_second);
+  EEPROM_WRITE_VAR(i,delta_tower_angle);
+  EEPROM_WRITE_VAR(i,probe_z_offset);
+  EEPROM_WRITE_VAR(i,fsr_sensitivity);
+  EEPROM_WRITE_VAR(i,delta_calibrated);
   #ifdef PIDTEMP
     EEPROM_WRITE_VAR(i,Kp);
     EEPROM_WRITE_VAR(i,Ki);
@@ -149,6 +154,15 @@ void Config_PrintSettings()
 	SERIAL_ECHOPAIR("  M665 L",delta_diagonal_rod );
 	SERIAL_ECHOPAIR(" R" ,delta_radius );
 	SERIAL_ECHOPAIR(" S" ,delta_segments_per_second );
+	SERIAL_ECHOPAIR(" A" ,delta_tower_angle[0] );
+	SERIAL_ECHOPAIR(" B" ,delta_tower_angle[1] );
+	SERIAL_ECHOPAIR(" C" ,delta_tower_angle[2] );
+	SERIAL_ECHOLN("");
+	SERIAL_ECHO_START;
+	SERIAL_ECHOLNPGM("Z probe: M851 Z=nozzle height above the bed at contact, M974 S=FSR sensitivity");
+	SERIAL_ECHO_START;
+	SERIAL_ECHOPAIR("  M851 Z",probe_z_offset );
+	SERIAL_ECHOPAIR("  M974 S",(unsigned long)fsr_sensitivity );
 	SERIAL_ECHOLN("");
 #ifdef PIDTEMP
     SERIAL_ECHO_START;
@@ -190,6 +204,10 @@ void Config_RetrieveSettings()
 		EEPROM_READ_VAR(i,delta_radius);
 		EEPROM_READ_VAR(i,delta_diagonal_rod);
 		EEPROM_READ_VAR(i,delta_segments_per_second);
+		EEPROM_READ_VAR(i,delta_tower_angle);
+		EEPROM_READ_VAR(i,probe_z_offset);
+		EEPROM_READ_VAR(i,fsr_sensitivity);
+		EEPROM_READ_VAR(i,delta_calibrated);
 		recalc_delta_settings(delta_radius, delta_diagonal_rod);  // tower positions follow the loaded radius and rod length
         #ifndef PIDTEMP
         float Kp,Ki,Kd;
@@ -244,6 +262,10 @@ void Config_ResetDefault()
 	delta_radius= DELTA_RADIUS;
 	delta_diagonal_rod= DELTA_DIAGONAL_ROD;
 	delta_segments_per_second= DELTA_SEGMENTS_PER_SECOND;
+	delta_tower_angle[0] = delta_tower_angle[1] = delta_tower_angle[2] = 0;
+	probe_z_offset = 0;
+	fsr_sensitivity = FSR_SENSITIVITY;
+	delta_calibrated = false;
 	recalc_delta_settings(delta_radius, delta_diagonal_rod);
 #ifdef PIDTEMP
     Kp = DEFAULT_Kp;

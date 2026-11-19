@@ -3,6 +3,9 @@
 #   kinematics_test     delta kinematics against an independent forward solution, reach, homing geometry
 #   arc_test            G2/G3 arcs on a delta and the reach check
 #   planner_speed_test  the nozzle speed equals the feed rate
+#   calibration_test    the G33 solver recovers a simulated machine's geometry
+#   onebutton_test      the button decoder: clicks, long press, boot hold, bounce
+#   probe_test          G30 / G33 end to end on a simulated delta with a wrong geometry and an FSR probe
 #   sdfat_test          the FAT16/FAT32 code on real disk images (needs mkfs.fat and mtools)
 # Usage: tests/run_tests.sh      (from anywhere)
 set -e
@@ -10,14 +13,24 @@ T=$(cd "$(dirname "$0")" && pwd); ROOT=$(dirname "$T"); B=$(mktemp -d); trap 'rm
 CXX="g++ -O1 -w -std=gnu++11 -fpermissive"
 python3 "$T/extract.py" "$ROOT" "$B"
 
-echo "== kinematics";  $CXX -I"$B" "$T/kinematics_test.cpp" -o "$B/kin" && "$B/kin"
-echo "== arcs";        $CXX -I"$B" "$T/arc_test.cpp" -o "$B/arc" && "$B/arc"
+echo "== kinematics"; $CXX -I"$B" "$T/kinematics_test.cpp" -o "$B/kin"; "$B/kin"
+echo "== arcs";       $CXX -I"$B" "$T/arc_test.cpp" -o "$B/arc"; "$B/arc"
+
+echo "== G33 solver";  $CXX -I"$ROOT/Marlin" "$T/calibration_test.cpp" "$ROOT/Marlin/delta_calibration.cpp" -o "$B/cal"; "$B/cal"
+echo "== one button";  $CXX -I"$ROOT/Marlin" "$T/onebutton_test.cpp" -o "$B/ob"; "$B/ob"
+
+echo "== probe and G33 on a simulated delta"
+Q="$B/probe"; mkdir "$Q"
+for f in probe.cpp probe.h ui.h delta_calibration.cpp delta_calibration.h Configuration.h Configuration_adv.h boards.h Default_Version.h thermistortables.h pins.h; do cp "$ROOT/Marlin/$f" "$Q/"; done
+cp "$T"/probe_shim/*.h "$Q/"; cp "$T/probe_test.cpp" "$B/"
+ZH=$(awk '/#define Z_HOME_POS/{print $3}' "$ROOT/Marlin/Configuration.h")
+(cd "$Q" && $CXX -DZ_HOME_POS=$ZH -I. -I"$B" probe.cpp delta_calibration.cpp "$B/probe_test.cpp" -o probe_test); "$Q/probe_test"
 
 echo "== planner speed"
 P="$B/planner"; mkdir "$P"
 for f in planner.cpp planner.h Configuration.h Configuration_adv.h language.h boards.h Default_Version.h pins.h thermistortables.h; do cp "$ROOT/Marlin/$f" "$P/"; done
 cp "$T"/shim/*.h "$P/"; cp "$T/planner_speed_test.cpp" "$P/"
-(cd "$P" && $CXX -I. planner_speed_test.cpp planner.cpp -o speed) && "$P/speed"
+(cd "$P" && $CXX -I. planner_speed_test.cpp planner.cpp -o speed); "$P/speed"
 
 echo "== FAT file system"
 if command -v mkfs.fat >/dev/null && command -v mcopy >/dev/null; then

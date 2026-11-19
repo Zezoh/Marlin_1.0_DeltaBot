@@ -107,21 +107,60 @@
 
 #define dropsegments 5 //everything with less than this number of steps will be ignored as move and joined with the next movement
 
-// Power Signal Control Definitions
-// By default use ATX definition
-#ifndef POWER_SUPPLY
-  #define POWER_SUPPLY 1
-#endif
-// 1 = ATX
-#if (POWER_SUPPLY == 1) 
-  #define PS_ON_AWAKE  LOW
-  #define PS_ON_ASLEEP HIGH
-#endif
-// 2 = X-Box 360 203W
-#if (POWER_SUPPLY == 2) 
-  #define PS_ON_AWAKE  HIGH
-  #define PS_ON_ASLEEP LOW
-#endif
+//===========================================================================
+//=============================Z probe and calibration=======================
+//===========================================================================
+
+// The Z probe is a force sensing resistor (FSR) under the bed on analog input FSR_PIN: the nozzle itself is the probe.
+// A probe stroke ends when the reading differs from its value at the start of the stroke by FSR_SENSITIVITY counts.
+// M974 changes it at run time; a noisy sensor raises it automatically.
+#define FSR_SENSITIVITY 12       // ADC counts, 1..1023
+
+#define PROBE_FEED_MM_S 5.0            // speed of the last PROBE_SLOW_APPROACH_MM of every stroke: contact is detected here
+#define PROBE_FEED_FAST_MM_S 45.0      // speed of the approach before that
+#define PROBE_SLOW_APPROACH_MM 4.0
+#define PROBE_RETRACT_FEED_MM_S 25.0   // lift after contact
+#define PROBE_TRAVEL_FEED_MM_S 150.0   // moves between probe points
+#define PROBE_TRAVEL_Z_MM 30.0         // height of those moves
+#define PROBE_TRAVEL_Z_FEED_MM_S 80.0  // vertical moves between points
+#define PROBE_SETTLE_MS 100            // wait after a move before the probe is armed
+#define PROBE_AVERAGE_SAMPLES 3        // strokes in agreement that make a probed point
+#define PROBE_AVERAGE_TOLERANCE_MM 0.05
+#define PROBE_AVERAGE_MAX_STROKES 9    // give up waiting for agreement after this many strokes
+#define PROBE_FALSE_TRIGGER_MM 5.0     // a contact this far above the deepest one seen is noise, not the bed
+#define PROBE_MAX_OFFSET_MM 5.0        // M851 range
+
+// G33 delta calibration
+#define CALIB_DEFAULT_FACTORS 6        // endstops, delta radius, tower angles A and B (F3 = endstops, F4 = + radius)
+#define CALIB_DEFAULT_POINTS 10        // P7 is the quick form
+#define CALIB_VERIFY_RMS_MM 0.05       // a pass this flat ends the run: calibrated
+#define CALIB_ACCEPT_RMS_MM 0.25       // a run that stops improving is accepted if its last pass is this flat
+#define CALIB_PLATEAU_RATIO 0.7        // "stops improving": a pass is not below this fraction of the previous one
+#define CALIB_MAX_PASSES 6             // probe, solve, re-home, verify: at most this many probe passes
+#define CALIB_FIRST_PASS_DEPTH_MM 20.0 // how far below the expected bed the first pass looks for it
+#define CALIB_PASS_DEPTH_MM 5.0
+#define CALIB_MAX_RADIUS_DELTA_MM 15.0 // the solution may move the delta radius by this much from where G33 started,
+#define CALIB_MAX_HEIGHT_DELTA_MM 20.0 // the home height by this much,
+#define CALIB_MAX_TRIM_MM 15.0         // an endstop trim up to this much,
+#define CALIB_MAX_ANGLE_DEG 2.0        // a tower angle correction up to this much; more is refused and the old values restored
+
+//===========================================================================
+//=============================One button and status LED=====================
+//===========================================================================
+// Button on BUTTON_PIN (active low, pullup). Short press: idle and not calibrated: G33; idle: print the newest
+// file on the SD card; printing: pause; paused: resume. Long press: cancel the print or the calibration, heater off.
+// Held at power-on: calibrate (G33) once. The LED on STATUS_LED_PIN blinks the state, the faster the more urgent.
+#define BUTTON_DEBOUNCE_MS 40
+#define BUTTON_LONG_MS 1500
+#define BUTTON_BOOT_HOLD_MS 2500
+#define LED_ERROR_PERIOD_MS 200
+#define LED_BUSY_PERIOD_MS 800
+#define LED_PAUSED_PERIOD_MS 1000
+#define LED_PRINT_PERIOD_MS 1200
+#define LED_HEAT_PERIOD_MS 2000
+#define LED_COOL_PERIOD_MS 3000
+#define LED_READY_PERIOD_MS 4000
+#define LED_COOL_TEMP 50      // the hotend is "cooling" above this temperature (degC)
 
 //===========================================================================
 //=============================Buffers           ============================

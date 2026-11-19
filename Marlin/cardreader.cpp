@@ -315,6 +315,38 @@ void CardReader::checkautostart(bool force)
   autostart_nr = -1;  // no more auto files
 }
 
+bool CardReader::startNewest()
+{
+  if (!cardOK)
+  {
+    initsd();
+    if (!cardOK) return false;
+  }
+  dir_t p;
+  char best[13];
+  uint32_t best_stamp = 0;
+  bool found = false;
+  root.rewind();
+  while (root.readDir(&p) > 0)
+  {
+    if (p.name[0] == '_' || DIR_IS_SUBDIR(&p) || p.name[8] != 'G' || p.name[9] == '~') continue;
+    uint32_t stamp = ((uint32_t)p.lastWriteDate << 16) | p.lastWriteTime;
+    if (!found || stamp >= best_stamp)
+    {
+      found = true;
+      best_stamp = stamp;
+      SdFile::dirName(p, best);
+    }
+  }
+  if (!found) return false;
+  char cmd[20];
+  strcpy_P(cmd, PSTR("M23 "));
+  strcat(cmd, best);
+  enquecommand(cmd);
+  enquecommand_P(PSTR("M24"));
+  return true;
+}
+
 //------------------------------------------------------------------------------
 void CardReader::printingHasFinished()
 {

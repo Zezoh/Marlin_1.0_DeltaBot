@@ -29,8 +29,12 @@ public:
   // files auto[0-9].g on the sd card are performed in a row; the check is delayed
   // some seconds after power up so the host can connect quickly
   void checkautostart(bool force);
+  // queue M23/M24 for the G-code file in the root directory that was written last; false if there is none
+  bool startNewest();
 
   FORCE_INLINE bool eof() { return sdpos >= filesize; }
+  FORCE_INLINE bool isFileOpen() { return file.isOpen(); }
+  FORCE_INLINE bool isPaused() { return cardOK && !saving && !sdprinting && file.isOpen() && sdpos < filesize; }
   FORCE_INLINE int16_t get() { sdpos = file.curPosition(); return file.read(); }
   FORCE_INLINE void setIndex(long index) { sdpos = index; file.seekSet(index); }
 

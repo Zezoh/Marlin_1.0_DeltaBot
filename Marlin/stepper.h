@@ -60,6 +60,11 @@ void endstops_hit_on_purpose(); //avoid creation of the message, i.e. after homi
 
 void enable_endstops(bool check); // Enable/disable endstop checking
 
+void st_probe_arm(unsigned int threshold); // stop the running move when the FSR deviates by threshold counts
+void st_probe_disarm();
+bool st_probe_hit();
+unsigned int st_probe_peak();
+
 
 void finishAndDisableSteppers();
 

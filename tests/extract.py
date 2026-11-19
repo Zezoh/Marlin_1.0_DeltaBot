@@ -23,11 +23,8 @@ common = '''#include <math.h>
 #define E_AXIS 3
 #define NUM_AXIS 4
 #define DELTA_SEGMENTS_PER_SECOND 200
-#define DELTA_DIAGONAL_ROD 250.0
-#define DELTA_SMOOTH_ROD_OFFSET 175.0
-#define DELTA_EFFECTOR_OFFSET 33.0
-#define DELTA_CARRIAGE_OFFSET 18.0
-#define DELTA_RADIUS (DELTA_SMOOTH_ROD_OFFSET-DELTA_EFFECTOR_OFFSET-DELTA_CARRIAGE_OFFSET)
+#define DELTA_DIAGONAL_ROD 210.0
+#define DELTA_RADIUS 90.0
 ''' + vars_ + rd + dr + cd
 open(out + '/kin_src.h', 'w').write(common)
 mc = open(root + '/Marlin/motion_control.cpp').read()

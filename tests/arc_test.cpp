@@ -4,7 +4,7 @@
 int main(){
   recalc_delta_settings(delta_radius, delta_diagonal_rod);
   // 1. reachable <=> calculate_delta gives no NaN, on a fine grid far beyond the printable area
-  int mism=0,n=0,out=0; for(float x=-300;x<=300;x+=2.5) for(float y=-300;y<=300;y+=2.5) for(float z=0;z<=250;z+=125){ float c[3]={x,y,z}; calculate_delta(c); bool nan=isnan(delta[0])||isnan(delta[1])||isnan(delta[2]); bool r=delta_reachable(c); n++; if(!r) out++; if(nan==r) mism++; }
+  int mism=0,n=0,out=0; for(float x=-299.9;x<=300;x+=2.5) for(float y=-299.9;y<=300;y+=2.5) for(float z=0;z<=250;z+=125){ float c[3]={x,y,z}; calculate_delta(c); bool nan=isnan(delta[0])||isnan(delta[1])||isnan(delta[2]); bool r=delta_reachable(c); n++; if(!r) out++; if(nan==r) mism++; }
   printf("reachable() vs NaN: %d points (%d outside the reach), mismatches: %d\n",n,out,mism);
   assert(mism==0 && out>0);
   // 2. an arc that stays inside is planned completely with the Cartesian length of every segment

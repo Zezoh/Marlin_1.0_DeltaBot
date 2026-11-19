@@ -37,6 +37,8 @@
 #include "watchdog.h"
 #include "ConfigurationStore.h"
 #include "language.h"
+#include "probe.h"
+#include "ui.h"
 #include "pins_arduino.h"
 #include "math.h"
 
@@ -192,6 +194,7 @@ int fanSpeed=0;
   float delta_tower2_y= -COS_60*delta_radius;	   
   float delta_tower3_x= 0.0;                  // back middle tower
   float delta_tower3_y= delta_radius;
+  float delta_tower_angle[3] = {0, 0, 0}; // degrees added to the tower angles 210, 330 and 90
   float delta_diagonal_rod= DELTA_DIAGONAL_ROD;
   float delta_diagonal_rod_2= sq(delta_diagonal_rod);
   float delta_segments_per_second= DELTA_SEGMENTS_PER_SECOND;
@@ -296,21 +299,8 @@ static void enquecommand_internal(const char *cmd, bool from_flash)
 void enquecommand(const char *cmd) { enquecommand_internal(cmd, false); }
 void enquecommand_P(const char *cmd) { enquecommand_internal(cmd, true); }
 
-void setup_powerhold()
-{
-  #if defined(PS_ON_PIN) && PS_ON_PIN > -1
-    SET_OUTPUT(PS_ON_PIN);
-	#if defined(PS_DEFAULT_OFF)
-	  WRITE(PS_ON_PIN, PS_ON_ASLEEP);
-    #else
-	  WRITE(PS_ON_PIN, PS_ON_AWAKE);
-	#endif
-  #endif
-}
-
 void setup()
 {
-  setup_powerhold();
   MYSERIAL.begin(BAUDRATE);
   SERIAL_PROTOCOLLNPGM("start");
   SERIAL_ECHO_START;
@@ -355,6 +345,7 @@ void setup()
   plan_init();  // Initialize planner;
   watchdog_init();
   st_init();    // Initialize stepper, this enables interrupts!
+  ui_init();
   
 
   #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
@@ -408,6 +399,7 @@ void loop()
   manage_heater();
   manage_inactivity();
   checkHitEndstops();
+  ui_run();
 }
 
 void get_command()
@@ -643,7 +635,7 @@ static void homeaxis(int axis) {
     st_synchronize();
 
     destination[axis] = 2*home_retract_mm(axis);
-    feedrate = homing_feedrate[axis]/10;
+    feedrate = HOMING_SLOW_FEEDRATE;
     plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
     st_synchronize();
     // retrace by the amount specified in endstop_adj
@@ -663,6 +655,93 @@ static void homeaxis(int axis) {
   }
 }
 #define HOMEAXIS(LETTER) homeaxis(LETTER##_AXIS)
+
+// Home the three towers up against their endstops. A delta can only home all axes together.
+void home_all_axes()
+{
+  ui_busy(true);
+
+  saved_feedrate = feedrate;
+  saved_feedmultiply = feedmultiply;
+  feedmultiply = 100;
+  previous_millis_cmd = millis();
+
+  enable_endstops(true);
+
+  for(int8_t i=0; i < NUM_AXIS; i++) {
+    destination[i] = current_position[i];
+  }
+  feedrate = 0.0;
+
+      // A delta can only safely home all axis at the same time
+      // all axis have to home at the same time
+
+      // Move all carriages up together until the first endstop is hit.
+      current_position[X_AXIS] = 0;
+      current_position[Y_AXIS] = 0;
+      current_position[Z_AXIS] = 0;
+      plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+
+      destination[X_AXIS] = 3 * Z_MAX_LENGTH;
+      destination[Y_AXIS] = 3 * Z_MAX_LENGTH;
+      destination[Z_AXIS] = 3 * Z_MAX_LENGTH;
+      feedrate = 1.732 * homing_feedrate[X_AXIS];
+      plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
+      st_synchronize();
+      endstops_hit_on_purpose();
+
+      current_position[X_AXIS] = destination[X_AXIS];
+      current_position[Y_AXIS] = destination[Y_AXIS];
+      current_position[Z_AXIS] = destination[Z_AXIS];
+
+      // take care of back off and rehome now we are all at the top
+      HOMEAXIS(X);
+      HOMEAXIS(Y);
+      HOMEAXIS(Z);
+
+      calculate_delta(current_position);
+      plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);
+
+  #ifdef ENDSTOPS_ONLY_FOR_HOMING
+    enable_endstops(false);
+  #endif
+
+  feedrate = saved_feedrate;
+  feedmultiply = saved_feedmultiply;
+  previous_millis_cmd = millis();
+  endstops_hit_on_purpose();
+  ui_busy(false);
+}
+
+void move_to(float x, float y, float z, float feed_mm_s)
+{
+  int saved = feedmultiply;
+  float saved_feed = feedrate;
+  feedmultiply = 100;
+  feedrate = feed_mm_s * 60;
+  destination[X_AXIS] = x;
+  destination[Y_AXIS] = y;
+  destination[Z_AXIS] = z;
+  destination[E_AXIS] = current_position[E_AXIS];
+  prepare_move();
+  feedrate = saved_feed;
+  feedmultiply = saved;
+}
+
+void keep_steppers_on() { previous_millis_cmd = millis(); }
+
+void cancel_print()
+{
+  #ifdef SDSUPPORT
+  card.sdprinting = false;
+  card.closefile();
+  #endif
+  buflen = 0;
+  bufindr = bufindw;
+  quickStop();
+  disable_heater();
+  enquecommand_P(PSTR("G28"));
+}
 
 void process_commands()
 {
@@ -706,56 +785,25 @@ void process_commands()
       }
       break;
     case 28: //G28 Home all Axis one at a time
+      home_all_axes();
+      break;
 
-      saved_feedrate = feedrate;
-      saved_feedmultiply = feedmultiply;
-      feedmultiply = 100;
-      previous_millis_cmd = millis();
+    case 30: // G30 - probe the bed at the current X and Y with the FSR
+      if(Stopped == false) probe_g30();
+      break;
 
-      enable_endstops(true);
-
-      for(int8_t i=0; i < NUM_AXIS; i++) {
-        destination[i] = current_position[i];
+    case 33: // G33 [F<3|4|6>] [P<7|10>] [S0] - delta calibration
+      if(Stopped == false) {
+        int factors = CALIB_DEFAULT_FACTORS, points = CALIB_DEFAULT_POINTS;
+        if(code_seen('F')) factors = code_value();
+        if(code_seen('P')) points = code_value();
+        if((factors != 3 && factors != 4 && factors != 6) || (points != 7 && points != 10)) {
+          SERIAL_ERROR_START;
+          SERIAL_ERRORLNPGM("G33: F must be 3, 4 or 6 and P 7 or 10");
+        } else {
+          probe_g33(factors, points, !(code_seen('S') && code_value() == 0));
+        }
       }
-      feedrate = 0.0;
-
-          // A delta can only safely home all axis at the same time
-          // all axis have to home at the same time
-
-          // Move all carriages up together until the first endstop is hit.
-          current_position[X_AXIS] = 0;
-          current_position[Y_AXIS] = 0;
-          current_position[Z_AXIS] = 0;
-          plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-
-          destination[X_AXIS] = 3 * Z_MAX_LENGTH;
-          destination[Y_AXIS] = 3 * Z_MAX_LENGTH;
-          destination[Z_AXIS] = 3 * Z_MAX_LENGTH;
-          feedrate = 1.732 * homing_feedrate[X_AXIS];
-          plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
-          st_synchronize();
-          endstops_hit_on_purpose();
-
-          current_position[X_AXIS] = destination[X_AXIS];
-          current_position[Y_AXIS] = destination[Y_AXIS];
-          current_position[Z_AXIS] = destination[Z_AXIS];
-
-          // take care of back off and rehome now we are all at the top
-          HOMEAXIS(X);
-          HOMEAXIS(Y);
-          HOMEAXIS(Z);
-
-          calculate_delta(current_position);
-          plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);
-
-      #ifdef ENDSTOPS_ONLY_FOR_HOMING
-        enable_endstops(false);
-      #endif
-
-      feedrate = saved_feedrate;
-      feedmultiply = saved_feedmultiply;
-      previous_millis_cmd = millis();
-      endstops_hit_on_purpose();
       break;
 
     case 90: // G90
@@ -1134,25 +1182,14 @@ void process_commands()
         break;
     #endif //FAN_PIN
 
-    #if defined(PS_ON_PIN) && PS_ON_PIN > -1
-      case 80: // M80 - Turn on Power Supply
-        SET_OUTPUT(PS_ON_PIN); //GND
-        WRITE(PS_ON_PIN, PS_ON_AWAKE);
+    case 80: // M80 - power supply on: there is no power supply control, accepted for host compatibility
+      break;
 
-
-        break;
-      #endif
-
-      case 81: // M81 - Turn off Power Supply
-        disable_heater();
-        finishAndDisableSteppers();
-        fanSpeed = 0;
-        delay(1000); // Wait a little before to switch off
-      #if   defined(PS_ON_PIN) && PS_ON_PIN > -1
-        SET_OUTPUT(PS_ON_PIN);
-        WRITE(PS_ON_PIN, PS_ON_ASLEEP);
-      #endif
-	  break;
+    case 81: // M81 - all off
+      disable_heater();
+      finishAndDisableSteppers();
+      fanSpeed = 0;
+      break;
 
     case 82:
       axis_relative_modes[3] = false;
@@ -1331,6 +1368,7 @@ void process_commands()
       {
         if(code_seen(axis_codes[i])) add_homing[i] = code_value();
       }
+      delta_calibrated = false;
       break;
 	case 665: // M665 set delta configurations L<diagonal_rod> R<delta_radius> S<segments_per_sec>
 		if(code_seen('L')) {
@@ -1342,7 +1380,10 @@ void process_commands()
 		if(code_seen('S')) {
 			delta_segments_per_second= code_value();
 		}
-		
+		if(code_seen('A')) delta_tower_angle[0] = code_value();  // tower angle corrections, degrees
+		if(code_seen('B')) delta_tower_angle[1] = code_value();
+		if(code_seen('C')) delta_tower_angle[2] = code_value();
+		delta_calibrated = false;
 		recalc_delta_settings(delta_radius, delta_diagonal_rod);
 		break;
     case 666: // M666 set delta endstop adjustemnt
@@ -1350,6 +1391,25 @@ void process_commands()
       {
         if(code_seen(axis_codes[i])) endstop_adj[i] = code_value();
       }
+      delta_calibrated = false;
+      break;
+    case 851: // M851 Z<mm> - how high above the bed the nozzle is when the probe fires
+      if(code_seen('Z')) {
+        float z = code_value();
+        if(z >= -PROBE_MAX_OFFSET_MM && z <= PROBE_MAX_OFFSET_MM) probe_z_offset = z;
+      }
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPAIR("Probe Z offset: ", probe_z_offset);
+      SERIAL_ECHOLN("");
+      break;
+    case 974: // M974 S<counts> - FSR sensitivity
+      if(code_seen('S') && !probe_set_sensitivity(code_value())) {
+        SERIAL_ERROR_START;
+        SERIAL_ERRORLNPGM("M974: S must be 1..1023");
+      }
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPAIR("FSR sensitivity: ", (unsigned long)fsr_sensitivity);
+      SERIAL_ECHOLNPGM(" counts");
       break;
     #if EXTRUDERS > 1
     case 218: // M218 - set hotend offset (in mm), T<extruder_number> X<offset_on_X> Y<offset_on_Y>
@@ -1687,18 +1747,27 @@ void clamp_to_software_endstops(float target[3])
     if (target[X_AXIS] > max_pos[X_AXIS]) target[X_AXIS] = max_pos[X_AXIS];
     if (target[Y_AXIS] > max_pos[Y_AXIS]) target[Y_AXIS] = max_pos[Y_AXIS];
     if (target[Z_AXIS] > max_pos[Z_AXIS]) target[Z_AXIS] = max_pos[Z_AXIS];
+
+    // the printable area is a circle
+    float r2 = sq(target[X_AXIS]) + sq(target[Y_AXIS]);
+    if (r2 > sq(DELTA_PRINTABLE_RADIUS)) {
+      float scale = DELTA_PRINTABLE_RADIUS / sqrt(r2);
+      target[X_AXIS] *= scale;
+      target[Y_AXIS] *= scale;
+    }
   }
 }
 
 void recalc_delta_settings(float radius, float diagonal_rod)
 {
-	 delta_tower1_x= -SIN_60*radius; // front left tower
-	 delta_tower1_y= -COS_60*radius;	   
-	 delta_tower2_x=  SIN_60*radius; // front right tower
-	 delta_tower2_y= -COS_60*radius;	   
-	 delta_tower3_x= 0.0;                  // back middle tower
-	 delta_tower3_y= radius;
-	 delta_diagonal_rod_2= sq(diagonal_rod);
+  const float d2r = 0.017453292519943295;
+  delta_tower1_x = radius * cos((210 + delta_tower_angle[0]) * d2r); // front left tower
+  delta_tower1_y = radius * sin((210 + delta_tower_angle[0]) * d2r);
+  delta_tower2_x = radius * cos((330 + delta_tower_angle[1]) * d2r); // front right tower
+  delta_tower2_y = radius * sin((330 + delta_tower_angle[1]) * d2r);
+  delta_tower3_x = radius * cos((90 + delta_tower_angle[2]) * d2r);  // back middle tower
+  delta_tower3_y = radius * sin((90 + delta_tower_angle[2]) * d2r);
+  delta_diagonal_rod_2 = sq(diagonal_rod);
 }
 
 // True if the arms can reach the position: every rod needs a positive vertical part, otherwise calculate_delta()
@@ -1859,6 +1928,7 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) //default argument s
     controllerFan(); //Check if fan should be turned on to cool stepper drivers down
   #endif
   check_axes_activity();
+  ui_poll();
 }
 
 void kill()
@@ -1872,9 +1942,6 @@ void kill()
   disable_e0();
   disable_e1();
 
-#if defined(PS_ON_PIN) && PS_ON_PIN > -1
-  pinMode(PS_ON_PIN,INPUT);
-#endif
   SERIAL_ERROR_START;
   SERIAL_ERRORLNPGM(MSG_ERR_KILLED);
   

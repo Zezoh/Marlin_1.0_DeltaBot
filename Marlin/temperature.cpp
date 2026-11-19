@@ -68,6 +68,10 @@ unsigned char soft_pwm_bed;
 //===========================================================================
 static volatile bool temp_meas_ready = false;
 
+// Latest FSR (Z probe) reading, 10 bit. Sampled twice per 10 ms from the idle ticks of the temperature
+// state machine; the stepper interrupt compares it with a reference while a probe stroke runs.
+volatile unsigned int fsr_raw = 0;
+
 #ifdef PIDTEMP
   //static cannot be external:
   static float temp_iState[EXTRUDERS] = { 0 };
@@ -825,7 +829,11 @@ void tp_init()
     #endif
   #endif
 
-  //Added for Filament Sensor
+  #if FSR_PIN < 8
+    DIDR0 |= 1<<FSR_PIN;
+  #else
+    DIDR2 |= 1<<(FSR_PIN - 8);
+  #endif
 
   // Use timer0 for temperature measurement
   // Interleave temperature interrupt with millies interrupt
@@ -1119,12 +1127,27 @@ ISR(TIMER0_COMPB_vect)
       #endif
       temp_state = 6;
       break;
-    case 6:  // Idle ticks: they keep the sample at 10 ticks, the period PID_dT is calculated for
-    case 7:
-    case 8:
-      temp_state++;
+    case 6: // Prepare FSR. The first conversion after a channel change is discarded.
+      #if FSR_PIN > 7
+        ADCSRB = 1<<MUX5;
+      #else
+        ADCSRB = 0;
+      #endif
+      ADMUX = ((1 << REFS0) | (FSR_PIN & 0x07));
+      ADCSRA |= 1<<ADSC; // Start conversion
+      temp_state = 7;
       break;
-    case 9:
+    case 7: // Discard the first FSR conversion, start the next
+      ADCSRA |= 1<<ADSC;
+      temp_state = 8;
+      break;
+    case 8: // Measure FSR, start another one
+      fsr_raw = ADC;
+      ADCSRA |= 1<<ADSC;
+      temp_state = 9;
+      break;
+    case 9: // Measure FSR; this tick also keeps the sample at 10 ticks, the period PID_dT is calculated for
+      fsr_raw = ADC;
       temp_state = 0;
       temp_count++;
       break;

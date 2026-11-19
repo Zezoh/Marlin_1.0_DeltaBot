@@ -133,6 +133,10 @@ void ClearToSend();
 
 void get_coordinates();
 void calculate_delta(float cartesian[3]);
+void home_all_axes();                                          // G28
+void move_to(float x, float y, float z, float feed_mm_s);      // queue a straight move of the nozzle
+void cancel_print();
+void keep_steppers_on();                                       // restart the idle timer that releases the steppers                                           // stop the SD print, heater off, home
 bool delta_reachable(const float cartesian[3]);
 extern float delta[3];
 void prepare_move();
@@ -167,6 +171,7 @@ extern float current_position[NUM_AXIS] ;
 extern float add_homing[3];
 extern float endstop_adj[3];
 extern float delta_radius;
+extern float delta_tower_angle[3];  // tower angle corrections, degrees (G33 / M665 A B C)
 extern float delta_diagonal_rod;
 extern float delta_segments_per_second;
 void recalc_delta_settings(float radius, float diagonal_rod);
