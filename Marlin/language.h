@@ -80,7 +80,6 @@
 #define MSG_SD_VOL_INIT_FAIL                "volume.init failed"
 #define MSG_SD_OPENROOT_FAIL                "openRoot failed"
 #define MSG_SD_CARD_OK                      "SD card ok"
-#define MSG_SD_WORKDIR_FAIL                 "workDir open failed"
 #define MSG_SD_OPEN_FILE_FAIL               "open failed, File: "
 #define MSG_SD_FILE_OPENED                  "File opened: "
 #define MSG_SD_SIZE                         " Size: "
@@ -89,7 +88,6 @@
 #define MSG_SD_PRINTING_BYTE                "SD printing byte "
 #define MSG_SD_NOT_PRINTING                 "Not SD printing"
 #define MSG_SD_ERR_WRITE_TO_FILE            "error writing to file"
-#define MSG_SD_CANT_ENTER_SUBDIR            "Cannot enter subdir: "
 
 #define MSG_STEPPER_TOO_HIGH                "Steprate too high: "
 #define MSG_ENDSTOPS_HIT                    "endstops hit: "

@@ -8,6 +8,7 @@ Marlin 1.0.2-3 firmware reduced to a clean, English-only build for **delta
 - Delta kinematics (`calculate_delta`, delta calibration, endstop adjustment, M665/M666)
 - English-only serial messages (`Marlin/language.h`)
 - RAMPS 1.x boards only (ATmega2560 / ATmega1280); no LCD or panel support
+- SD card printing enabled by default (FAT16/FAT32 via `Sd2Card` + `SdFat`, M20-M32, M928, autostart `auto0.g`...`auto9.g`)
 - Delta default configuration in `Marlin/Configuration.h` and `Marlin/Configuration_adv.h`
 
 ## Building

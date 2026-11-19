@@ -200,12 +200,6 @@
 #define SD_FINISHED_STEPPERRELEASE true  //if sd support and the file is finished: disable steppers?
 #define SD_FINISHED_RELEASECOMMAND "M84 X Y Z E" // You might want to keep the z enabled so your bed stays in place.
 
-#define SDCARD_RATHERRECENTFIRST  //reverse file order of sd card menu display. Its sorted practically after the filesystem block order. 
-// if a file is deleted, it frees a block. hence, the order is not purely cronological. To still have auto0.g accessible, there is again the option to do that.
-// using:
-//#define MENU_ADDAUTOSTART
-
-
 // The hardware watchdog should reset the Microcontroller disabling all outputs, in case the firmware gets stuck and doesn't do temperature regulation.
 //#define USE_WATCHDOG
 
@@ -257,12 +251,6 @@
 #define N_ARC_CORRECTION 25
 
 const unsigned int dropsegments=5; //everything with less than this number of steps will be ignored as move and joined with the next movement
-
-// If you are using a RAMPS board or cheap E-bay purchased boards that do not detect when an SD card is inserted
-// You can get round this by connecting a push button or single throw switch to the pin defined as SDCARDCARDDETECT 
-// in the pins.h file.  When using a push button pulling the pin to ground this will need inverted.  This setting should
-// be commented out otherwise
-#define SDCARDDETECTINVERTED 
 
 // Power Signal Control Definitions
 // By default use ATX definition

@@ -33,8 +33,6 @@
 #include "temperature.h"
 #include "watchdog.h"
 
-#include "Sd2PinMap.h"
-
 
 //===========================================================================
 //=============================public variables============================
@@ -832,18 +830,15 @@ void tp_init()
   #endif  
 
   #ifdef HEATER_0_USES_MAX6675
-    #ifndef SDSUPPORT
-      SET_OUTPUT(SCK_PIN);
-      WRITE(SCK_PIN,0);
-    
-      SET_OUTPUT(MOSI_PIN);
-      WRITE(MOSI_PIN,1);
-    
-      SET_INPUT(MISO_PIN);
-      WRITE(MISO_PIN,1);
-    #endif
-    /* Using pinMode and digitalWrite, as that was the only way I could get it to compile */
-    
+    SET_OUTPUT(SCK_PIN);
+    WRITE(SCK_PIN,0);
+
+    SET_OUTPUT(MOSI_PIN);
+    WRITE(MOSI_PIN,1);
+
+    SET_INPUT(MISO_PIN);
+    WRITE(MISO_PIN,1);
+
     //Have to toggle SD card CS pin to low first, to enable firmware to talk with SD card
 	pinMode(SS_PIN, OUTPUT);
 	digitalWrite(SS_PIN,0);  

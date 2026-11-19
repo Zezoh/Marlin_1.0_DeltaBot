@@ -188,17 +188,13 @@
 
 #endif // RAMPS_13_EFB || RAMPS_13_EEB || RAMPS_13_EFF || 3DRAG
 
-// SPI for Max6675 Thermocouple
-
-#ifndef SDSUPPORT
-// these pins are defined in the SD library if building with SD support
-  #define SCK_PIN          52
-  #define MISO_PIN         50
-  #define MOSI_PIN         51
-  #define MAX6675_SS       66// Do not use pin 53 if there is even the remote possibility of using Dsplay/SD card
-#else
-  #define MAX6675_SS       66// Do not use pin 49 as this is tied to the switch inside the SD card socket to detect if there is an SD card present
-#endif
+// Hardware SPI pins of the ATmega1280/2560, used by the SD card and the MAX6675 thermocouple
+#define SS_PIN           53
+#define SCK_PIN          52
+#define MISO_PIN         50
+#define MOSI_PIN         51
+// Do not use pin 53 or 49 for the MAX6675: they are used by the SD card socket
+#define MAX6675_SS       66
 
 #endif // RAMPS_OLD || RAMPS_13_EFB || RAMPS_13_EEB || RAMPS_13_EFF || 3DRAG
 
