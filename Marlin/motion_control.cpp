@@ -22,12 +22,32 @@
 #include "Marlin.h"
 #include "stepper.h"
 #include "planner.h"
+#include "language.h"
 
-// Move to a Cartesian position: the planner works with the positions of the delta carriages
-static void plan_line_to(float *cartesian, float feed_rate, uint8_t extruder)
+// Move the nozzle in a straight line from *from* to a Cartesian position and remember the new position in *from*.
+// The planner works with the positions of the delta carriages, the length of the move of the nozzle is
+// given so that the feed rate is the speed of the nozzle.
+static bool plan_line_to(float *cartesian, float *from, float feed_rate, uint8_t extruder)
 {
+  if (!delta_reachable(cartesian)) return false;
+  float length = sqrt(sq(cartesian[X_AXIS] - from[X_AXIS]) + sq(cartesian[Y_AXIS] - from[Y_AXIS]) + sq(cartesian[Z_AXIS] - from[Z_AXIS]));
   calculate_delta(cartesian);
-  plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], cartesian[E_AXIS], feed_rate, extruder);
+  plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], cartesian[E_AXIS], feed_rate, extruder, length);
+  from[X_AXIS] = cartesian[X_AXIS];
+  from[Y_AXIS] = cartesian[Y_AXIS];
+  from[Z_AXIS] = cartesian[Z_AXIS];
+  return true;
+}
+
+// The arc left the area the arms can reach: stop where it was, the parser continues from there
+static void abort_arc(float *target, const float *last, float e)
+{
+  SERIAL_ERROR_START;
+  SERIAL_ERRORLNPGM(MSG_ERR_OUT_OF_REACH);
+  target[X_AXIS] = last[X_AXIS];
+  target[Y_AXIS] = last[Y_AXIS];
+  target[Z_AXIS] = last[Z_AXIS];
+  target[E_AXIS] = e;
 }
 
 // The arc is approximated by generating a number of tiny, linear segments of MM_PER_ARC_SEGMENT mm.
@@ -79,6 +99,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
 
   arc_target[axis_linear] = position[axis_linear];
   arc_target[E_AXIS] = position[E_AXIS];
+  float previous[3] = { position[X_AXIS], position[Y_AXIS], position[Z_AXIS] };  // where the nozzle is now
 
   for (uint16_t i = 1; i < segments; i++) {  // Increment (segments-1)
     if (count < N_ARC_CORRECTION) {
@@ -103,9 +124,14 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
     arc_target[E_AXIS] += extruder_per_segment;
 
     clamp_to_software_endstops(arc_target);
-    plan_line_to(arc_target, feed_rate, extruder);
+    if (!plan_line_to(arc_target, previous, feed_rate, extruder)) {
+      abort_arc(target, previous, arc_target[E_AXIS] - extruder_per_segment);
+      return;
+    }
   }
   // Ensure last segment arrives at target location.
   clamp_to_software_endstops(target);
-  plan_line_to(target, feed_rate, extruder);
+  if (!plan_line_to(target, previous, feed_rate, extruder)) {
+    abort_arc(target, previous, arc_target[E_AXIS]);
+  }
 }

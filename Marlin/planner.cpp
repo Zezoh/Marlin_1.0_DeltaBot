@@ -365,7 +365,7 @@ void check_axes_activity()
 
 // Add a new linear movement to the buffer. x, y and z are the carriage positions in mm
 // (the delta towers), e is the extruder position, feed_rate the speed in mm/s.
-void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed_rate, const uint8_t &extruder)
+void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed_rate, const uint8_t &extruder, float cartesian_mm)
 {
   // Calculate the buffer head after we push this block
   int next_buffer_head = NEXT_BLOCK_INDEX(block_buffer_head);
@@ -492,6 +492,10 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   if (block->steps_x <= dropsegments && block->steps_y <= dropsegments && block->steps_z <= dropsegments)
   {
     block->millimeters = fabs(delta_mm[E_AXIS]);
+  }
+  else if (cartesian_mm > 0)
+  {
+    block->millimeters = cartesian_mm;
   }
   else
   {

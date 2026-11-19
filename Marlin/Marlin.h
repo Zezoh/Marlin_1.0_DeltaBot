@@ -133,6 +133,7 @@ void ClearToSend();
 
 void get_coordinates();
 void calculate_delta(float cartesian[3]);
+bool delta_reachable(const float cartesian[3]);
 extern float delta[3];
 void prepare_move();
 void kill();

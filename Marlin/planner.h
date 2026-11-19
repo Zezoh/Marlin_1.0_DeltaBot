@@ -61,7 +61,9 @@ void plan_init();
 // Add a new linear movement to the buffer. x, y and z is the signed, absolute target position in 
 // millimaters. Feed rate specifies the speed of the motion.
 
-void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed_rate, const uint8_t &extruder);
+// cartesian_mm is the length of the move of the nozzle. If it is given the feed rate applies to the nozzle:
+// the carriage (tower) positions x, y and z do not move at the nozzle speed. Zero: measure the tower space move.
+void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed_rate, const uint8_t &extruder, float cartesian_mm = 0.0);
 
 // Set position. Used for G92 instructions.
 void plan_set_position(const float &x, const float &y, const float &z, const float &e);

@@ -1701,6 +1701,16 @@ void recalc_delta_settings(float radius, float diagonal_rod)
 	 delta_diagonal_rod_2= sq(diagonal_rod);
 }
 
+// True if the arms can reach the position: every rod needs a positive vertical part, otherwise calculate_delta()
+// would take the square root of a negative number. The reachable area is convex, so the end point of a
+// straight move is enough to know that the whole move is reachable.
+bool delta_reachable(const float cartesian[3])
+{
+  return delta_diagonal_rod_2 - sq(delta_tower1_x-cartesian[X_AXIS]) - sq(delta_tower1_y-cartesian[Y_AXIS]) > 0 &&
+         delta_diagonal_rod_2 - sq(delta_tower2_x-cartesian[X_AXIS]) - sq(delta_tower2_y-cartesian[Y_AXIS]) > 0 &&
+         delta_diagonal_rod_2 - sq(delta_tower3_x-cartesian[X_AXIS]) - sq(delta_tower3_y-cartesian[Y_AXIS]) > 0;
+}
+
 void calculate_delta(float cartesian[3])
 {
   delta[X_AXIS] = sqrt(delta_diagonal_rod_2
@@ -1730,7 +1740,14 @@ void prepare_move()
 {
   clamp_to_software_endstops(destination);
   previous_millis_cmd = millis();
-  
+
+  if (!delta_reachable(destination)) {
+    SERIAL_ERROR_START;
+    SERIAL_ERRORLNPGM(MSG_ERR_OUT_OF_REACH);
+    memcpy(destination, current_position, sizeof(destination));
+    return;
+  }
+
   float difference[NUM_AXIS];
   for (int8_t i=0; i < NUM_AXIS; i++) {
     difference[i] = destination[i] - current_position[i];
@@ -1742,18 +1759,16 @@ void prepare_move()
   if (cartesian_mm < 0.000001) { return; }
   float seconds = 6000 * cartesian_mm / feedrate / feedmultiply;
   long steps = max(1L, long(delta_segments_per_second * seconds));
-  // SERIAL_ECHOPGM("mm="); SERIAL_ECHO(cartesian_mm);
-  // SERIAL_ECHOPGM(" seconds="); SERIAL_ECHO(seconds);
-  // SERIAL_ECHOPGM(" steps="); SERIAL_ECHOLN(steps);
   for (long s = 1; s <= steps; s++) {
     float fraction = float(s) / float(steps);
     for(int8_t i=0; i < NUM_AXIS; i++) {
       destination[i] = current_position[i] + difference[i] * fraction;
     }
     calculate_delta(destination);
+    // the segment length is given to the planner: the feed rate is the speed of the nozzle
     plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS],
                      destination[E_AXIS], feedrate*feedmultiply/60/100.0,
-                     active_extruder);
+                     active_extruder, cartesian_mm/steps);
   }
   
   for(int8_t i=0; i < NUM_AXIS; i++) {
