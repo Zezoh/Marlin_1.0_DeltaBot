@@ -23,131 +23,83 @@
 #define SDSS             53
 #define LED_PIN          13
 
-#if !MB(RAMPS_OLD)
-  //---------------------------------------------------------------------------------
-  // RAMPS 1.3 / 1.4
-  //---------------------------------------------------------------------------------
-  #define X_STEP_PIN         54
-  #define X_DIR_PIN          55
-  #define X_ENABLE_PIN       38
-  #define X_MIN_PIN           3
-  #define X_MAX_PIN           2
+//---------------------------------------------------------------------------------
+// RAMPS 1.3 / 1.4
+//---------------------------------------------------------------------------------
+#define X_STEP_PIN         54
+#define X_DIR_PIN          55
+#define X_ENABLE_PIN       38
+#define X_MIN_PIN           3
+#define X_MAX_PIN           2
 
-  #define Y_STEP_PIN         60
-  #define Y_DIR_PIN          61
-  #define Y_ENABLE_PIN       56
-  #define Y_MIN_PIN          14
-  #define Y_MAX_PIN          15
+#define Y_STEP_PIN         60
+#define Y_DIR_PIN          61
+#define Y_ENABLE_PIN       56
+#define Y_MIN_PIN          14
+#define Y_MAX_PIN          15
 
-  #define Z_STEP_PIN         46
-  #define Z_DIR_PIN          48
-  #define Z_ENABLE_PIN       62
-  #define Z_MIN_PIN          18
-  #define Z_MAX_PIN          19
+#define Z_STEP_PIN         46
+#define Z_DIR_PIN          48
+#define Z_ENABLE_PIN       62
+#define Z_MIN_PIN          18
+#define Z_MAX_PIN          19
 
-  #define E0_STEP_PIN        26
-  #define E0_DIR_PIN         28
-  #define E0_ENABLE_PIN      24
+#define E0_STEP_PIN        26
+#define E0_DIR_PIN         28
+#define E0_ENABLE_PIN      24
 
-  #define E1_STEP_PIN        36
-  #define E1_DIR_PIN         34
-  #define E1_ENABLE_PIN      30
+#define E1_STEP_PIN        36
+#define E1_DIR_PIN         34
+#define E1_ENABLE_PIN      30
 
-  #define SDPOWER            -1
-  #define PS_ON_PIN          12
-  #define KILL_PIN           -1
+#define SDPOWER            -1
+#define PS_ON_PIN          12
+#define KILL_PIN           -1
 
-  // Power outputs: D8 (bed), D9, D10
-  #if MB(RAMPS_13_EFB) || MB(RAMPS_13_EFF)
-    #define FAN_PIN           9
-  #elif MB(RAMPS_13_EEB)
-    #define FAN_PIN           4  // IO pin. Buffer needed
-  #else  // RAMPS_13_EEF
-    #define FAN_PIN           8
-  #endif
-
-  #if MB(RAMPS_13_EFF)
-    #define HEATER_0_PIN      8
-    #define HEATER_1_PIN      9
-    #define HEATER_BED_PIN   -1  // no bed
-  #elif MB(RAMPS_13_EEF)
-    #define HEATER_0_PIN     10
-    #define HEATER_1_PIN      9
-    #define HEATER_BED_PIN   -1  // no bed
-  #elif MB(RAMPS_13_EFB)
-    #define HEATER_0_PIN     10
-    #define HEATER_1_PIN     -1
-    #define HEATER_BED_PIN    8
-  #else  // RAMPS_13_EEB
-    #define HEATER_0_PIN     10
-    #define HEATER_1_PIN      9
-    #define HEATER_BED_PIN    8
-  #endif
-
-  #define TEMP_0_PIN         13  // ANALOG NUMBERING
-  #define TEMP_1_PIN         15  // ANALOG NUMBERING
-  #define TEMP_BED_PIN       14  // ANALOG NUMBERING
-
-  #ifdef NUM_SERVOS
-    #define SERVO0_PIN       11
-    #if NUM_SERVOS > 1
-      #define SERVO1_PIN      6
-    #endif
-    #if NUM_SERVOS > 2
-      #define SERVO2_PIN      5
-    #endif
-    #if NUM_SERVOS > 3
-      #define SERVO3_PIN      4
-    #endif
-  #endif
-
-#else
-  //---------------------------------------------------------------------------------
-  // RAMPS up to 1.2
-  //---------------------------------------------------------------------------------
-  #define X_STEP_PIN         26
-  #define X_DIR_PIN          28
-  #define X_ENABLE_PIN       24
-  #define X_MIN_PIN           3
-  #define X_MAX_PIN          -1  // 2
-
-  #define Y_STEP_PIN         38
-  #define Y_DIR_PIN          40
-  #define Y_ENABLE_PIN       36
-  #define Y_MIN_PIN          16
-  #define Y_MAX_PIN          -1  // 17
-
-  #define Z_STEP_PIN         44
-  #define Z_DIR_PIN          46
-  #define Z_ENABLE_PIN       42
-  #define Z_MIN_PIN          18
-  #define Z_MAX_PIN          -1  // 19
-
-  #define E0_STEP_PIN        32
-  #define E0_DIR_PIN         34
-  #define E0_ENABLE_PIN      30
-
-  #define SDPOWER            48
-  #define PS_ON_PIN          -1
-  #define KILL_PIN           -1
-
-  // uncomment for RAMPS v1.0
-  // #define RAMPS_V_1_0
-  #ifdef RAMPS_V_1_0
-    #define HEATER_0_PIN     12
-    #define HEATER_BED_PIN   -1
-    #define FAN_PIN          11
-  #else  // RAMPS 1.1 / 1.2
-    #define HEATER_0_PIN     10
-    #define HEATER_BED_PIN    8
-    #define FAN_PIN           9
-  #endif
-  #define HEATER_1_PIN       -1
-
-  #define TEMP_0_PIN          2  // ANALOG NUMBERING
-  #define TEMP_1_PIN         -1
-  #define TEMP_BED_PIN        1  // ANALOG NUMBERING
+// Power outputs: D8 (bed), D9, D10
+#if MB(RAMPS_13_EFB) || MB(RAMPS_13_EFF)
+  #define FAN_PIN           9
+#elif MB(RAMPS_13_EEB)
+  #define FAN_PIN           4  // IO pin. Buffer needed
+#else  // RAMPS_13_EEF
+  #define FAN_PIN           8
 #endif
+
+#if MB(RAMPS_13_EFF)
+  #define HEATER_0_PIN      8
+  #define HEATER_1_PIN      9
+  #define HEATER_BED_PIN   -1  // no bed
+#elif MB(RAMPS_13_EEF)
+  #define HEATER_0_PIN     10
+  #define HEATER_1_PIN      9
+  #define HEATER_BED_PIN   -1  // no bed
+#elif MB(RAMPS_13_EFB)
+  #define HEATER_0_PIN     10
+  #define HEATER_1_PIN     -1
+  #define HEATER_BED_PIN    8
+#else  // RAMPS_13_EEB
+  #define HEATER_0_PIN     10
+  #define HEATER_1_PIN      9
+  #define HEATER_BED_PIN    8
+#endif
+
+#define TEMP_0_PIN         13  // ANALOG NUMBERING
+#define TEMP_1_PIN         15  // ANALOG NUMBERING
+#define TEMP_BED_PIN       14  // ANALOG NUMBERING
+
+#ifdef NUM_SERVOS
+  #define SERVO0_PIN       11
+  #if NUM_SERVOS > 1
+    #define SERVO1_PIN      6
+  #endif
+  #if NUM_SERVOS > 2
+    #define SERVO2_PIN      5
+  #endif
+  #if NUM_SERVOS > 3
+    #define SERVO3_PIN      4
+  #endif
+#endif
+
 
 #ifdef X_STOP_PIN
   #if X_HOME_DIR < 0

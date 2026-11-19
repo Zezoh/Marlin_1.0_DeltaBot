@@ -347,10 +347,6 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
 #define Y_MAX_LENGTH (Y_MAX_POS - Y_MIN_POS)
 #define Z_MAX_LENGTH (Z_MAX_POS - Z_MIN_POS)
-//============================= Bed Auto Leveling ===========================
-//Bed Auto Leveling is still not compatible with Delta Kinematics
-
-
 
 
 // The position of the homing switches
@@ -394,15 +390,6 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 //===========================================================================
 //=============================Additional Features===========================
 //===========================================================================
-
-// Custom M code points
-#define CUSTOM_M_CODES
-#ifdef CUSTOM_M_CODES
-  #define CUSTOM_M_CODE_SET_Z_PROBE_OFFSET 851
-  #define Z_PROBE_OFFSET_RANGE_MIN -15
-  #define Z_PROBE_OFFSET_RANGE_MAX -5
-#endif
-
 
 // EEPROM
 // The microcontroller can store settings in the EEPROM, e.g. max velocity...

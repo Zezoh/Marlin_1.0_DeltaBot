@@ -37,7 +37,7 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
 // wrong data being written to the variables.
 // ALSO:  always make sure the variables in the Store and retrieve sections are in the same order.
 
-#define EEPROM_VERSION "V15"
+#define EEPROM_VERSION "V16"
 
 #ifdef EEPROM_SETTINGS
 void Config_StoreSettings() 
@@ -60,7 +60,6 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i,delta_radius);
   EEPROM_WRITE_VAR(i,delta_diagonal_rod);
   EEPROM_WRITE_VAR(i,delta_segments_per_second);
-  EEPROM_WRITE_VAR(i,zprobe_zoffset);
   #ifdef PIDTEMP
     EEPROM_WRITE_VAR(i,Kp);
     EEPROM_WRITE_VAR(i,Ki);
@@ -257,7 +256,6 @@ void Config_RetrieveSettings()
 		EEPROM_READ_VAR(i,delta_radius);
 		EEPROM_READ_VAR(i,delta_diagonal_rod);
 		EEPROM_READ_VAR(i,delta_segments_per_second);
-        EEPROM_READ_VAR(i,zprobe_zoffset);
         #ifndef PIDTEMP
         float Kp,Ki,Kd;
         #endif
@@ -330,9 +328,6 @@ void Config_ResetDefault()
 	delta_diagonal_rod= DELTA_DIAGONAL_ROD;
 	delta_segments_per_second= DELTA_SEGMENTS_PER_SECOND;
 	recalc_delta_settings(delta_radius, delta_diagonal_rod);
-#ifdef ENABLE_AUTO_BED_LEVELING
-    zprobe_zoffset = -Z_PROBE_OFFSET_FROM_EXTRUDER;
-#endif
 #ifdef PIDTEMP
     Kp = DEFAULT_Kp;
     Ki = scalePID_i(DEFAULT_Ki);

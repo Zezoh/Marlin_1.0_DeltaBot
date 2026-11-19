@@ -51,15 +51,6 @@ float max_e_jerk;
 float mintravelfeedrate;
 unsigned long axis_steps_per_sqr_second[NUM_AXIS];
 
-#ifdef ENABLE_AUTO_BED_LEVELING
-// this holds the required transform to compensate for bed level
-matrix_3x3 plan_bed_level_matrix = {
-  1.0, 0.0, 0.0,
-  0.0, 1.0, 0.0,
-  0.0, 0.0, 1.0,
-};
-#endif // ENABLE_AUTO_BED_LEVELING
-
 // The current position of the tool in absolute steps
 long position[NUM_AXIS];  // rescaled from extern when axis_steps_per_unit are changed by gcode
 static float previous_speed[NUM_AXIS];  // Speed of previous path line segment
@@ -374,11 +365,7 @@ void check_axes_activity()
 
 // Add a new linear movement to the buffer. x, y and z are the carriage positions in mm
 // (the delta towers), e is the extruder position, feed_rate the speed in mm/s.
-#ifdef ENABLE_AUTO_BED_LEVELING
-void plan_buffer_line(float x, float y, float z, const float &e, float feed_rate, const uint8_t &extruder)
-#else
 void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed_rate, const uint8_t &extruder)
-#endif
 {
   // Calculate the buffer head after we push this block
   int next_buffer_head = NEXT_BLOCK_INDEX(block_buffer_head);
@@ -390,10 +377,6 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
     manage_heater();
     manage_inactivity();
   }
-
-#ifdef ENABLE_AUTO_BED_LEVELING
-  apply_rotation_xyz(plan_bed_level_matrix, x, y, z);
-#endif
 
   // The target position of the tool in absolute steps.
   // This is done after the wait, because otherwise an M92 code within the gcode disrupts this calculation.
@@ -611,22 +594,8 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   st_wake_up();
 }
 
-#ifdef ENABLE_AUTO_BED_LEVELING
-vector_3 plan_get_position()
-{
-  vector_3 position = vector_3(st_get_position_mm(X_AXIS), st_get_position_mm(Y_AXIS), st_get_position_mm(Z_AXIS));
-  matrix_3x3 inverse = matrix_3x3::transpose(plan_bed_level_matrix);
-  position.apply_rotation(inverse);
-  return position;
-}
-
-void plan_set_position(float x, float y, float z, const float &e)
-{
-  apply_rotation_xyz(plan_bed_level_matrix, x, y, z);
-#else
 void plan_set_position(const float &x, const float &y, const float &z, const float &e)
 {
-#endif
   position[X_AXIS] = lround(x*axis_steps_per_unit[X_AXIS]);
   position[Y_AXIS] = lround(y*axis_steps_per_unit[Y_AXIS]);
   position[Z_AXIS] = lround(z*axis_steps_per_unit[Z_AXIS]);

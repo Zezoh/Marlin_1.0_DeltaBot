@@ -95,8 +95,5 @@
 
 
 #define WELCOME_MSG                         MACHINE_NAME " ready."
-#define MSG_BED                             "Bed"
-#define MSG_POSITION_UNKNOWN                "Home X/Y before Z"
-#define MSG_ZPROBE_ZOFFSET                  "Z Offset"
 
 #endif // LANGUAGE_H
