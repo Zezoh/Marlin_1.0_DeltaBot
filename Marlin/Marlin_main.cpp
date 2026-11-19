@@ -177,15 +177,6 @@
 // M350 - Set microstepping mode.
 // M351 - Toggle MS1 MS2 pins directly.
 
-// ************ SCARA Specific - This can change to suit future G-code regulations
-// M360 - SCARA calibration: Move to cal-position ThetaA (0 deg calibration)
-// M361 - SCARA calibration: Move to cal-position ThetaB (90 deg calibration - steps per degree)
-// M362 - SCARA calibration: Move to cal-position PsiA (0 deg calibration)
-// M363 - SCARA calibration: Move to cal-position PsiB (90 deg calibration - steps per degree)
-// M364 - SCARA calibration: Move to cal-position PSIC (90 deg to Theta calibration position)
-// M365 - SCARA calibration: Scaling factor, X, Y, Z axis
-//************* SCARA End ***************
-
 // M928 - Start SD logging (M928 filename.g) - ended by M29
 // M999 - Restart after being stopped by error
 
@@ -234,9 +225,7 @@ float volumetric_multiplier[EXTRUDERS] = {1.0
 };
 float current_position[NUM_AXIS] = { 0.0, 0.0, 0.0, 0.0 };
 float add_homing[3]={0,0,0};
-#ifdef DELTA
 float endstop_adj[3]={0,0,0};
-#endif
 
 float min_pos[3] = { X_MIN_POS, Y_MIN_POS, Z_MIN_POS };
 float max_pos[3] = { X_MAX_POS, Y_MAX_POS, Z_MAX_POS };
@@ -245,11 +234,7 @@ float zprobe_zoffset;
 
 // Extruder offset
 #if EXTRUDERS > 1
-#ifndef DUAL_X_CARRIAGE
   #define NUM_EXTRUDER_OFFSETS 2 // only in XY plane
-#else
-  #define NUM_EXTRUDER_OFFSETS 3 // supports offsets in XYZ plane
-#endif
 float extruder_offset[NUM_EXTRUDER_OFFSETS][EXTRUDERS] = {
 #if defined(EXTRUDER_OFFSET_X) && defined(EXTRUDER_OFFSET_Y)
   EXTRUDER_OFFSET_X, EXTRUDER_OFFSET_Y
@@ -303,7 +288,6 @@ int EtoPPressure=0;
   #endif
 #endif
 
-#ifdef DELTA
   float delta[3] = {0.0, 0.0, 0.0};
   #define SIN_60 0.8660254037844386
   #define COS_60 0.5
@@ -318,11 +302,6 @@ int EtoPPressure=0;
   float delta_diagonal_rod= DELTA_DIAGONAL_ROD;
   float delta_diagonal_rod_2= sq(delta_diagonal_rod);
   float delta_segments_per_second= DELTA_SEGMENTS_PER_SECOND;
-#endif
-
-#ifdef SCARA                              // Build size scaling
-float axis_scaling[3]={1,1,1};  // Build size scaling, default to 1
-#endif				
 
 bool cancel_heatup = false ;
 
@@ -346,10 +325,6 @@ const char echomagic[] PROGMEM = "echo:";
 //===========================================================================
 const char axis_codes[NUM_AXIS] = {'X', 'Y', 'Z', 'E'};
 static float destination[NUM_AXIS] = {  0.0, 0.0, 0.0, 0.0};
-
-#ifndef DELTA
-static float delta[3] = {0.0, 0.0, 0.0};
-#endif
 
 static float offset[3] = {0.0, 0.0, 0.0};
 static bool home_all_axis = true;
@@ -878,117 +853,10 @@ XYZ_CONSTS_FROM_CONFIG(float, max_length,      MAX_LENGTH);
 XYZ_CONSTS_FROM_CONFIG(float, home_retract_mm, HOME_RETRACT_MM);
 XYZ_CONSTS_FROM_CONFIG(signed char, home_dir,  HOME_DIR);
 
-#ifdef DUAL_X_CARRIAGE
-  #if EXTRUDERS == 1 || defined(COREXY) \
-      || !defined(X2_ENABLE_PIN) || !defined(X2_STEP_PIN) || !defined(X2_DIR_PIN) \
-      || !defined(X2_HOME_POS) || !defined(X2_MIN_POS) || !defined(X2_MAX_POS) \
-      || !defined(X_MAX_PIN) || X_MAX_PIN < 0
-    #error "Missing or invalid definitions for DUAL_X_CARRIAGE mode."
-  #endif
-  #if X_HOME_DIR != -1 || X2_HOME_DIR != 1
-    #error "Please use canonical x-carriage assignment" // the x-carriages are defined by their homing directions
-  #endif
-
-#define DXC_FULL_CONTROL_MODE 0
-#define DXC_AUTO_PARK_MODE    1
-#define DXC_DUPLICATION_MODE  2
-static int dual_x_carriage_mode = DEFAULT_DUAL_X_CARRIAGE_MODE;
-
-static float x_home_pos(int extruder) {
-  if (extruder == 0)
-    return base_home_pos(X_AXIS) + add_homing[X_AXIS];
-  else
-    // In dual carriage mode the extruder offset provides an override of the
-    // second X-carriage offset when homed - otherwise X2_HOME_POS is used.
-    // This allow soft recalibration of the second extruder offset position without firmware reflash
-    // (through the M218 command).
-    return (extruder_offset[X_AXIS][1] > 0) ? extruder_offset[X_AXIS][1] : X2_HOME_POS;
-}
-
-static int x_home_dir(int extruder) {
-  return (extruder == 0) ? X_HOME_DIR : X2_HOME_DIR;
-}
-
-static float inactive_extruder_x_pos = X2_MAX_POS; // used in mode 0 & 1
-static bool active_extruder_parked = false; // used in mode 1 & 2
-static float raised_parked_position[NUM_AXIS]; // used in mode 1
-static unsigned long delayed_move_time = 0; // used in mode 1
-static float duplicate_extruder_x_offset = DEFAULT_DUPLICATION_X_OFFSET; // used in mode 2
-static float duplicate_extruder_temp_offset = 0; // used in mode 2
-bool extruder_duplication_enabled = false; // used in mode 2
-#endif //DUAL_X_CARRIAGE
-
 static void axis_is_at_home(int axis) {
-#ifdef DUAL_X_CARRIAGE
-  if (axis == X_AXIS) {
-    if (active_extruder != 0) {
-      current_position[X_AXIS] = x_home_pos(active_extruder);
-      min_pos[X_AXIS] =          X2_MIN_POS;
-      max_pos[X_AXIS] =          max(extruder_offset[X_AXIS][1], X2_MAX_POS);
-      return;
-    }
-    else if (dual_x_carriage_mode == DXC_DUPLICATION_MODE && active_extruder == 0) {
-      current_position[X_AXIS] = base_home_pos(X_AXIS) + add_homing[X_AXIS];
-      min_pos[X_AXIS] =          base_min_pos(X_AXIS) + add_homing[X_AXIS];
-      max_pos[X_AXIS] =          min(base_max_pos(X_AXIS) + add_homing[X_AXIS],
-                                  max(extruder_offset[X_AXIS][1], X2_MAX_POS) - duplicate_extruder_x_offset);
-      return;
-    }
-  }
-#endif
-#ifdef SCARA
-   float homeposition[3];
-   char i;
-   
-   if (axis < 2)
-   {
-   
-     for (i=0; i<3; i++)
-     {
-        homeposition[i] = base_home_pos(i); 
-     }  
-	// SERIAL_ECHOPGM("homeposition[x]= "); SERIAL_ECHO(homeposition[0]);
-   //  SERIAL_ECHOPGM("homeposition[y]= "); SERIAL_ECHOLN(homeposition[1]);
-   // Works out real Homeposition angles using inverse kinematics, 
-   // and calculates homing offset using forward kinematics
-     calculate_delta(homeposition);
-     
-    // SERIAL_ECHOPGM("base Theta= "); SERIAL_ECHO(delta[X_AXIS]);
-    // SERIAL_ECHOPGM(" base Psi+Theta="); SERIAL_ECHOLN(delta[Y_AXIS]);
-     
-     for (i=0; i<2; i++)
-     {
-        delta[i] -= add_homing[i];
-     } 
-     
-    // SERIAL_ECHOPGM("addhome X="); SERIAL_ECHO(add_homing[X_AXIS]);
-	// SERIAL_ECHOPGM(" addhome Y="); SERIAL_ECHO(add_homing[Y_AXIS]);
-    // SERIAL_ECHOPGM(" addhome Theta="); SERIAL_ECHO(delta[X_AXIS]);
-    // SERIAL_ECHOPGM(" addhome Psi+Theta="); SERIAL_ECHOLN(delta[Y_AXIS]);
-      
-     calculate_SCARA_forward_Transform(delta);
-     
-    // SERIAL_ECHOPGM("Delta X="); SERIAL_ECHO(delta[X_AXIS]);
-    // SERIAL_ECHOPGM(" Delta Y="); SERIAL_ECHOLN(delta[Y_AXIS]);
-     
-    current_position[axis] = delta[axis];
-    
-    // SCARA home positions are based on configuration since the actual limits are determined by the 
-    // inverse kinematic transform.
-    min_pos[axis] =          base_min_pos(axis); // + (delta[axis] - base_home_pos(axis));
-    max_pos[axis] =          base_max_pos(axis); // + (delta[axis] - base_home_pos(axis));
-   } 
-   else
-   {
-      current_position[axis] = base_home_pos(axis) + add_homing[axis];
-      min_pos[axis] =          base_min_pos(axis) + add_homing[axis];
-      max_pos[axis] =          base_max_pos(axis) + add_homing[axis];
-   }
-#else
   current_position[axis] = base_home_pos(axis) + add_homing[axis];
   min_pos[axis] =          base_min_pos(axis) + add_homing[axis];
   max_pos[axis] =          base_max_pos(axis) + add_homing[axis];
-#endif
 }
 
 #ifdef ENABLE_AUTO_BED_LEVELING
@@ -1187,10 +1055,6 @@ static void homeaxis(int axis) {
       axis==Z_AXIS ? HOMEAXIS_DO(Z) :
       0) {
     int axis_home_dir = home_dir(axis);
-#ifdef DUAL_X_CARRIAGE
-    if (axis == X_AXIS)
-      axis_home_dir = x_home_dir(active_extruder);
-#endif
 
     current_position[axis] = 0;
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
@@ -1222,14 +1086,9 @@ static void homeaxis(int axis) {
     st_synchronize();
 
     destination[axis] = 2*home_retract_mm(axis) * axis_home_dir;
-#ifdef DELTA
     feedrate = homing_feedrate[axis]/10;
-#else
-    feedrate = homing_feedrate[axis]/2 ;
-#endif
     plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
     st_synchronize();
-#ifdef DELTA
     // retrace by the amount specified in endstop_adj
     if (endstop_adj[axis] * axis_home_dir < 0) {
       plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
@@ -1237,7 +1096,6 @@ static void homeaxis(int axis) {
       plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
       st_synchronize();
     }
-#endif
     axis_is_at_home(axis);
     destination[axis] = current_position[axis];
     feedrate = 0.0;
@@ -1283,12 +1141,8 @@ void refresh_cmd_timeout(void)
       retracted[active_extruder]=true;
       prepare_move();
       current_position[Z_AXIS]-=retract_zlift;
-#ifdef DELTA
       calculate_delta(current_position); // change cartesian kinematic to  delta kinematic;
       plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);
-#else
-      plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-#endif
       prepare_move();
       feedrate = oldFeedrate;
     } else if(!retracting && retracted[active_extruder]) {
@@ -1297,12 +1151,8 @@ void refresh_cmd_timeout(void)
       destination[Z_AXIS]=current_position[Z_AXIS];
       destination[E_AXIS]=current_position[E_AXIS];
       current_position[Z_AXIS]+=retract_zlift;
-#ifdef DELTA
       calculate_delta(current_position); // change cartesian kinematic  to  delta kinematic;
       plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);
-#else
-      plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-#endif
       //prepare_move();
       if (swapretract) {
         current_position[E_AXIS]-=(retract_length_swap+retract_recover_length_swap)/volumetric_multiplier[active_extruder]; 
@@ -1386,7 +1236,6 @@ void process_commands()
         //ClearToSend();
       }
       break;
-#ifndef SCARA //disable arc support
     case 2: // G2  - CW ARC
       if(Stopped == false) {
         get_arc_coordinates();
@@ -1399,7 +1248,6 @@ void process_commands()
         prepare_arc_move(false);
       }
       break;
-#endif
     case 4: // G4 dwell
       LCD_MESSAGEPGM(MSG_DWELL);
       codenum = 0;
@@ -1449,7 +1297,6 @@ void process_commands()
       }
       feedrate = 0.0;
 
-#ifdef DELTA
           // A delta can only safely home all axis at the same time
           // all axis have to home at the same time
 
@@ -1478,179 +1325,6 @@ void process_commands()
 
           calculate_delta(current_position);
           plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);
-
-#else // NOT DELTA
-
-      home_all_axis = !((code_seen(axis_codes[X_AXIS])) || (code_seen(axis_codes[Y_AXIS])) || (code_seen(axis_codes[Z_AXIS])));
-
-      #if Z_HOME_DIR > 0                      // If homing away from BED do Z first
-      if((home_all_axis) || (code_seen(axis_codes[Z_AXIS]))) {
-        HOMEAXIS(Z);
-      }
-      #endif
-
-      #ifdef QUICK_HOME
-      if((home_all_axis)||( code_seen(axis_codes[X_AXIS]) && code_seen(axis_codes[Y_AXIS])) )  //first diagonal move
-      {
-        current_position[X_AXIS] = 0;current_position[Y_AXIS] = 0;
-
-       #ifndef DUAL_X_CARRIAGE
-        int x_axis_home_dir = home_dir(X_AXIS);
-       #else
-        int x_axis_home_dir = x_home_dir(active_extruder);
-        extruder_duplication_enabled = false;
-       #endif
-
-        plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-        destination[X_AXIS] = 1.5 * max_length(X_AXIS) * x_axis_home_dir;destination[Y_AXIS] = 1.5 * max_length(Y_AXIS) * home_dir(Y_AXIS);
-        feedrate = homing_feedrate[X_AXIS];
-        if(homing_feedrate[Y_AXIS]<feedrate)
-          feedrate = homing_feedrate[Y_AXIS];
-        if (max_length(X_AXIS) > max_length(Y_AXIS)) {
-          feedrate *= sqrt(pow(max_length(Y_AXIS) / max_length(X_AXIS), 2) + 1);
-        } else {
-          feedrate *= sqrt(pow(max_length(X_AXIS) / max_length(Y_AXIS), 2) + 1);
-        }
-        plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
-        st_synchronize();
-
-        axis_is_at_home(X_AXIS);
-        axis_is_at_home(Y_AXIS);
-        plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-        destination[X_AXIS] = current_position[X_AXIS];
-        destination[Y_AXIS] = current_position[Y_AXIS];
-        plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
-        feedrate = 0.0;
-        st_synchronize();
-        endstops_hit_on_purpose();
-
-        current_position[X_AXIS] = destination[X_AXIS];
-        current_position[Y_AXIS] = destination[Y_AXIS];
-		#ifndef SCARA
-        current_position[Z_AXIS] = destination[Z_AXIS];
-		#endif
-      }
-      #endif
-
-      if((home_all_axis) || (code_seen(axis_codes[X_AXIS])))
-      {
-      #ifdef DUAL_X_CARRIAGE
-        int tmp_extruder = active_extruder;
-        extruder_duplication_enabled = false;
-        active_extruder = !active_extruder;
-        HOMEAXIS(X);
-        inactive_extruder_x_pos = current_position[X_AXIS];
-        active_extruder = tmp_extruder;
-        HOMEAXIS(X);
-        // reset state used by the different modes
-        memcpy(raised_parked_position, current_position, sizeof(raised_parked_position));
-        delayed_move_time = 0;
-        active_extruder_parked = true;
-      #else
-        HOMEAXIS(X);
-      #endif
-      }
-
-      if((home_all_axis) || (code_seen(axis_codes[Y_AXIS]))) {
-        HOMEAXIS(Y);
-      }
-
-      if(code_seen(axis_codes[X_AXIS]))
-      {
-        if(code_value_long() != 0) {
-		#ifdef SCARA
-		   current_position[X_AXIS]=code_value();
-		#else
-		   current_position[X_AXIS]=code_value()+add_homing[X_AXIS];
-		#endif
-        }
-      }
-
-      if(code_seen(axis_codes[Y_AXIS])) {
-        if(code_value_long() != 0) {
-         #ifdef SCARA
-		   current_position[Y_AXIS]=code_value();
-		#else
-		   current_position[Y_AXIS]=code_value()+add_homing[Y_AXIS];
-		#endif
-        }
-      }
-
-      #if Z_HOME_DIR < 0                      // If homing towards BED do Z last
-        #ifndef Z_SAFE_HOMING
-          if((home_all_axis) || (code_seen(axis_codes[Z_AXIS]))) {
-            #if defined (Z_RAISE_BEFORE_HOMING) && (Z_RAISE_BEFORE_HOMING > 0)
-              destination[Z_AXIS] = Z_RAISE_BEFORE_HOMING * home_dir(Z_AXIS) * (-1);    // Set destination away from bed
-              feedrate = max_feedrate[Z_AXIS];
-              plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate, active_extruder);
-              st_synchronize();
-            #endif
-            HOMEAXIS(Z);
-          }
-        #else                      // Z Safe mode activated.
-          if(home_all_axis) {
-            destination[X_AXIS] = round(Z_SAFE_HOMING_X_POINT - X_PROBE_OFFSET_FROM_EXTRUDER);
-            destination[Y_AXIS] = round(Z_SAFE_HOMING_Y_POINT - Y_PROBE_OFFSET_FROM_EXTRUDER);
-            destination[Z_AXIS] = Z_RAISE_BEFORE_HOMING * home_dir(Z_AXIS) * (-1);    // Set destination away from bed
-            feedrate = XY_TRAVEL_SPEED/60;
-            current_position[Z_AXIS] = 0;
-
-            plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-            plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate, active_extruder);
-            st_synchronize();
-            current_position[X_AXIS] = destination[X_AXIS];
-            current_position[Y_AXIS] = destination[Y_AXIS];
-
-            HOMEAXIS(Z);
-          }
-                                                // Let's see if X and Y are homed and probe is inside bed area.
-          if(code_seen(axis_codes[Z_AXIS])) {
-            if ( (axis_known_position[X_AXIS]) && (axis_known_position[Y_AXIS]) \
-              && (current_position[X_AXIS]+X_PROBE_OFFSET_FROM_EXTRUDER >= X_MIN_POS) \
-              && (current_position[X_AXIS]+X_PROBE_OFFSET_FROM_EXTRUDER <= X_MAX_POS) \
-              && (current_position[Y_AXIS]+Y_PROBE_OFFSET_FROM_EXTRUDER >= Y_MIN_POS) \
-              && (current_position[Y_AXIS]+Y_PROBE_OFFSET_FROM_EXTRUDER <= Y_MAX_POS)) {
-
-              current_position[Z_AXIS] = 0;
-              plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-              destination[Z_AXIS] = Z_RAISE_BEFORE_HOMING * home_dir(Z_AXIS) * (-1);    // Set destination away from bed
-              feedrate = max_feedrate[Z_AXIS];
-              plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate, active_extruder);
-              st_synchronize();
-
-              HOMEAXIS(Z);
-            } else if (!((axis_known_position[X_AXIS]) && (axis_known_position[Y_AXIS]))) {
-                LCD_MESSAGEPGM(MSG_POSITION_UNKNOWN);
-                SERIAL_ECHO_START;
-                SERIAL_ECHOLNPGM(MSG_POSITION_UNKNOWN);
-            } else {
-                LCD_MESSAGEPGM(MSG_ZPROBE_OUT);
-                SERIAL_ECHO_START;
-                SERIAL_ECHOLNPGM(MSG_ZPROBE_OUT);
-            }
-          }
-        #endif
-      #endif
-
-
-
-      if(code_seen(axis_codes[Z_AXIS])) {
-        if(code_value_long() != 0) {
-          current_position[Z_AXIS]=code_value()+add_homing[Z_AXIS];
-        }
-      }
-      #ifdef ENABLE_AUTO_BED_LEVELING
-        if((home_all_axis) || (code_seen(axis_codes[Z_AXIS]))) {
-          current_position[Z_AXIS] += zprobe_zoffset;  //Add Z_Probe offset (the distance is negative)
-        }
-      #endif
-      plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-#endif // else DELTA
-
-#ifdef SCARA
-	  calculate_delta(current_position);
-      plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);
-#endif // SCARA
 
       #ifdef ENDSTOPS_ONLY_FOR_HOMING
         enable_endstops(false);
@@ -1860,16 +1534,7 @@ void process_commands()
              plan_set_e_position(current_position[E_AXIS]);
            }
            else {
-#ifdef SCARA
-		if (i == X_AXIS || i == Y_AXIS) {
-                	current_position[i] = code_value();  
-		}
-		else {
-                current_position[i] = code_value()+add_homing[i];  
-            	}  
-#else
 		current_position[i] = code_value()+add_homing[i];
-#endif
             plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
            }
         }
@@ -2374,10 +2039,6 @@ Sigma_Exit:
         break;
       }
       if (code_seen('S')) setTargetHotend(code_value(), tmp_extruder);
-#ifdef DUAL_X_CARRIAGE
-      if (dual_x_carriage_mode == DXC_DUPLICATION_MODE && tmp_extruder == 0)
-        setTargetHotend1(code_value() == 0.0 ? 0.0 : code_value() + duplicate_extruder_temp_offset);
-#endif
       setWatch();
       break;
     case 112: //  M112 -Emergency Stop
@@ -2461,17 +2122,9 @@ Sigma_Exit:
       #endif
       if (code_seen('S')) {
         setTargetHotend(code_value(), tmp_extruder);
-#ifdef DUAL_X_CARRIAGE
-        if (dual_x_carriage_mode == DXC_DUPLICATION_MODE && tmp_extruder == 0)
-          setTargetHotend1(code_value() == 0.0 ? 0.0 : code_value() + duplicate_extruder_temp_offset);
-#endif
         CooldownNoWait = true;
       } else if (code_seen('R')) {
         setTargetHotend(code_value(), tmp_extruder);
-#ifdef DUAL_X_CARRIAGE
-        if (dual_x_carriage_mode == DXC_DUPLICATION_MODE && tmp_extruder == 0)
-          setTargetHotend1(code_value() == 0.0 ? 0.0 : code_value() + duplicate_extruder_temp_offset);
-#endif
         CooldownNoWait = false;
       }
       #ifdef AUTOTEMP
@@ -2761,26 +2414,6 @@ Sigma_Exit:
       SERIAL_PROTOCOL(float(st_get_position(Z_AXIS))/axis_steps_per_unit[Z_AXIS]);
 
       SERIAL_PROTOCOLLN("");
-#ifdef SCARA
-	  SERIAL_PROTOCOLPGM("SCARA Theta:");
-      SERIAL_PROTOCOL(delta[X_AXIS]);
-      SERIAL_PROTOCOLPGM("   Psi+Theta:");
-      SERIAL_PROTOCOL(delta[Y_AXIS]);
-      SERIAL_PROTOCOLLN("");
-      
-      SERIAL_PROTOCOLPGM("SCARA Cal - Theta:");
-      SERIAL_PROTOCOL(delta[X_AXIS]+add_homing[X_AXIS]);
-      SERIAL_PROTOCOLPGM("   Psi+Theta (90):");
-      SERIAL_PROTOCOL(delta[Y_AXIS]-delta[X_AXIS]-90+add_homing[Y_AXIS]);
-      SERIAL_PROTOCOLLN("");
-      
-      SERIAL_PROTOCOLPGM("SCARA step Cal - Theta:");
-      SERIAL_PROTOCOL(delta[X_AXIS]/90*axis_steps_per_unit[X_AXIS]);
-      SERIAL_PROTOCOLPGM("   Psi+Theta:");
-      SERIAL_PROTOCOL((delta[Y_AXIS]-delta[X_AXIS])/90*axis_steps_per_unit[Y_AXIS]);
-      SERIAL_PROTOCOLLN("");
-      SERIAL_PROTOCOLLN("");
-#endif
       break;
     case 120: // M120
       enable_endstops(false) ;
@@ -2915,18 +2548,7 @@ Sigma_Exit:
       {
         if(code_seen(axis_codes[i])) add_homing[i] = code_value();
       }
-	  #ifdef SCARA
-	   if(code_seen('T'))       // Theta
-      {
-        add_homing[X_AXIS] = code_value() ;
-      }
-      if(code_seen('P'))       // Psi
-      {
-        add_homing[Y_AXIS] = code_value() ;
-      }
-	  #endif
       break;
-    #ifdef DELTA
 	case 665: // M665 set delta configurations L<diagonal_rod> R<delta_radius> S<segments_per_sec>
 		if(code_seen('L')) {
 			delta_diagonal_rod= code_value();
@@ -2946,7 +2568,6 @@ Sigma_Exit:
         if(code_seen(axis_codes[i])) endstop_adj[i] = code_value();
       }
       break;
-    #endif
     #ifdef FWRETRACT
     case 207: //M207 - set retract length S[positive mm] F[feedrate mm/min] Z[additional zlift/hop]
     {
@@ -3027,12 +2648,6 @@ Sigma_Exit:
       {
         extruder_offset[Y_AXIS][tmp_extruder] = code_value();
       }
-      #ifdef DUAL_X_CARRIAGE
-      if(code_seen('Z'))
-      {
-        extruder_offset[Z_AXIS][tmp_extruder] = code_value();
-      }
-      #endif
       SERIAL_ECHO_START;
       SERIAL_ECHOPGM(MSG_HOTEND_OFFSET);
       for(tmp_extruder = 0; tmp_extruder < EXTRUDERS; tmp_extruder++)
@@ -3041,10 +2656,6 @@ Sigma_Exit:
          SERIAL_ECHO(extruder_offset[X_AXIS][tmp_extruder]);
          SERIAL_ECHO(",");
          SERIAL_ECHO(extruder_offset[Y_AXIS][tmp_extruder]);
-      #ifdef DUAL_X_CARRIAGE
-         SERIAL_ECHO(",");
-         SERIAL_ECHO(extruder_offset[Z_AXIS][tmp_extruder]);
-      #endif
       }
       SERIAL_ECHOLN("");
     }break;
@@ -3304,105 +2915,6 @@ Sigma_Exit:
       PID_autotune(temp, e, c);
     }
     break;
-	#ifdef SCARA
-	case 360:  // M360 SCARA Theta pos1
-      SERIAL_ECHOLN(" Cal: Theta 0 ");
-      //SoftEndsEnabled = false;              // Ignore soft endstops during calibration
-      //SERIAL_ECHOLN(" Soft endstops disabled ");
-      if(Stopped == false) {
-        //get_coordinates(); // For X Y Z E F
-        delta[X_AXIS] = 0;
-        delta[Y_AXIS] = 120;
-        calculate_SCARA_forward_Transform(delta);
-        destination[X_AXIS] = delta[X_AXIS]/axis_scaling[X_AXIS];
-        destination[Y_AXIS] = delta[Y_AXIS]/axis_scaling[Y_AXIS];
-        
-        prepare_move();
-        //ClearToSend();
-        return;
-      }
-    break;
-
-    case 361:  // SCARA Theta pos2
-      SERIAL_ECHOLN(" Cal: Theta 90 ");
-      //SoftEndsEnabled = false;              // Ignore soft endstops during calibration
-      //SERIAL_ECHOLN(" Soft endstops disabled ");
-      if(Stopped == false) {
-        //get_coordinates(); // For X Y Z E F
-        delta[X_AXIS] = 90;
-        delta[Y_AXIS] = 130;
-        calculate_SCARA_forward_Transform(delta);
-        destination[X_AXIS] = delta[X_AXIS]/axis_scaling[X_AXIS];
-        destination[Y_AXIS] = delta[Y_AXIS]/axis_scaling[Y_AXIS];
-        
-        prepare_move();
-        //ClearToSend();
-        return;
-      }
-    break;
-    case 362:  // SCARA Psi pos1
-      SERIAL_ECHOLN(" Cal: Psi 0 ");
-      //SoftEndsEnabled = false;              // Ignore soft endstops during calibration
-      //SERIAL_ECHOLN(" Soft endstops disabled ");
-      if(Stopped == false) {
-        //get_coordinates(); // For X Y Z E F
-        delta[X_AXIS] = 60;
-        delta[Y_AXIS] = 180;
-        calculate_SCARA_forward_Transform(delta);
-        destination[X_AXIS] = delta[X_AXIS]/axis_scaling[X_AXIS];
-        destination[Y_AXIS] = delta[Y_AXIS]/axis_scaling[Y_AXIS];
-        
-        prepare_move();
-        //ClearToSend();
-        return;
-      }
-    break;
-    case 363:  // SCARA Psi pos2
-      SERIAL_ECHOLN(" Cal: Psi 90 ");
-      //SoftEndsEnabled = false;              // Ignore soft endstops during calibration
-      //SERIAL_ECHOLN(" Soft endstops disabled ");
-      if(Stopped == false) {
-        //get_coordinates(); // For X Y Z E F
-        delta[X_AXIS] = 50;
-        delta[Y_AXIS] = 90;
-        calculate_SCARA_forward_Transform(delta);
-        destination[X_AXIS] = delta[X_AXIS]/axis_scaling[X_AXIS];
-        destination[Y_AXIS] = delta[Y_AXIS]/axis_scaling[Y_AXIS];
-        
-        prepare_move();
-        //ClearToSend();
-        return;
-      }
-    break;
-    case 364:  // SCARA Psi pos3 (90 deg to Theta)
-      SERIAL_ECHOLN(" Cal: Theta-Psi 90 ");
-     // SoftEndsEnabled = false;              // Ignore soft endstops during calibration
-      //SERIAL_ECHOLN(" Soft endstops disabled ");
-      if(Stopped == false) {
-        //get_coordinates(); // For X Y Z E F
-        delta[X_AXIS] = 45;
-        delta[Y_AXIS] = 135;
-        calculate_SCARA_forward_Transform(delta);
-        destination[X_AXIS] = delta[X_AXIS]/axis_scaling[X_AXIS];
-        destination[Y_AXIS] = delta[Y_AXIS]/axis_scaling[Y_AXIS]; 
-        
-        prepare_move();
-        //ClearToSend();
-        return;
-      }
-    break;
-    case 365: // M364  Set SCARA scaling for X Y Z
-      for(int8_t i=0; i < 3; i++) 
-      {
-        if(code_seen(axis_codes[i])) 
-        {
-          
-            axis_scaling[i] = code_value();
-          
-        }
-      }
-      break;
-	#endif
     case 400: // M400 finish all moves
     {
       st_synchronize();
@@ -3678,52 +3190,6 @@ case 404:  //M404 Enter the nominal filament width (3mm, 1.75mm ) N<3.0> or disp
     }
     break;
     #endif //FILAMENTCHANGEENABLE
-    #ifdef DUAL_X_CARRIAGE
-    case 605: // Set dual x-carriage movement mode:
-              //    M605 S0: Full control mode. The slicer has full control over x-carriage movement
-              //    M605 S1: Auto-park mode. The inactive head will auto park/unpark without slicer involvement
-              //    M605 S2 [Xnnn] [Rmmm]: Duplication mode. The second extruder will duplicate the first with nnn
-              //                         millimeters x-offset and an optional differential hotend temperature of
-              //                         mmm degrees. E.g., with "M605 S2 X100 R2" the second extruder will duplicate
-              //                         the first with a spacing of 100mm in the x direction and 2 degrees hotter.
-              //
-              //    Note: the X axis should be homed after changing dual x-carriage mode.
-    {
-        st_synchronize();
-
-        if (code_seen('S'))
-          dual_x_carriage_mode = code_value();
-
-        if (dual_x_carriage_mode == DXC_DUPLICATION_MODE)
-        {
-          if (code_seen('X'))
-            duplicate_extruder_x_offset = max(code_value(),X2_MIN_POS - x_home_pos(0));
-
-          if (code_seen('R'))
-            duplicate_extruder_temp_offset = code_value();
-
-          SERIAL_ECHO_START;
-          SERIAL_ECHOPGM(MSG_HOTEND_OFFSET);
-          SERIAL_ECHO(" ");
-          SERIAL_ECHO(extruder_offset[X_AXIS][0]);
-          SERIAL_ECHO(",");
-          SERIAL_ECHO(extruder_offset[Y_AXIS][0]);
-          SERIAL_ECHO(" ");
-          SERIAL_ECHO(duplicate_extruder_x_offset);
-          SERIAL_ECHO(",");
-          SERIAL_ECHOLN(extruder_offset[Y_AXIS][1]);
-        }
-        else if (dual_x_carriage_mode != DXC_FULL_CONTROL_MODE && dual_x_carriage_mode != DXC_AUTO_PARK_MODE)
-        {
-          dual_x_carriage_mode = DEFAULT_DUAL_X_CARRIAGE_MODE;
-        }
-
-        active_extruder_parked = false;
-        extruder_duplication_enabled = false;
-        delayed_move_time = 0;
-    }
-    break;
-    #endif //DUAL_X_CARRIAGE
 
     case 907: // M907 Set digital trimpot motor current using axis codes.
     {
@@ -3818,57 +3284,6 @@ case 404:  //M404 Enter the nominal filament width (3mm, 1.75mm ) N<3.0> or disp
       if(tmp_extruder != active_extruder) {
         // Save current position to return to after applying extruder offset
         memcpy(destination, current_position, sizeof(destination));
-      #ifdef DUAL_X_CARRIAGE
-        if (dual_x_carriage_mode == DXC_AUTO_PARK_MODE && Stopped == false &&
-            (delayed_move_time != 0 || current_position[X_AXIS] != x_home_pos(active_extruder)))
-        {
-          // Park old head: 1) raise 2) move to park position 3) lower
-          plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS] + TOOLCHANGE_PARK_ZLIFT,
-                current_position[E_AXIS], max_feedrate[Z_AXIS], active_extruder);
-          plan_buffer_line(x_home_pos(active_extruder), current_position[Y_AXIS], current_position[Z_AXIS] + TOOLCHANGE_PARK_ZLIFT,
-                current_position[E_AXIS], max_feedrate[X_AXIS], active_extruder);
-          plan_buffer_line(x_home_pos(active_extruder), current_position[Y_AXIS], current_position[Z_AXIS],
-                current_position[E_AXIS], max_feedrate[Z_AXIS], active_extruder);
-          st_synchronize();
-        }
-
-        // apply Y & Z extruder offset (x offset is already used in determining home pos)
-        current_position[Y_AXIS] = current_position[Y_AXIS] -
-                     extruder_offset[Y_AXIS][active_extruder] +
-                     extruder_offset[Y_AXIS][tmp_extruder];
-        current_position[Z_AXIS] = current_position[Z_AXIS] -
-                     extruder_offset[Z_AXIS][active_extruder] +
-                     extruder_offset[Z_AXIS][tmp_extruder];
-
-        active_extruder = tmp_extruder;
-
-        // This function resets the max/min values - the current position may be overwritten below.
-        axis_is_at_home(X_AXIS);
-
-        if (dual_x_carriage_mode == DXC_FULL_CONTROL_MODE)
-        {
-          current_position[X_AXIS] = inactive_extruder_x_pos;
-          inactive_extruder_x_pos = destination[X_AXIS];
-        }
-        else if (dual_x_carriage_mode == DXC_DUPLICATION_MODE)
-        {
-          active_extruder_parked = (active_extruder == 0); // this triggers the second extruder to move into the duplication position
-          if (active_extruder == 0 || active_extruder_parked)
-            current_position[X_AXIS] = inactive_extruder_x_pos;
-          else
-            current_position[X_AXIS] = destination[X_AXIS] + duplicate_extruder_x_offset;
-          inactive_extruder_x_pos = destination[X_AXIS];
-          extruder_duplication_enabled = false;
-        }
-        else
-        {
-          // record raised toolhead position for use by unpark
-          memcpy(raised_parked_position, current_position, sizeof(raised_parked_position));
-          raised_parked_position[Z_AXIS] += TOOLCHANGE_UNPARK_ZLIFT;
-          active_extruder_parked = true;
-          delayed_move_time = 0;
-        }
-      #else
         // Offset extruder (only by XY)
         int i;
         for(i = 0; i < 2; i++) {
@@ -3878,17 +3293,11 @@ case 404:  //M404 Enter the nominal filament width (3mm, 1.75mm ) N<3.0> or disp
         }
         // Set the new active extruder and position
         active_extruder = tmp_extruder;
-      #endif //else DUAL_X_CARRIAGE
-#ifdef DELTA 
 
   calculate_delta(current_position); // change cartesian kinematic  to  delta kinematic;
    //sent position to plan_set_position();
   plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS],current_position[E_AXIS]);
             
-#else
-        plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-
-#endif
         // Move to the old position if 'F' was in the parameters
         if(make_move && Stopped == false) {
            prepare_move();
@@ -3995,7 +3404,6 @@ void clamp_to_software_endstops(float target[3])
   }
 }
 
-#ifdef DELTA
 void recalc_delta_settings(float radius, float diagonal_rod)
 {
 	 delta_tower1_x= -SIN_60*radius; // front left tower
@@ -4031,52 +3439,12 @@ void calculate_delta(float cartesian[3])
   SERIAL_ECHOPGM(" z="); SERIAL_ECHOLN(delta[Z_AXIS]);
   */
 }
-#endif
 
 void prepare_move()
 {
   clamp_to_software_endstops(destination);
   previous_millis_cmd = millis();
   
-  #ifdef SCARA //for now same as delta-code
-
-float difference[NUM_AXIS];
-for (int8_t i=0; i < NUM_AXIS; i++) {
-	difference[i] = destination[i] - current_position[i];
-}
-
-float cartesian_mm = sqrt(	sq(difference[X_AXIS]) +
-							sq(difference[Y_AXIS]) +
-							sq(difference[Z_AXIS]));
-if (cartesian_mm < 0.000001) { cartesian_mm = abs(difference[E_AXIS]); }
-if (cartesian_mm < 0.000001) { return; }
-float seconds = 6000 * cartesian_mm / feedrate / feedmultiply;
-int steps = max(1, int(scara_segments_per_second * seconds));
- //SERIAL_ECHOPGM("mm="); SERIAL_ECHO(cartesian_mm);
- //SERIAL_ECHOPGM(" seconds="); SERIAL_ECHO(seconds);
- //SERIAL_ECHOPGM(" steps="); SERIAL_ECHOLN(steps);
-for (int s = 1; s <= steps; s++) {
-	float fraction = float(s) / float(steps);
-	for(int8_t i=0; i < NUM_AXIS; i++) {
-		destination[i] = current_position[i] + difference[i] * fraction;
-	}
-
-	
-	calculate_delta(destination);
-         //SERIAL_ECHOPGM("destination[X_AXIS]="); SERIAL_ECHOLN(destination[X_AXIS]);
-         //SERIAL_ECHOPGM("destination[Y_AXIS]="); SERIAL_ECHOLN(destination[Y_AXIS]);
-         //SERIAL_ECHOPGM("destination[Z_AXIS]="); SERIAL_ECHOLN(destination[Z_AXIS]);
-         //SERIAL_ECHOPGM("delta[X_AXIS]="); SERIAL_ECHOLN(delta[X_AXIS]);
-         //SERIAL_ECHOPGM("delta[Y_AXIS]="); SERIAL_ECHOLN(delta[Y_AXIS]);
-         //SERIAL_ECHOPGM("delta[Z_AXIS]="); SERIAL_ECHOLN(delta[Z_AXIS]);
-         
-	plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS],
-	destination[E_AXIS], feedrate*feedmultiply/60/100.0,
-	active_extruder);
-}
-#endif // SCARA
-  
-#ifdef DELTA
   float difference[NUM_AXIS];
   for (int8_t i=0; i < NUM_AXIS; i++) {
     difference[i] = destination[i] - current_position[i];
@@ -4102,59 +3470,6 @@ for (int s = 1; s <= steps; s++) {
                      active_extruder);
   }
   
-#endif // DELTA
-
-#ifdef DUAL_X_CARRIAGE
-  if (active_extruder_parked)
-  {
-    if (dual_x_carriage_mode == DXC_DUPLICATION_MODE && active_extruder == 0)
-    {
-      // move duplicate extruder into correct duplication position.
-      plan_set_position(inactive_extruder_x_pos, current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-      plan_buffer_line(current_position[X_AXIS] + duplicate_extruder_x_offset, current_position[Y_AXIS], current_position[Z_AXIS],
-          current_position[E_AXIS], max_feedrate[X_AXIS], 1);
-      plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-      st_synchronize();
-      extruder_duplication_enabled = true;
-      active_extruder_parked = false;
-    }
-    else if (dual_x_carriage_mode == DXC_AUTO_PARK_MODE) // handle unparking of head
-    {
-      if (current_position[E_AXIS] == destination[E_AXIS])
-      {
-        // this is a travel move - skit it but keep track of current position (so that it can later
-        // be used as start of first non-travel move)
-        if (delayed_move_time != 0xFFFFFFFFUL)
-        {
-          memcpy(current_position, destination, sizeof(current_position));
-          if (destination[Z_AXIS] > raised_parked_position[Z_AXIS])
-            raised_parked_position[Z_AXIS] = destination[Z_AXIS];
-          delayed_move_time = millis();
-          return;
-        }
-      }
-      delayed_move_time = 0;
-      // unpark extruder: 1) raise, 2) move into starting XY position, 3) lower
-      plan_buffer_line(raised_parked_position[X_AXIS], raised_parked_position[Y_AXIS], raised_parked_position[Z_AXIS],    current_position[E_AXIS], max_feedrate[Z_AXIS], active_extruder);
-      plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], raised_parked_position[Z_AXIS],
-          current_position[E_AXIS], min(max_feedrate[X_AXIS],max_feedrate[Y_AXIS]), active_extruder);
-      plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS],
-          current_position[E_AXIS], max_feedrate[Z_AXIS], active_extruder);
-      active_extruder_parked = false;
-    }
-  }
-#endif //DUAL_X_CARRIAGE
-
-#if ! (defined DELTA || defined SCARA)
-  // Do not use feedmultiply for E or Z only moves
-  if( (current_position[X_AXIS] == destination [X_AXIS]) && (current_position[Y_AXIS] == destination [Y_AXIS])) {
-      plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
-  }
-  else {
-    plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate*feedmultiply/60/100.0, active_extruder);
-  }
-#endif // !(DELTA || SCARA)
-
   for(int8_t i=0; i < NUM_AXIS; i++) {
     current_position[i] = destination[i];
   }
@@ -4197,9 +3512,6 @@ void controllerFan()
        || !READ(E2_ENABLE_PIN)
     #endif
     #if EXTRUDERS > 1
-      #if defined(X2_ENABLE_PIN) && X2_ENABLE_PIN > -1
-       || !READ(X2_ENABLE_PIN)
-      #endif
        || !READ(E1_ENABLE_PIN)
     #endif
        || !READ(E0_ENABLE_PIN)) //If any of the drivers are enabled...
@@ -4220,84 +3532,6 @@ void controllerFan()
     }
   }
 }
-#endif
-
-#ifdef SCARA
-void calculate_SCARA_forward_Transform(float f_scara[3])
-{
-  // Perform forward kinematics, and place results in delta[3]
-  // The maths and first version has been done by QHARLEY . Integrated into masterbranch 06/2014 and slightly restructured by Joachim Cerny in June 2014
-  
-  float x_sin, x_cos, y_sin, y_cos;
-  
-    //SERIAL_ECHOPGM("f_delta x="); SERIAL_ECHO(f_scara[X_AXIS]);
-    //SERIAL_ECHOPGM(" y="); SERIAL_ECHO(f_scara[Y_AXIS]);
-  
-    x_sin = sin(f_scara[X_AXIS]/SCARA_RAD2DEG) * Linkage_1;
-    x_cos = cos(f_scara[X_AXIS]/SCARA_RAD2DEG) * Linkage_1;
-    y_sin = sin(f_scara[Y_AXIS]/SCARA_RAD2DEG) * Linkage_2;
-    y_cos = cos(f_scara[Y_AXIS]/SCARA_RAD2DEG) * Linkage_2;
-   
-  //  SERIAL_ECHOPGM(" x_sin="); SERIAL_ECHO(x_sin);
-  //  SERIAL_ECHOPGM(" x_cos="); SERIAL_ECHO(x_cos);
-  //  SERIAL_ECHOPGM(" y_sin="); SERIAL_ECHO(y_sin);
-  //  SERIAL_ECHOPGM(" y_cos="); SERIAL_ECHOLN(y_cos);
-  
-    delta[X_AXIS] = x_cos + y_cos + SCARA_offset_x;  //theta
-    delta[Y_AXIS] = x_sin + y_sin + SCARA_offset_y;  //theta+phi
-	
-    //SERIAL_ECHOPGM(" delta[X_AXIS]="); SERIAL_ECHO(delta[X_AXIS]);
-    //SERIAL_ECHOPGM(" delta[Y_AXIS]="); SERIAL_ECHOLN(delta[Y_AXIS]);
-}  
-
-void calculate_delta(float cartesian[3]){
-  //reverse kinematics.
-  // Perform reversed kinematics, and place results in delta[3]
-  // The maths and first version has been done by QHARLEY . Integrated into masterbranch 06/2014 and slightly restructured by Joachim Cerny in June 2014
-  
-  float SCARA_pos[2];
-  static float SCARA_C2, SCARA_S2, SCARA_K1, SCARA_K2, SCARA_theta, SCARA_psi; 
-  
-  SCARA_pos[X_AXIS] = cartesian[X_AXIS] * axis_scaling[X_AXIS] - SCARA_offset_x;  //Translate SCARA to standard X Y
-  SCARA_pos[Y_AXIS] = cartesian[Y_AXIS] * axis_scaling[Y_AXIS] - SCARA_offset_y;  // With scaling factor.
-  
-  #if (Linkage_1 == Linkage_2)
-    SCARA_C2 = ( ( sq(SCARA_pos[X_AXIS]) + sq(SCARA_pos[Y_AXIS]) ) / (2 * (float)L1_2) ) - 1;
-  #else
-    SCARA_C2 =   ( sq(SCARA_pos[X_AXIS]) + sq(SCARA_pos[Y_AXIS]) - (float)L1_2 - (float)L2_2 ) / 45000; 
-  #endif
-  
-  SCARA_S2 = sqrt( 1 - sq(SCARA_C2) );
-  
-  SCARA_K1 = Linkage_1 + Linkage_2 * SCARA_C2;
-  SCARA_K2 = Linkage_2 * SCARA_S2;
-  
-  SCARA_theta = ( atan2(SCARA_pos[X_AXIS],SCARA_pos[Y_AXIS])-atan2(SCARA_K1, SCARA_K2) ) * -1;
-  SCARA_psi   =   atan2(SCARA_S2,SCARA_C2);
-  
-  delta[X_AXIS] = SCARA_theta * SCARA_RAD2DEG;  // Multiply by 180/Pi  -  theta is support arm angle
-  delta[Y_AXIS] = (SCARA_theta + SCARA_psi) * SCARA_RAD2DEG;  //       -  equal to sub arm angle (inverted motor)
-  delta[Z_AXIS] = cartesian[Z_AXIS];
-  
-  /*
-  SERIAL_ECHOPGM("cartesian x="); SERIAL_ECHO(cartesian[X_AXIS]);
-  SERIAL_ECHOPGM(" y="); SERIAL_ECHO(cartesian[Y_AXIS]);
-  SERIAL_ECHOPGM(" z="); SERIAL_ECHOLN(cartesian[Z_AXIS]);
-  
-  SERIAL_ECHOPGM("scara x="); SERIAL_ECHO(SCARA_pos[X_AXIS]);
-  SERIAL_ECHOPGM(" y="); SERIAL_ECHOLN(SCARA_pos[Y_AXIS]);
-  
-  SERIAL_ECHOPGM("delta x="); SERIAL_ECHO(delta[X_AXIS]);
-  SERIAL_ECHOPGM(" y="); SERIAL_ECHO(delta[Y_AXIS]);
-  SERIAL_ECHOPGM(" z="); SERIAL_ECHOLN(delta[Z_AXIS]);
-  
-  SERIAL_ECHOPGM("C2="); SERIAL_ECHO(SCARA_C2);
-  SERIAL_ECHOPGM(" S2="); SERIAL_ECHO(SCARA_S2);
-  SERIAL_ECHOPGM(" Theta="); SERIAL_ECHO(SCARA_theta);
-  SERIAL_ECHOPGM(" Psi="); SERIAL_ECHOLN(SCARA_psi);
-  SERIAL_ECHOLN(" ");*/
-}
-
 #endif
 
 #ifdef TEMP_STAT_LEDS
@@ -4439,16 +3673,6 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) //default argument s
      previous_millis_cmd=millis();
      st_synchronize();
      WRITE(E0_ENABLE_PIN,oldstatus);
-    }
-  #endif
-  #if defined(DUAL_X_CARRIAGE)
-    // handle delayed move timeout
-    if (delayed_move_time != 0 && (millis() - delayed_move_time) > 1000 && Stopped == false)
-    {
-      // travel moves have been received so enact them
-      delayed_move_time = 0xFFFFFFFFUL; // force moves to be done
-      memcpy(destination,current_position,sizeof(destination));
-      prepare_move();
     }
   #endif
   #ifdef TEMP_STAT_LEDS

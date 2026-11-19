@@ -587,16 +587,9 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   block->busy = false;
 
   // Number of steps for each axis
-#ifndef COREXY
 // default non-h-bot planning
 block->steps_x = labs(target[X_AXIS]-position[X_AXIS]);
 block->steps_y = labs(target[Y_AXIS]-position[Y_AXIS]);
-#else
-// corexy planning
-// these equations follow the form of the dA and dB equations on http://www.corexy.com/theory.html
-block->steps_x = labs((target[X_AXIS]-position[X_AXIS]) + (target[Y_AXIS]-position[Y_AXIS]));
-block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-position[Y_AXIS]));
-#endif
   block->steps_z = labs(target[Z_AXIS]-position[Z_AXIS]);
   block->steps_e = labs(target[E_AXIS]-position[E_AXIS]);
   block->steps_e *= volumetric_multiplier[active_extruder];
@@ -618,7 +611,6 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
 
   // Compute direction bits for this block 
   block->direction_bits = 0;
-#ifndef COREXY
   if (target[X_AXIS] < position[X_AXIS])
   {
     block->direction_bits |= (1<<X_AXIS); 
@@ -627,16 +619,6 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   {
     block->direction_bits |= (1<<Y_AXIS); 
   }
-#else
-  if ((target[X_AXIS]-position[X_AXIS]) + (target[Y_AXIS]-position[Y_AXIS]) < 0)
-  {
-    block->direction_bits |= (1<<X_AXIS); 
-  }
-  if ((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-position[Y_AXIS]) < 0)
-  {
-    block->direction_bits |= (1<<Y_AXIS); 
-  }
-#endif
   if (target[Z_AXIS] < position[Z_AXIS])
   {
     block->direction_bits |= (1<<Z_AXIS); 
@@ -649,16 +631,8 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   block->active_extruder = extruder;
 
   //enable active axes
-  #ifdef COREXY
-  if((block->steps_x != 0) || (block->steps_y != 0))
-  {
-    enable_x();
-    enable_y();
-  }
-  #else
   if(block->steps_x != 0) enable_x();
   if(block->steps_y != 0) enable_y();
-  #endif
 #ifndef Z_LATE_ENABLE
   if(block->steps_z != 0) enable_z();
 #endif
@@ -722,17 +696,9 @@ and B_AXIS) cannot be used for X and Y length, because A=X+Y and B=X-Y.
 So we need to create other 2 "AXIS", named X_HEAD and Y_HEAD, meaning the real displacement of the Head. 
 Having the real displacement of the head, we can calculate the total movement length and apply the desired speed.
 */ 
-  #ifndef COREXY
     float delta_mm[4];
     delta_mm[X_AXIS] = (target[X_AXIS]-position[X_AXIS])/axis_steps_per_unit[X_AXIS];
     delta_mm[Y_AXIS] = (target[Y_AXIS]-position[Y_AXIS])/axis_steps_per_unit[Y_AXIS];
-  #else
-    float delta_mm[6];
-    delta_mm[X_HEAD] = (target[X_AXIS]-position[X_AXIS])/axis_steps_per_unit[X_AXIS];
-    delta_mm[Y_HEAD] = (target[Y_AXIS]-position[Y_AXIS])/axis_steps_per_unit[Y_AXIS];
-    delta_mm[X_AXIS] = ((target[X_AXIS]-position[X_AXIS]) + (target[Y_AXIS]-position[Y_AXIS]))/axis_steps_per_unit[X_AXIS];
-    delta_mm[Y_AXIS] = ((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-position[Y_AXIS]))/axis_steps_per_unit[Y_AXIS];
-  #endif
   delta_mm[Z_AXIS] = (target[Z_AXIS]-position[Z_AXIS])/axis_steps_per_unit[Z_AXIS];
   delta_mm[E_AXIS] = ((target[E_AXIS]-position[E_AXIS])/axis_steps_per_unit[E_AXIS])*volumetric_multiplier[active_extruder]*extrudemultiply/100.0;
   if ( block->steps_x <=dropsegments && block->steps_y <=dropsegments && block->steps_z <=dropsegments )
@@ -741,11 +707,7 @@ Having the real displacement of the head, we can calculate the total movement le
   } 
   else
   {
-    #ifndef COREXY
       block->millimeters = sqrt(square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + square(delta_mm[Z_AXIS]));
-	#else
-	  block->millimeters = sqrt(square(delta_mm[X_HEAD]) + square(delta_mm[Y_HEAD]) + square(delta_mm[Z_AXIS]));
-    #endif	
   }
   float inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides 
 

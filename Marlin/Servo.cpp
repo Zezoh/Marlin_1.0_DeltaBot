@@ -153,14 +153,9 @@ static void initISR(timer16_Sequence_t timer)
     TCCR1A = 0;             // normal counting mode
     TCCR1B = _BV(CS11);     // set prescaler of 8
     TCNT1 = 0;              // clear the timer count
-#if defined(__AVR_ATmega8__)|| defined(__AVR_ATmega128__)
-    TIFR |= _BV(OCF1A);      // clear any pending interrupts;
-    TIMSK |=  _BV(OCIE1A) ;  // enable the output compare interrupt
-#else
     // here if not ATmega8 or ATmega128
     TIFR1 |= _BV(OCF1A);     // clear any pending interrupts;
     TIMSK1 |=  _BV(OCIE1A) ; // enable the output compare interrupt
-#endif
 #if defined(WIRING)
     timerAttach(TIMER1OUTCOMPAREA_INT, Timer1Service);
 #endif
@@ -172,13 +167,8 @@ static void initISR(timer16_Sequence_t timer)
     TCCR3A = 0;             // normal counting mode
     TCCR3B = _BV(CS31);     // set prescaler of 8
     TCNT3 = 0;              // clear the timer count
-#if defined(__AVR_ATmega128__)
-    TIFR |= _BV(OCF3A);     // clear any pending interrupts;
-	ETIMSK |= _BV(OCIE3A);  // enable the output compare interrupt
-#else
     TIFR3 = _BV(OCF3A);     // clear any pending interrupts;
     TIMSK3 =  _BV(OCIE3A) ; // enable the output compare interrupt
-#endif
 #if defined(WIRING)
     timerAttach(TIMER3OUTCOMPAREA_INT, Timer3Service);  // for Wiring platform only
 #endif
@@ -211,19 +201,11 @@ static void finISR(timer16_Sequence_t timer)
     //disable use of the given timer
 #if defined WIRING   // Wiring
   if(timer == _timer1) {
-    #if defined(__AVR_ATmega1281__)||defined(__AVR_ATmega2561__)
-    TIMSK1 &=  ~_BV(OCIE1A) ;  // disable timer 1 output compare interrupt
-    #else
     TIMSK &=  ~_BV(OCIE1A) ;  // disable timer 1 output compare interrupt
-    #endif
     timerDetach(TIMER1OUTCOMPAREA_INT);
   }
   else if(timer == _timer3) {
-    #if defined(__AVR_ATmega1281__)||defined(__AVR_ATmega2561__)
-    TIMSK3 &= ~_BV(OCIE3A);    // disable the timer3 output compare A interrupt
-    #else
     ETIMSK &= ~_BV(OCIE3A);    // disable the timer3 output compare A interrupt
-    #endif
     timerDetach(TIMER3OUTCOMPAREA_INT);
   }
 #else

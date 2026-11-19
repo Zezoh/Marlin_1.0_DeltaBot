@@ -1,4 +1,4 @@
-# Sprinter Arduino Project Makefile
+# Marlin Delta Firmware Makefile
 #
 # Makefile Based on:
 # Arduino 0011 Makefile
@@ -21,12 +21,8 @@
 #     (e.g. UPLOAD_PORT = /dev/tty.USB0).  If the exact name of this file
 #     changes, you can use * as a wildcard (e.g. UPLOAD_PORT = /dev/tty.usb*).
 #
-#  3. Set the line containing "MCU" to match your board's processor.
-#     Older one's are atmega8 based, newer ones like Arduino Mini, Bluetooth
-#     or Diecimila have the atmega168.  If you're using a LilyPad Arduino,
-#     change F_CPU to 8000000. If you are using Gen7 electronics, you
-#     probably need to use 20000000. Either way, you must regenerate
-#     the speed lookup table with create_speed_lookuptable.py.
+#  3. Set the line containing "MCU" to match your board's processor
+#     (atmega2560 by default, or atmega1280).
 #
 #  4. Type "make" and press enter to compile/verify your program.
 #
@@ -34,10 +30,10 @@
 #     upload your program to the Arduino board.
 #
 # Note that all settings are set with ?=, this means you can override them
-# from the commandline with "make HARDWARE_MOTHERBOARD=71" for example
+# from the commandline with "make HARDWARE_MOTHERBOARD=301" for example
 
 # This defined the board you are compiling for (see Configuration.h for the options)
-HARDWARE_MOTHERBOARD ?= 11
+HARDWARE_MOTHERBOARD ?= 33
 
 # Arduino source install directory, and version number
 ARDUINO_INSTALL_DIR  ?= /Applications/Arduino.app/Contents/Resources/Java
@@ -63,134 +59,9 @@ WIRE               ?= 0
 ############################################################################
 # Below here nothing should be changed...
 
-# Here the Arduino variant is selected by the board type
-# HARDWARE_VARIANT = "arduino", "Sanguino", "Gen7", ...
-# MCU = "atmega1280", "Mega2560", "atmega2560", "atmega644p", ...
-
-#Gen7
-ifeq ($(HARDWARE_MOTHERBOARD),10)
-HARDWARE_VARIANT ?= Gen7
-MCU              ?= atmega644
-F_CPU            ?= 20000000
-else ifeq  ($(HARDWARE_MOTHERBOARD),11)
-HARDWARE_VARIANT ?= Gen7
-MCU              ?= atmega644p
-F_CPU            ?= 20000000
-else ifeq  ($(HARDWARE_MOTHERBOARD),12)
-HARDWARE_VARIANT ?= Gen7
-MCU              ?= atmega644p
-F_CPU            ?= 20000000
-else ifeq  ($(HARDWARE_MOTHERBOARD),13)
-HARDWARE_VARIANT ?= Gen7
-MCU              ?= atmega1284p
-F_CPU            ?= 20000000
-
-#RAMPS
-else ifeq  ($(HARDWARE_MOTHERBOARD),3)
+# Delta firmware targets ATmega2560 (default) or ATmega1280 boards (RAMPS, RAMBo, RUMBA, Megatronics, ...)
 HARDWARE_VARIANT ?= arduino
 MCU              ?= atmega2560
-else ifeq  ($(HARDWARE_MOTHERBOARD),33)
-HARDWARE_VARIANT ?= arduino
-MCU              ?= atmega2560
-else ifeq  ($(HARDWARE_MOTHERBOARD),34)
-HARDWARE_VARIANT ?= arduino
-MCU              ?= atmega2560
-
-#Duemilanove w/ ATMega328P pin assignment
-else ifeq  ($(HARDWARE_MOTHERBOARD),4)
-HARDWARE_VARIANT ?= arduino
-HARDWARE_SUB_VARIANT ?= standard
-MCU              ?= atmega328p
-
-#Gen6
-else ifeq  ($(HARDWARE_MOTHERBOARD),5)
-HARDWARE_VARIANT ?= Gen6
-MCU              ?= atmega644p
-else ifeq  ($(HARDWARE_MOTHERBOARD),51)
-HARDWARE_VARIANT ?= Gen6
-MCU              ?= atmega644p
-
-#Sanguinololu
-else ifeq  ($(HARDWARE_MOTHERBOARD),6)
-HARDWARE_VARIANT ?= Sanguino
-MCU              ?= atmega644p
-else ifeq  ($(HARDWARE_MOTHERBOARD),62)
-HARDWARE_VARIANT ?= Sanguino
-MCU              ?= atmega644p
-else ifeq  ($(HARDWARE_MOTHERBOARD),63)
-HARDWARE_VARIANT ?= Sanguino
-MCU              ?= atmega644p
-else ifeq  ($(HARDWARE_MOTHERBOARD),65)
-HARDWARE_VARIANT ?= Sanguino
-MCU              ?= atmega1284p
-else ifeq  ($(HARDWARE_MOTHERBOARD),66)
-HARDWARE_VARIANT ?= Sanguino
-MCU              ?= atmega1284p
-
-#Ultimaker
-else ifeq  ($(HARDWARE_MOTHERBOARD),7)
-HARDWARE_VARIANT ?= arduino
-MCU              ?= atmega2560
-else ifeq  ($(HARDWARE_MOTHERBOARD),71)
-HARDWARE_VARIANT ?= arduino
-MCU              ?= atmega1280
-
-#Teensylu
-else ifeq  ($(HARDWARE_MOTHERBOARD),8)
-HARDWARE_VARIANT ?= Teensy
-MCU              ?= at90usb1286
-else ifeq  ($(HARDWARE_MOTHERBOARD),81)
-HARDWARE_VARIANT ?= Teensy
-MCU              ?= at90usb1286
-else ifeq  ($(HARDWARE_MOTHERBOARD),82)
-HARDWARE_VARIANT ?= Teensy
-MCU              ?= at90usb646
-else ifeq  ($(HARDWARE_MOTHERBOARD),83)
-HARDWARE_VARIANT ?= Teensy
-MCU              ?= at90usb1286
-else ifeq  ($(HARDWARE_MOTHERBOARD),84)
-HARDWARE_VARIANT ?= Teensy
-MCU              ?= at90usb1286
-
-#Gen3+
-else ifeq  ($(HARDWARE_MOTHERBOARD),9)
-HARDWARE_VARIANT ?= Sanguino
-MCU              ?= atmega644p
-
-#Gen3 Monolithic Electronics
-else ifeq  ($(HARDWARE_MOTHERBOARD),22)
-HARDWARE_VARIANT ?= Sanguino
-MCU              ?= atmega644p
-
-#Megatronics
-else ifeq  ($(HARDWARE_MOTHERBOARD),70)
-HARDWARE_VARIANT ?= arduino
-MCU              ?= atmega2560
-
-#Alpha OMCA board
-else ifeq  ($(HARDWARE_MOTHERBOARD),90)
-HARDWARE_VARIANT ?= SanguinoA
-MCU              ?= atmega644
-
-#Final OMCA board
-else ifeq  ($(HARDWARE_MOTHERBOARD),91)
-HARDWARE_VARIANT ?= Sanguino
-MCU              ?= atmega644p
-
-#Rambo
-else ifeq  ($(HARDWARE_MOTHERBOARD),301)
-HARDWARE_VARIANT ?= arduino
-MCU              ?= atmega2560
-
-# Azteeg
-else ifeq  ($(HARDWARE_MOTHERBOARD),67)
-HARDWARE_VARIANT ?= arduino
-MCU              ?= atmega2560
-else ifeq  ($(HARDWARE_MOTHERBOARD),68)
-HARDWARE_VARIANT ?= arduino
-MCU              ?= atmega2560
-
-endif
 
 # Be sure to regenerate speed_lookuptable.h with create_speed_lookuptable.py
 # if you are setting this to something other than 16MHz
@@ -201,15 +72,7 @@ F_CPU ?= 16000000
 # Libraries, the "hardware variant" are for boards
 # that derives from that, and their source are present in
 # the main Marlin source directory
-ifeq ($(HARDWARE_VARIANT), arduino)
 HARDWARE_DIR = $(ARDUINO_INSTALL_DIR)/hardware
-else
-ifeq ($(shell [ $(ARDUINO_VERSION) -ge 100 ] && echo true), true)
-HARDWARE_DIR = ../ArduinoAddons/Arduino_1.x.x
-else
-HARDWARE_DIR = ../ArduinoAddons/Arduino_0.xx
-endif
-endif
 HARDWARE_SRC = $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/cores/arduino
 
 TARGET = $(notdir $(CURDIR))
@@ -221,7 +84,6 @@ TARGET = $(notdir $(CURDIR))
 VPATH = .
 VPATH += $(BUILD_DIR)
 VPATH += $(HARDWARE_SRC)
-ifeq ($(HARDWARE_VARIANT), arduino)
 VPATH += $(ARDUINO_INSTALL_DIR)/libraries/LiquidCrystal
 VPATH += $(ARDUINO_INSTALL_DIR)/libraries/SPI
 ifeq ($(LIQUID_TWI2), 1)
@@ -233,34 +95,12 @@ ifeq ($(WIRE), 1)
 VPATH += $(ARDUINO_INSTALL_DIR)/libraries/Wire
 VPATH += $(ARDUINO_INSTALL_DIR)/libraries/Wire/utility
 endif
-else
-VPATH += $(HARDWARE_DIR)/libraries/LiquidCrystal
-VPATH += $(HARDWARE_DIR)/libraries/SPI
-ifeq ($(LIQUID_TWI2), 1)
-VPATH += $(HARDWARE_DIR)/libraries/Wire
-VPATH += $(HARDWARE_DIR)/libraries/Wire/utility
-VPATH += $(HARDWARE_DIR)/libraries/LiquidTWI2
-endif
-ifeq ($(WIRE), 1)
-VPATH += $(HARDWARE_DIR)/libraries/Wire
-VPATH += $(HARDWARE_DIR)/libraries/Wire/utility
-endif
-endif
-ifeq ($(HARDWARE_VARIANT), arduino)
 HARDWARE_SUB_VARIANT ?= mega
 VPATH += $(ARDUINO_INSTALL_DIR)/hardware/arduino/variants/$(HARDWARE_SUB_VARIANT)
-else
-HARDWARE_SUB_VARIANT ?= standard
-VPATH += $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/variants/$(HARDWARE_SUB_VARIANT)
-endif
 SRC = wiring.c \
 	wiring_analog.c wiring_digital.c \
 	wiring_pulse.c \
 	wiring_shift.c WInterrupts.c
-ifeq ($(HARDWARE_VARIANT), Teensy)
-SRC = wiring.c
-VPATH += $(ARDUINO_INSTALL_DIR)/hardware/teensy/cores/teensy
-endif
 CXXSRC = WMath.cpp WString.cpp Print.cpp Marlin_main.cpp	\
 	MarlinSerial.cpp Sd2Card.cpp SdBaseFile.cpp SdFatUtil.cpp	\
 	SdFile.cpp SdVolume.cpp motion_control.cpp planner.cpp		\
@@ -315,12 +155,6 @@ MV = mv -f
 # Place -D or -U options here
 CDEFS    = -DF_CPU=$(F_CPU) ${addprefix -D , $(DEFINES)}
 CXXDEFS  = $(CDEFS)
-
-ifeq ($(HARDWARE_VARIANT), Teensy)
-CDEFS  += -DUSB_SERIAL
-SRC    += usb.c pins_teensy.c
-CXXSRC += usb_api.cpp
-endif
 
 # Add all the source directories as include directories too
 CINCS = ${addprefix -I ,${VPATH}}

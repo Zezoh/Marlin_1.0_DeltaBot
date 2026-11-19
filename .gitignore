@@ -1,0 +1,4 @@
+.pio/
+.pioenvs/
+applet/
+.DS_Store

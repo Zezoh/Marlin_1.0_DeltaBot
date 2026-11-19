@@ -662,12 +662,8 @@ static void _lcd_move(const char *name, int axis, int min, int max) {
     if (min_software_endstops && current_position[axis] < min) current_position[axis] = min;
     if (max_software_endstops && current_position[axis] > max) current_position[axis] = max;
     encoderPosition = 0;
-    #ifdef DELTA
       calculate_delta(current_position);
       plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS], manual_feedrate[axis]/60, active_extruder);
-    #else
-      plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], manual_feedrate[axis]/60, active_extruder);
-    #endif
     lcdDrawUpdate = 1;
   }
   if (lcdDrawUpdate) lcd_implementation_drawedit(name, ftostr31(current_position[axis]));
@@ -683,12 +679,8 @@ static void lcd_move_e()
     {
         current_position[E_AXIS] += float((int)encoderPosition) * move_menu_scale;
         encoderPosition = 0;
-        #ifdef DELTA
         calculate_delta(current_position);
         plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS], manual_feedrate[E_AXIS]/60, active_extruder);
-        #else
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], manual_feedrate[E_AXIS]/60, active_extruder);
-        #endif
         lcdDrawUpdate = 1;
     }
     if (lcdDrawUpdate)
@@ -867,10 +859,6 @@ static void lcd_control_motion_menu()
     MENU_ITEM_EDIT(float51, MSG_ESTEPS, &axis_steps_per_unit[E_AXIS], 5, 9999);
 #ifdef ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED
     MENU_ITEM_EDIT(bool, MSG_ENDSTOP_ABORT, &abort_on_endstop_hit);
-#endif
-#ifdef SCARA
-    MENU_ITEM_EDIT(float74, MSG_XSCALE, &axis_scaling[X_AXIS],0.5,2);
-    MENU_ITEM_EDIT(float74, MSG_YSCALE, &axis_scaling[Y_AXIS],0.5,2);
 #endif
     END_MENU();
 }

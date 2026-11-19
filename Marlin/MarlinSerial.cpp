@@ -23,7 +23,6 @@
 #include "Marlin.h"
 #include "MarlinSerial.h"
 
-#ifndef AT90USB
 // this next line disables the entire HardwareSerial.cpp, 
 // this is so I can support Attiny series and any other chip without a UART
 #if defined(UBRRH) || defined(UBRR0H) || defined(UBRR1H) || defined(UBRR2H) || defined(UBRR3H)
@@ -319,10 +318,6 @@ void MarlinSerial::printFloat(double number, uint8_t digits)
 MarlinSerial MSerial;
 
 #endif // whole file
-#endif // !AT90USB
 
 // For AT90USB targets use the UART for BT interfacing
-#if defined(AT90USB) && defined (BTENABLED)
-   HardwareSerial bt;
-#endif
 

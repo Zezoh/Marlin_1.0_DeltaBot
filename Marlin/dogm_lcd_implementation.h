@@ -39,16 +39,6 @@
 #include "ultralcd.h"
 #include "ultralcd_st7920_u8glib_rrd.h"
 
-/* Russian language not supported yet, needs custom font
-
-#ifdef LANGUAGE_RU
-#include "LiquidCrystalRus.h"
-#define LCD_CLASS LiquidCrystalRus
-#else
-#include <LiquidCrystal.h>
-#define LCD_CLASS LiquidCrystal
-#endif
-*/
 
 // DOGM parameters (size in pixels)
 #define DOG_CHAR_WIDTH			6
