@@ -27,16 +27,8 @@
     http://reprap.org/pipermail/reprap-dev/2011-May/003323.html
  */
 
-/* All the implementation is done in *.cpp files to get better compatibility with avr-gcc without the Arduino IDE */
-/* Use this file to help the Arduino IDE find which Arduino libraries are needed and to keep documentation on GCode */
+/* All the implementation is done in the *.cpp files to get better compatibility with avr-gcc
+   without the Arduino IDE. This sketch only has to exist for the Arduino IDE to build the firmware. */
 
 #include "Configuration.h"
 #include "pins.h"
-
-#if defined(DIGIPOTSS_PIN) && DIGIPOTSS_PIN > -1
-#include <SPI.h>
-#endif
-
-#if defined(DIGIPOT_I2C)
-  #include <Wire.h>
-#endif

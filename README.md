@@ -24,7 +24,7 @@ PlatformIO:
 cd PlatformIOAddons && platformio run
 ```
 
-Make (avr-gcc): `cd Marlin && make HARDWARE_MOTHERBOARD=33`
+Make (avr-gcc + an Arduino core): `cd Marlin && make ARDUINO_INSTALL_DIR=<arduino dir> HARDWARE_MOTHERBOARD=33`
 
 Select your electronics with `MOTHERBOARD` in `Marlin/Configuration.h`
 (board ids are listed in `Marlin/boards.h`) and tune the `DELTA_*` values for your printer.

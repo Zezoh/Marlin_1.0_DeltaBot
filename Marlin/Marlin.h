@@ -34,7 +34,6 @@
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
 
-#include "WString.h"
 
   #define MYSERIAL MSerial
 

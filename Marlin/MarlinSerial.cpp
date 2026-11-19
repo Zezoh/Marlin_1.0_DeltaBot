@@ -1,5 +1,5 @@
 /*
-  HardwareSerial.cpp - Hardware serial library for Wiring
+  MarlinSerial.cpp - Hardware serial library for Wiring
   Copyright (c) 2006 Nicholas Zambetti.  All right reserved.
 
   This library is free software; you can redistribute it and/or
@@ -15,7 +15,7 @@
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-  
+
   Modified 23 November 2006 by David A. Mellis
   Modified 28 September 2010 by Mark Sproul
 */
@@ -23,48 +23,12 @@
 #include "Marlin.h"
 #include "MarlinSerial.h"
 
-// this next line disables the entire HardwareSerial.cpp, 
-// this is so I can support Attiny series and any other chip without a UART
-#if defined(UBRRH) || defined(UBRR0H) || defined(UBRR1H) || defined(UBRR2H) || defined(UBRR3H)
+ring_buffer rx_buffer = { { 0 }, 0, 0 };
 
-#if UART_PRESENT(SERIAL_PORT)
-  ring_buffer rx_buffer  =  { { 0 }, 0, 0 };
-#endif
-
-FORCE_INLINE void store_char(unsigned char c)
+SIGNAL(M_USARTx_RX_vect)
 {
-  int i = (unsigned int)(rx_buffer.head + 1) % RX_BUFFER_SIZE;
-
-  // if we should be storing the received character into the location
-  // just before the tail (meaning that the head would advance to the
-  // current location of the tail), we're about to overflow the buffer
-  // and so we don't write the character or advance the head.
-  if (i != rx_buffer.tail) {
-    rx_buffer.buffer[rx_buffer.head] = c;
-    rx_buffer.head = i;
-  }
+  store_char(M_UDRx);
 }
-
-
-//#elif defined(SIG_USART_RECV)
-#if defined(M_USARTx_RX_vect)
-  // fixed by Mark Sproul this is on the 644/644p
-  //SIGNAL(SIG_USART_RECV)
-  SIGNAL(M_USARTx_RX_vect)
-  {
-    unsigned char c  =  M_UDRx;
-    store_char(c);
-  }
-#endif
-
-// Constructors ////////////////////////////////////////////////////////////////
-
-MarlinSerial::MarlinSerial()
-{
-
-}
-
-// Public Methods //////////////////////////////////////////////////////////////
 
 void MarlinSerial::begin(long baud)
 {
@@ -79,7 +43,7 @@ void MarlinSerial::begin(long baud)
     useU2X = false;
   }
 #endif
-  
+
   if (useU2X) {
     M_UCSRxA = 1 << M_U2Xx;
     baud_setting = (F_CPU / 4 / baud - 1) / 2;
@@ -97,57 +61,26 @@ void MarlinSerial::begin(long baud)
   sbi(M_UCSRxB, M_RXCIEx);
 }
 
-void MarlinSerial::end()
-{
-  cbi(M_UCSRxB, M_RXENx);
-  cbi(M_UCSRxB, M_TXENx);
-  cbi(M_UCSRxB, M_RXCIEx);  
-}
-
-
-
-int MarlinSerial::peek(void)
-{
-  if (rx_buffer.head == rx_buffer.tail) {
-    return -1;
-  } else {
-    return rx_buffer.buffer[rx_buffer.tail];
-  }
-}
-
 int MarlinSerial::read(void)
 {
   // if the head isn't ahead of the tail, we don't have any characters
   if (rx_buffer.head == rx_buffer.tail) {
     return -1;
-  } else {
-    unsigned char c = rx_buffer.buffer[rx_buffer.tail];
-    rx_buffer.tail = (unsigned int)(rx_buffer.tail + 1) % RX_BUFFER_SIZE;
-    return c;
   }
+  unsigned char c = rx_buffer.buffer[rx_buffer.tail];
+  rx_buffer.tail = (rx_buffer.tail + 1) & (RX_BUFFER_SIZE - 1);
+  return c;
 }
 
 void MarlinSerial::flush()
 {
-  // don't reverse this or there may be problems if the RX interrupt
-  // occurs after reading the value of rx_buffer_head but before writing
-  // the value to rx_buffer_tail; the previous value of rx_buffer_head
-  // may be written to rx_buffer_tail, making it appear as if the buffer
-  // don't reverse this or there may be problems if the RX interrupt
-  // occurs after reading the value of rx_buffer_head but before writing
-  // the value to rx_buffer_tail; the previous value of rx_buffer_head
-  // may be written to rx_buffer_tail, making it appear as if the buffer
-  // were full, not empty.
+  // Discard everything received: moving the head to the tail instead of the tail to the head
+  // is safe if the receive interrupt occurs in between; the opposite order could make the
+  // buffer look full.
   rx_buffer.head = rx_buffer.tail;
 }
 
-
-
-
-/// imports from print.h
-
-
-
+//////////////////////////////// Printing /////////////////////////////////////
 
 void MarlinSerial::print(char c, int base)
 {
@@ -175,10 +108,11 @@ void MarlinSerial::print(long n, int base)
     write(n);
   } else if (base == 10) {
     if (n < 0) {
-      print('-');
-      n = -n;
+      write('-');
+      printNumber(-(unsigned long)n, 10);  // also right for the most negative number
+    } else {
+      printNumber(n, 10);
     }
-    printNumber(n, 10);
   } else {
     printNumber(n, base);
   }
@@ -195,77 +129,15 @@ void MarlinSerial::print(double n, int digits)
   printFloat(n, digits);
 }
 
-void MarlinSerial::println(void)
-{
-  print('\r');
-  print('\n');  
-}
-
-void MarlinSerial::println(const String &s)
-{
-  print(s);
-  println();
-}
-
-void MarlinSerial::println(const char c[])
-{
-  print(c);
-  println();
-}
-
-void MarlinSerial::println(char c, int base)
-{
-  print(c, base);
-  println();
-}
-
-void MarlinSerial::println(unsigned char b, int base)
-{
-  print(b, base);
-  println();
-}
-
-void MarlinSerial::println(int n, int base)
-{
-  print(n, base);
-  println();
-}
-
-void MarlinSerial::println(unsigned int n, int base)
-{
-  print(n, base);
-  println();
-}
-
-void MarlinSerial::println(long n, int base)
-{
-  print(n, base);
-  println();
-}
-
-void MarlinSerial::println(unsigned long n, int base)
-{
-  print(n, base);
-  println();
-}
-
-void MarlinSerial::println(double n, int digits)
-{
-  print(n, digits);
-  println();
-}
-
-// Private Methods /////////////////////////////////////////////////////////////
-
 void MarlinSerial::printNumber(unsigned long n, uint8_t base)
 {
-  unsigned char buf[8 * sizeof(long)]; // Assumes 8-bit chars. 
-  unsigned long i = 0;
+  unsigned char buf[8 * sizeof(long)];
+  uint8_t i = 0;
 
   if (n == 0) {
-    print('0');
+    write('0');
     return;
-  } 
+  }
 
   while (n > 0) {
     buf[i++] = n % base;
@@ -273,51 +145,46 @@ void MarlinSerial::printNumber(unsigned long n, uint8_t base)
   }
 
   for (; i > 0; i--)
-    print((char) (buf[i - 1] < 10 ?
-      '0' + buf[i - 1] :
-      'A' + buf[i - 1] - 10));
+    write((char) (buf[i - 1] < 10 ? '0' + buf[i - 1] : 'A' + buf[i - 1] - 10));
 }
 
-void MarlinSerial::printFloat(double number, uint8_t digits) 
-{ 
+void MarlinSerial::printFloat(double number, uint8_t digits)
+{
+  // Not a number or infinite: the integer conversion below would be undefined
+  if (isnan(number)) { write("nan"); return; }
+  if (isinf(number)) { write(number < 0 ? "-inf" : "inf"); return; }
+
   // Handle negative numbers
   if (number < 0.0)
   {
-     print('-');
-     number = -number;
+    write('-');
+    number = -number;
   }
 
   // Round correctly so that print(1.999, 2) prints as "2.00"
   double rounding = 0.5;
-  for (uint8_t i=0; i<digits; ++i)
+  for (uint8_t i = 0; i < digits; ++i)
     rounding /= 10.0;
-  
+
   number += rounding;
 
   // Extract the integer part of the number and print it
   unsigned long int_part = (unsigned long)number;
   double remainder = number - (double)int_part;
-  print(int_part);
+  printNumber(int_part, 10);
 
   // Print the decimal point, but only if there are digits beyond
   if (digits > 0)
-    print("."); 
+    write('.');
 
   // Extract digits from the remainder one at a time
   while (digits-- > 0)
   {
     remainder *= 10.0;
     int toPrint = int(remainder);
-    print(toPrint);
-    remainder -= toPrint; 
-  } 
+    write('0' + toPrint);
+    remainder -= toPrint;
+  }
 }
-// Preinstantiate Objects //////////////////////////////////////////////////////
-
 
 MarlinSerial MSerial;
-
-#endif // whole file
-
-// For AT90USB targets use the UART for BT interfacing
-

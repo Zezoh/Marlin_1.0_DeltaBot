@@ -50,19 +50,14 @@ UPLOAD_PORT        ?= /dev/arduino
 #Directory used to build files in, contains all the build files, from object files to the final hex file.
 BUILD_DIR          ?= applet
 
-# this defines if Wire is needed
-WIRE               ?= 0
-
 ############################################################################
 # Below here nothing should be changed...
 
-# Delta firmware targets ATmega2560 (default) or ATmega1280 boards (RAMPS, RAMBo, RUMBA, Megatronics, ...)
+# Delta firmware targets the ATmega2560 (default) or ATmega1280 of RAMPS boards
 HARDWARE_VARIANT ?= arduino
 MCU              ?= atmega2560
 
-# Be sure to regenerate speed_lookuptable.h with create_speed_lookuptable.py
-# if you are setting this to something other than 16MHz
-# Set to 16Mhz if not yet set.
+# The step timer tables (speed_lookuptable.h) are for a 16 MHz clock
 F_CPU ?= 16000000
 
 # Arduino containd the main source code for the Arduino
@@ -81,11 +76,6 @@ TARGET = $(notdir $(CURDIR))
 VPATH = .
 VPATH += $(BUILD_DIR)
 VPATH += $(HARDWARE_SRC)
-VPATH += $(ARDUINO_INSTALL_DIR)/libraries/SPI
-ifeq ($(WIRE), 1)
-VPATH += $(ARDUINO_INSTALL_DIR)/libraries/Wire
-VPATH += $(ARDUINO_INSTALL_DIR)/libraries/Wire/utility
-endif
 HARDWARE_SUB_VARIANT ?= mega
 VPATH += $(ARDUINO_INSTALL_DIR)/hardware/arduino/variants/$(HARDWARE_SUB_VARIANT)
 SRC = wiring.c \
@@ -95,18 +85,11 @@ SRC = wiring.c \
 CXXSRC = WMath.cpp WString.cpp Print.cpp Marlin_main.cpp MarlinSerial.cpp \
 	Sd2Card.cpp SdFat.cpp cardreader.cpp motion_control.cpp planner.cpp \
 	stepper.cpp temperature.cpp ConfigurationStore.cpp watchdog.cpp \
-	SPI.cpp Tone.cpp
-ifeq ($(WIRE), 1)
-SRC += twi.c
-CXXSRC += Wire.cpp
-endif
-
-#Check for Arduino 1.0.0 or higher and use the correct sourcefiles for that version
-ifeq ($(shell [ $(ARDUINO_VERSION) -ge 100 ] && echo true), true)
+	Tone.cpp
+# Arduino 1.0 and newer use main.cpp; newer cores (1.6.x and later) also have a few more sources
 CXXSRC += main.cpp
-else
-SRC += pins_arduino.c main.c
-endif
+CXXSRC += $(notdir $(wildcard $(HARDWARE_SRC)/abi.cpp $(HARDWARE_SRC)/new.cpp))
+SRC += $(notdir $(wildcard $(HARDWARE_SRC)/hooks.c))
 
 FORMAT = ihex
 
