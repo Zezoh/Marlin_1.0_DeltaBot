@@ -450,19 +450,22 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
       {
         if (extruder_last_move[i] > 0) extruder_last_move[i]--;
       }
-      switch (extruder)
+      if (extruder == 0)
       {
-        case 0:
-          enable_e0();
-          extruder_last_move[0] = BLOCK_BUFFER_SIZE*2;
-          if (extruder_last_move[1] == 0) disable_e1();
-          break;
-        case 1:
-          enable_e1();
-          extruder_last_move[1] = BLOCK_BUFFER_SIZE*2;
-          if (extruder_last_move[0] == 0) disable_e0();
-          break;
+        enable_e0();
+        extruder_last_move[0] = BLOCK_BUFFER_SIZE*2;
+#if EXTRUDERS > 1
+        if (extruder_last_move[1] == 0) disable_e1();
+#endif
       }
+#if EXTRUDERS > 1
+      else
+      {
+        enable_e1();
+        extruder_last_move[1] = BLOCK_BUFFER_SIZE*2;
+        if (extruder_last_move[0] == 0) disable_e0();
+      }
+#endif
     }
     else  // enable all
     {

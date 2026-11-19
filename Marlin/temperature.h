@@ -23,9 +23,6 @@
 
 #include "Marlin.h"
 #include "planner.h"
-#ifdef PID_ADD_EXTRUSION_RATE
-  #include "stepper.h"
-#endif
 
 // public functions
 void tp_init();  //initialize the heating
@@ -46,7 +43,7 @@ extern float current_temperature_bed;
 #endif
 
 #ifdef PIDTEMP
-  extern float Kp,Ki,Kd,Kc;
+  extern float Kp,Ki,Kd;
   float scalePID_i(float i);
   float scalePID_d(float d);
   float unscalePID_i(float i);

@@ -54,7 +54,6 @@
 
 #define SDPOWER            -1
 #define PS_ON_PIN          12
-#define KILL_PIN           -1
 
 // Power outputs: D8 (bed), D9, D10
 #if MB(RAMPS_13_EFB) || MB(RAMPS_13_EFF)
@@ -86,19 +85,6 @@
 #define TEMP_0_PIN         13  // ANALOG NUMBERING
 #define TEMP_1_PIN         15  // ANALOG NUMBERING
 #define TEMP_BED_PIN       14  // ANALOG NUMBERING
-
-#ifdef NUM_SERVOS
-  #define SERVO0_PIN       11
-  #if NUM_SERVOS > 1
-    #define SERVO1_PIN      6
-  #endif
-  #if NUM_SERVOS > 2
-    #define SERVO2_PIN      5
-  #endif
-  #if NUM_SERVOS > 3
-    #define SERVO3_PIN      4
-  #endif
-#endif
 
 
 #ifdef X_STOP_PIN

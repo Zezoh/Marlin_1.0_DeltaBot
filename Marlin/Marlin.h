@@ -1,5 +1,4 @@
-// Tonokip RepRap firmware rewrite based off of Hydra-mmm firmware.
-// License: GPL
+// Marlin delta firmware: common definitions
 
 #ifndef MARLIN_H
 #define MARLIN_H
@@ -24,16 +23,7 @@
 
 #define  HardwareSerial_h // trick to disable the standard HWserial
 
-#if (ARDUINO >= 100)
-# include "Arduino.h"
-#else
-# include "WProgram.h"
-#endif
-
-// Arduino < 1.0.0 does not define this, so we need to do it ourselves
-#ifndef analogInputToDigitalPin
-# define analogInputToDigitalPin(p) ((p) + A0)
-#endif
+#include "Arduino.h"
 
 #include "MarlinSerial.h"
 
@@ -136,7 +126,7 @@ void manage_inactivity(bool ignore_stepper_queue=false);
 
 
 
-enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3, X_HEAD=4, Y_HEAD=5};
+enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
 
 
 void FlushSerialRequestResend();
@@ -155,8 +145,6 @@ void enquecommand(const char *cmd); //put an ASCII command at the end of the cur
 void enquecommand_P(const char *cmd); //put an ASCII command at the end of the current buffer, read from flash
 void prepare_arc_move(char isclockwise);
 void clamp_to_software_endstops(float target[3]);
-
-void refresh_cmd_timeout(void);
 
 #ifdef FAST_PWM_FAN
 void setPwmFrequency(uint8_t pin, int val);
@@ -189,13 +177,6 @@ extern int fanSpeed;
 
 #ifdef FAN_SOFT_PWM
 extern unsigned char fanSpeedSoftPwm;
-#endif
-
-#ifdef FWRETRACT
-extern bool autoretract_enabled;
-extern bool retracted[EXTRUDERS];
-extern float retract_length, retract_length_swap, retract_feedrate, retract_zlift;
-extern float retract_recover_length, retract_recover_length_swap, retract_recover_feedrate;
 #endif
 
 extern unsigned long starttime;

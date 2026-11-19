@@ -95,7 +95,7 @@ SRC = wiring.c \
 CXXSRC = WMath.cpp WString.cpp Print.cpp Marlin_main.cpp MarlinSerial.cpp \
 	Sd2Card.cpp SdFat.cpp cardreader.cpp motion_control.cpp planner.cpp \
 	stepper.cpp temperature.cpp ConfigurationStore.cpp watchdog.cpp \
-	SPI.cpp Servo.cpp Tone.cpp
+	SPI.cpp Tone.cpp
 ifeq ($(WIRE), 1)
 SRC += twi.c
 CXXSRC += Wire.cpp
