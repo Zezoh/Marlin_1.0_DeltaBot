@@ -66,9 +66,6 @@ float current_temperature_bed = 0.0;
 
 unsigned char soft_pwm_bed;
 
-#ifdef FILAMENT_SENSOR
-  int current_raw_filwidth = 0;  //Holds measured filament diameter - one extruder only
-#endif
 //===========================================================================
 //=============================private variables============================
 //===========================================================================
@@ -152,9 +149,6 @@ unsigned long watchmillis[EXTRUDERS] = ARRAY_BY_EXTRUDERS(0,0);
 #define SOFT_PWM_SCALE 0
 #endif
 
-#ifdef FILAMENT_SENSOR
-  static int meas_shift_index;  //used to point to a delayed sample in buffer for filament width sensor
-#endif
 //===========================================================================
 //=============================   functions      ============================
 //===========================================================================
@@ -668,26 +662,6 @@ void manage_heater()
   manage_bed_heater();
 
 //code for controlling the extruder rate based on the width sensor
-#ifdef FILAMENT_SENSOR
-  if(filament_sensor)
-  {
-  meas_shift_index=delay_index1-meas_delay_cm;
-      if(meas_shift_index<0)
-        meas_shift_index = meas_shift_index + (MAX_MEASUREMENT_DELAY+1);  //loop around buffer if needed
-
-      //get the delayed info and add 100 to reconstitute to a percent of the nominal filament diameter
-      //then square it to get an area
-
-      if(meas_shift_index<0)
-        meas_shift_index=0;
-      else if (meas_shift_index>MAX_MEASUREMENT_DELAY)
-        meas_shift_index=MAX_MEASUREMENT_DELAY;
-
-         volumetric_multiplier[FILAMENT_SENSOR_EXTRUDER_NUM] = pow((float)(100+measurement_delay[meas_shift_index])/100.0,2);
-         if (volumetric_multiplier[FILAMENT_SENSOR_EXTRUDER_NUM] <0.01)
-           volumetric_multiplier[FILAMENT_SENSOR_EXTRUDER_NUM]=0.01;
-  }
-#endif
 }
 
 #define PGM_RD_W(x)   (short)pgm_read_word(&x)
@@ -781,9 +755,6 @@ static void updateTemperaturesFromRawValues()
     #ifdef TEMP_SENSOR_1_AS_REDUNDANT
       redundant_temperature = analog2temp(redundant_temperature_raw, 1);
     #endif
-    #if defined (FILAMENT_SENSOR) && (FILWIDTH_PIN > -1)    //check if a sensor is supported
-      filament_width_meas = analog2widthFil();
-    #endif
     //Reset the watchdog after we know we have a temperature measurement.
     watchdog_reset();
 
@@ -793,27 +764,6 @@ static void updateTemperaturesFromRawValues()
 }
 
 // For converting raw Filament Width to milimeters
-#ifdef FILAMENT_SENSOR
-float analog2widthFil() {
-return current_raw_filwidth/16383.0*5.0;
-//return current_raw_filwidth;
-}
-
-// For converting raw Filament Width to a ratio
-int widthFil_to_size_ratio() {
-
-float temp;
-
-temp=filament_width_meas;
-if(filament_width_meas<MEASURED_LOWER_LIMIT)
-  temp=filament_width_nominal;  //assume sensor cut out
-else if (filament_width_meas>MEASURED_UPPER_LIMIT)
-  temp= MEASURED_UPPER_LIMIT;
-
-return(filament_width_nominal/temp*100);
-
-}
-#endif
 
 void tp_init()
 {
@@ -897,15 +847,6 @@ void tp_init()
   #endif
 
   //Added for Filament Sensor
-  #ifdef FILAMENT_SENSOR
-   #if defined(FILWIDTH_PIN) && (FILWIDTH_PIN > -1)
-  #if FILWIDTH_PIN < 8
-            DIDR0 |= 1<<FILWIDTH_PIN;
-  #else
-            DIDR2 |= 1<<(FILWIDTH_PIN - 8);
-  #endif
-   #endif
-  #endif
 
   // Use timer0 for temperature measurement
   // Interleave temperature interrupt with millies interrupt
@@ -1119,10 +1060,6 @@ ISR(TIMER0_COMPB_vect)
   static unsigned char soft_pwm_b;
 #endif
 
-#if defined(FILWIDTH_PIN) &&(FILWIDTH_PIN > -1)
-  static unsigned long raw_filwidth_value = 0;  //added for filament width sensor
-#endif
-
   // Software PWM of the heaters and the fan
   if(pwm_count == 0){
     soft_pwm_0 = soft_pwm[0];
@@ -1217,38 +1154,15 @@ ISR(TIMER0_COMPB_vect)
       #endif
       temp_state = 6;
       break;
-    case 6:  // Unused: keeps the 10 ticks per sample that PID_dT is calculated for
-      temp_state = 7;
+    case 6:  // Idle ticks: they keep the sample at 10 ticks, the period PID_dT is calculated for
+    case 7:
+    case 8:
+      temp_state++;
       break;
-    case 7:  // Unused
-      temp_state = 8;
+    case 9:
+      temp_state = 0;
+      temp_count++;
       break;
-    case 8: //Prepare FILWIDTH
-     #if defined(FILWIDTH_PIN) && (FILWIDTH_PIN> -1)
-      #if FILWIDTH_PIN>7
-         ADCSRB = 1<<MUX5;
-      #else
-         ADCSRB = 0;
-      #endif
-      ADMUX = ((1 << REFS0) | (FILWIDTH_PIN & 0x07));
-      ADCSRA |= 1<<ADSC; // Start conversion
-     #endif
-     temp_state = 9;
-     break;
-    case 9:   //Measure FILWIDTH
-     #if defined(FILWIDTH_PIN) &&(FILWIDTH_PIN > -1)
-     //raw_filwidth_value += ADC;  //remove to use an IIR filter approach
-      if(ADC>102)  //check that ADC is reading a voltage > 0.5 volts, otherwise don't take in the data.
-        {
-      raw_filwidth_value= raw_filwidth_value-(raw_filwidth_value>>7);  //multipliy raw_filwidth_value by 127/128
-
-        raw_filwidth_value= raw_filwidth_value + ((unsigned long)ADC<<7);  //add new ADC reading
-        }
-     #endif
-     temp_state = 0;
-
-     temp_count++;
-     break;
 
     case 10: //Startup, delay initial temp reading a tiny bit so the hardware can settle.
       temp_state = 0;
@@ -1274,9 +1188,6 @@ ISR(TIMER0_COMPB_vect)
     }
 
 //Add similar code for Filament Sensor - can be read any time since IIR filtering is used
-#if defined(FILWIDTH_PIN) &&(FILWIDTH_PIN > -1)
-  current_raw_filwidth = raw_filwidth_value>>10;  //need to divide to get to 0-16384 range since we used 1/128 IIR filter approach
-#endif
 
     temp_meas_ready = true;
     temp_count = 0;

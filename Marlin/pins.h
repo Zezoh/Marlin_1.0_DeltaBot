@@ -88,11 +88,6 @@
   #define TEMP_1_PIN         15  // ANALOG NUMBERING
   #define TEMP_BED_PIN       14  // ANALOG NUMBERING
 
-  #if MB(RAMPS_13_EEB) && defined(FILAMENT_SENSOR)
-    // analog pin for the filament width sensor: RAMPS 1.4 analog input 5 on the AUX2 connector
-    #define FILWIDTH_PIN      5
-  #endif
-
   #ifdef NUM_SERVOS
     #define SERVO0_PIN       11
     #if NUM_SERVOS > 1

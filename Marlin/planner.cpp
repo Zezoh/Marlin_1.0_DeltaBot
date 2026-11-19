@@ -89,10 +89,6 @@ float extrude_min_temp = EXTRUDE_MINTEMP;
 // Number of moves of each extruder since it was last used, to disable inactive extruders
 static unsigned char extruder_last_move[2] = {0, 0};
 
-#ifdef FILAMENT_SENSOR
-static char meas_sample;  // temporary variable to hold filament measurement sample
-#endif
-
 // Index of the next / previous block in the ring buffer (BLOCK_BUFFER_SIZE is a power of 2)
 #define NEXT_BLOCK_INDEX(i) (((i) + 1) & (BLOCK_BUFFER_SIZE - 1))
 #define PREV_BLOCK_INDEX(i) (((i) - 1) & (BLOCK_BUFFER_SIZE - 1))
@@ -520,44 +516,6 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
 
   block->nominal_speed = block->millimeters * inverse_second;  // (mm/sec) Always > 0
   block->nominal_rate = ceil(block->step_event_count * inverse_second);  // (step/sec) Always > 0
-
-#ifdef FILAMENT_SENSOR
-  // FMM update ring buffer used for delay with filament measurements
-  if ((extruder == FILAMENT_SENSOR_EXTRUDER_NUM) && (delay_index2 > -1))  // only for the extruder with the filament sensor and if the ring buffer is initialized
-  {
-    delay_dist = delay_dist + delta_mm[E_AXIS];  // increment counter with next move in e axis
-
-    while (delay_dist >= (10*(MAX_MEASUREMENT_DELAY+1)))  // check if counter is over max buffer size in mm
-      delay_dist = delay_dist - 10*(MAX_MEASUREMENT_DELAY+1);  // loop around the buffer
-    while (delay_dist < 0)
-      delay_dist = delay_dist + 10*(MAX_MEASUREMENT_DELAY+1);  // loop around the buffer
-
-    delay_index1 = delay_dist/10.0;  // calculate index
-
-    // ensure the number is within range of the array after converting from floating point
-    if (delay_index1 < 0)
-      delay_index1 = 0;
-    else if (delay_index1 > MAX_MEASUREMENT_DELAY)
-      delay_index1 = MAX_MEASUREMENT_DELAY;
-
-    if (delay_index1 != delay_index2)  // moved index
-    {
-      meas_sample = widthFil_to_size_ratio() - 100;  // subtract off 100 to reduce magnitude - to store in a signed char
-    }
-    while (delay_index1 != delay_index2)
-    {
-      delay_index2 = delay_index2 + 1;
-      if (delay_index2 > MAX_MEASUREMENT_DELAY)
-        delay_index2 = delay_index2 - (MAX_MEASUREMENT_DELAY+1);  // loop around buffer when incrementing
-      if (delay_index2 < 0)
-        delay_index2 = 0;
-      else if (delay_index2 > MAX_MEASUREMENT_DELAY)
-        delay_index2 = MAX_MEASUREMENT_DELAY;
-
-      measurement_delay[delay_index2] = meas_sample;
-    }
-  }
-#endif
 
   // Calculate and limit speed in mm/sec for each axis
   float current_speed[NUM_AXIS];
