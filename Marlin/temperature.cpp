@@ -140,11 +140,6 @@ static float analog2temp(int raw, uint8_t e);
 static float analog2tempBed(int raw);
 static void updateTemperaturesFromRawValues();
 
-#ifdef WATCH_TEMP_PERIOD
-int watch_start_temp[EXTRUDERS] = ARRAY_BY_EXTRUDERS(0,0);
-unsigned long watchmillis[EXTRUDERS] = ARRAY_BY_EXTRUDERS(0,0);
-#endif //WATCH_TEMP_PERIOD
-
 #ifndef SOFT_PWM_SCALE
 #define SOFT_PWM_SCALE 0
 #endif
@@ -623,19 +618,6 @@ void manage_heater()
       soft_pwm[e] = 0;
     }
 
-    #ifdef WATCH_TEMP_PERIOD
-    if(watchmillis[e] && millis() - watchmillis[e] > WATCH_TEMP_PERIOD)
-    {
-        if(degHotend(e) < watch_start_temp[e] + WATCH_TEMP_INCREASE)
-        {
-            setTargetHotend(0, e);
-            SERIAL_ECHO_START;
-            SERIAL_ECHOLN("Heating failed");
-        }else{
-            watchmillis[e] = 0;
-        }
-    }
-    #endif
     #ifdef TEMP_SENSOR_1_AS_REDUNDANT
       if(fabs(current_temperature[0] - redundant_temperature) > MAX_REDUNDANT_TEMP_SENSOR_DIFF) {
         disable_heater();
@@ -903,20 +885,6 @@ void tp_init()
 #endif
   }
 #endif //BED_MAXTEMP
-}
-
-void setWatch()
-{
-#ifdef WATCH_TEMP_PERIOD
-  for (int e = 0; e < EXTRUDERS; e++)
-  {
-    if(degHotend(e) < degTargetHotend(e) - (WATCH_TEMP_INCREASE * 2))
-    {
-      watch_start_temp[e] = degHotend(e);
-      watchmillis[e] = millis();
-    }
-  }
-#endif
 }
 
 void disable_heater()
