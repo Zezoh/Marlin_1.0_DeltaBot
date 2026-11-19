@@ -22,8 +22,6 @@
   #define AUTOTEMP_OLDWEIGHT 0.98
 #endif
 
-//  extruder run-out prevention. 
-//if the machine is idle, and the temperature over MINTEMP, every couple of SECONDS some filament is extruded
 //These defines help to calibrate the AD595 sensor in case you get wrong temperature measurements.
 //The measured temperature is defined as "actualTemp = (measuredTemp * TEMP_SENSOR_AD595_GAIN) + TEMP_SENSOR_AD595_OFFSET"
 #define TEMP_SENSOR_AD595_OFFSET 0.0
@@ -57,58 +55,10 @@
 
 #define ENDSTOPS_ONLY_FOR_HOMING // If defined the endstops will only be used for homing
 
-//// AUTOSET LOCATIONS OF LIMIT SWITCHES
-//// Added by ZetaPhoenix 09-15-2012
-#ifdef MANUAL_HOME_POSITIONS  // Use manual limit switch locations
-  #define X_HOME_POS MANUAL_X_HOME_POS
-  #define Y_HOME_POS MANUAL_Y_HOME_POS
-  #define Z_HOME_POS MANUAL_Z_HOME_POS
-#else //Set min/max homing switch positions based upon homing direction and min/max travel limits
-  //X axis
-  #if X_HOME_DIR == -1
-    #ifdef BED_CENTER_AT_0_0
-      #define X_HOME_POS X_MAX_LENGTH * -0.5
-    #else
-      #define X_HOME_POS X_MIN_POS
-    #endif //BED_CENTER_AT_0_0
-  #else    
-    #ifdef BED_CENTER_AT_0_0
-      #define X_HOME_POS X_MAX_LENGTH * 0.5
-    #else
-      #define X_HOME_POS X_MAX_POS
-    #endif //BED_CENTER_AT_0_0
-  #endif //X_HOME_DIR == -1
-  
-  //Y axis
-  #if Y_HOME_DIR == -1
-    #ifdef BED_CENTER_AT_0_0
-      #define Y_HOME_POS Y_MAX_LENGTH * -0.5
-    #else
-      #define Y_HOME_POS Y_MIN_POS
-    #endif //BED_CENTER_AT_0_0
-  #else    
-    #ifdef BED_CENTER_AT_0_0
-      #define Y_HOME_POS Y_MAX_LENGTH * 0.5
-    #else
-      #define Y_HOME_POS Y_MAX_POS
-    #endif //BED_CENTER_AT_0_0
-  #endif //Y_HOME_DIR == -1
-  
-  // Z axis
-  #if Z_HOME_DIR == -1 //BED_CENTER_AT_0_0 not used
-    #define Z_HOME_POS Z_MIN_POS
-  #else    
-    #define Z_HOME_POS Z_MAX_POS
-  #endif //Z_HOME_DIR == -1
-#endif //End auto min/max positions
-//END AUTOSET LOCATIONS OF LIMIT SWITCHES -ZP
-
 //homing hits the endstop, then retracts by this distance, before it tries to slowly bump again:
 #define X_HOME_RETRACT_MM 5 
 #define Y_HOME_RETRACT_MM 5 
 #define Z_HOME_RETRACT_MM 5 // deltas need the same for all three axis
-
-//#define QUICK_HOME  //if this is defined, if both x and y are to be homed, a diagonal move will be performed initially.
 
 #define AXIS_RELATIVE_MODES {false, false, false, false}
 
@@ -155,7 +105,7 @@
 #define MM_PER_ARC_SEGMENT 1
 #define N_ARC_CORRECTION 25
 
-const unsigned int dropsegments=5; //everything with less than this number of steps will be ignored as move and joined with the next movement
+#define dropsegments 5 //everything with less than this number of steps will be ignored as move and joined with the next movement
 
 // Power Signal Control Definitions
 // By default use ATX definition
@@ -173,20 +123,13 @@ const unsigned int dropsegments=5; //everything with less than this number of st
   #define PS_ON_ASLEEP LOW
 #endif
 
-// Control heater 0 and heater 1 in parallel.
-//#define HEATERS_PARALLEL
-
 //===========================================================================
 //=============================Buffers           ============================
 //===========================================================================
 
 // The number of linear motions that can be in the plan at any give time.  
 // THE BLOCK_BUFFER_SIZE NEEDS TO BE A POWER OF 2, i.g. 8,16,32 because shifts and ors are used to do the ringbuffering.
-#if defined SDSUPPORT
-  #define BLOCK_BUFFER_SIZE 16   // SD take more memory, block buffer needs to be smaller
-#else
-  #define BLOCK_BUFFER_SIZE 16 // maximize block buffer
-#endif
+#define BLOCK_BUFFER_SIZE 16
 
 //The ASCII buffer for recieving from the serial:
 #define MAX_CMD_SIZE 96

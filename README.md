@@ -11,6 +11,7 @@ Marlin 1.0.2-3 firmware reduced to a clean, English-only build for **delta
 - No bed auto leveling or Z probe code (it was not compatible with delta kinematics)
 - Thermal runaway protection and the hardware watchdog (4 s) enabled by default
 - SD card printing enabled by default (FAT16/FAT32 via `Sd2Card` + `SdFat`, M20-M32, M928, autostart `auto0.g`...`auto9.g`)
+- Settings storage (M500/M501) always on, including the delta geometry (M665/M666)
 - Delta default configuration in `Marlin/Configuration.h` and `Marlin/Configuration_adv.h`
 
 ## Building

@@ -37,9 +37,8 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
 // wrong data being written to the variables.
 // ALSO:  always make sure the variables in the Store and retrieve sections are in the same order.
 
-#define EEPROM_VERSION "V17"
+#define EEPROM_VERSION "V18"
 
-#ifdef EEPROM_SETTINGS
 void Config_StoreSettings() 
 {
   char ver[4]= "000";
@@ -85,12 +84,8 @@ void Config_StoreSettings()
   SERIAL_ECHO_START;
   SERIAL_ECHOLNPGM("Settings Stored");
 }
-#endif //EEPROM_SETTINGS
-
-
-#ifndef DISABLE_M503
 void Config_PrintSettings()
-{  // Always have this function, even with EEPROM_SETTINGS disabled, the current values will be shown
+{
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM("Steps per unit:");
     SERIAL_ECHO_START;
@@ -165,10 +160,7 @@ void Config_PrintSettings()
     SERIAL_ECHOLN(""); 
 #endif
 }
-#endif
 
-
-#ifdef EEPROM_SETTINGS
 void Config_RetrieveSettings()
 {
     int i=EEPROM_OFFSET;
@@ -198,6 +190,7 @@ void Config_RetrieveSettings()
 		EEPROM_READ_VAR(i,delta_radius);
 		EEPROM_READ_VAR(i,delta_diagonal_rod);
 		EEPROM_READ_VAR(i,delta_segments_per_second);
+		recalc_delta_settings(delta_radius, delta_diagonal_rod);  // tower positions follow the loaded radius and rod length
         #ifndef PIDTEMP
         float Kp,Ki,Kd;
         #endif
@@ -221,11 +214,8 @@ void Config_RetrieveSettings()
     {
         Config_ResetDefault();
     }
-    #ifdef EEPROM_CHITCHAT
-      Config_PrintSettings();
-    #endif
+    Config_PrintSettings();
 }
-#endif
 
 void Config_ResetDefault()
 {

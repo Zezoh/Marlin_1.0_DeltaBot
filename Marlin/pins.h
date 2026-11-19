@@ -29,19 +29,16 @@
 #define X_STEP_PIN         54
 #define X_DIR_PIN          55
 #define X_ENABLE_PIN       38
-#define X_MIN_PIN           3
 #define X_MAX_PIN           2
 
 #define Y_STEP_PIN         60
 #define Y_DIR_PIN          61
 #define Y_ENABLE_PIN       56
-#define Y_MIN_PIN          14
 #define Y_MAX_PIN          15
 
 #define Z_STEP_PIN         46
 #define Z_DIR_PIN          48
 #define Z_ENABLE_PIN       62
-#define Z_MIN_PIN          18
 #define Z_MAX_PIN          19
 
 #define E0_STEP_PIN        26
@@ -87,54 +84,6 @@
 #define TEMP_BED_PIN       14  // ANALOG NUMBERING
 
 
-#ifdef X_STOP_PIN
-  #if X_HOME_DIR < 0
-    #define X_MIN_PIN X_STOP_PIN
-    #define X_MAX_PIN -1
-  #else
-    #define X_MIN_PIN -1
-    #define X_MAX_PIN X_STOP_PIN
-  #endif
-#endif
-
-#ifdef Y_STOP_PIN
-  #if Y_HOME_DIR < 0
-    #define Y_MIN_PIN Y_STOP_PIN
-    #define Y_MAX_PIN -1
-  #else
-    #define Y_MIN_PIN -1
-    #define Y_MAX_PIN Y_STOP_PIN
-  #endif
-#endif
-
-#ifdef Z_STOP_PIN
-  #if Z_HOME_DIR < 0
-    #define Z_MIN_PIN Z_STOP_PIN
-    #define Z_MAX_PIN -1
-  #else
-    #define Z_MIN_PIN -1
-    #define Z_MAX_PIN Z_STOP_PIN
-  #endif
-#endif
-
-#ifdef DISABLE_MAX_ENDSTOPS
-  #undef X_MAX_PIN
-  #undef Y_MAX_PIN
-  #undef Z_MAX_PIN
-  #define X_MAX_PIN          -1
-  #define Y_MAX_PIN          -1
-  #define Z_MAX_PIN          -1
-#endif
-
-#ifdef DISABLE_MIN_ENDSTOPS
-  #undef X_MIN_PIN
-  #undef Y_MIN_PIN
-  #undef Z_MIN_PIN
-  #define X_MIN_PIN          -1
-  #define Y_MIN_PIN          -1
-  #define Z_MIN_PIN          -1
-#endif
-
 // List of pins which to ignore when asked to change by gcode, 0 and 1 are RX and TX, do not mess with those!
 #define _E0_PINS E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, HEATER_0_PIN,
 #if EXTRUDERS > 1
@@ -143,7 +92,7 @@
   #define _E1_PINS
 #endif
 
-#define SENSITIVE_PINS {0, 1, X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MIN_PIN, X_MAX_PIN, Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, Y_MIN_PIN, Y_MAX_PIN, Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, Z_MIN_PIN, Z_MAX_PIN, PS_ON_PIN, \
+#define SENSITIVE_PINS {0, 1, X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MAX_PIN, Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, Y_MAX_PIN, Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, Z_MAX_PIN, PS_ON_PIN, \
                         HEATER_BED_PIN, FAN_PIN,                  \
                         _E0_PINS _E1_PINS             \
                         analogInputToDigitalPin(TEMP_0_PIN), analogInputToDigitalPin(TEMP_1_PIN), analogInputToDigitalPin(TEMP_BED_PIN) }

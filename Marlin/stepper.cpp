@@ -58,20 +58,11 @@ static volatile bool endstop_z_hit = false;
 bool abort_on_endstop_hit = false;
 #endif
 
-#if defined(X_MIN_PIN) && X_MIN_PIN > -1
-static bool old_x_min_endstop = false;
-#endif
 #if defined(X_MAX_PIN) && X_MAX_PIN > -1
 static bool old_x_max_endstop = false;
 #endif
-#if defined(Y_MIN_PIN) && Y_MIN_PIN > -1
-static bool old_y_min_endstop = false;
-#endif
 #if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
 static bool old_y_max_endstop = false;
-#endif
-#if defined(Z_MIN_PIN) && Z_MIN_PIN > -1
-static bool old_z_min_endstop = false;
 #endif
 #if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
 static bool old_z_max_endstop = false;
@@ -335,39 +326,16 @@ ISR(TIMER1_COMPA_vect)
     }
   }
 
-  // Check the limit switches in the direction of the movement
-  if (out_bits & (1<<X_AXIS)) {   // stepping along -X axis
-#if defined(X_MIN_PIN) && X_MIN_PIN > -1
-    CHECK_ENDSTOP(X, x, MIN, min)
-#endif
-  }
-  else {  // +direction
+  // Check the max endstops while a tower moves up (a delta only has max endstops)
 #if defined(X_MAX_PIN) && X_MAX_PIN > -1
-    CHECK_ENDSTOP(X, x, MAX, max)
+  if (!(out_bits & (1<<X_AXIS))) CHECK_ENDSTOP(X, x, MAX, max)
 #endif
-  }
-
-  if (out_bits & (1<<Y_AXIS)) {
-#if defined(Y_MIN_PIN) && Y_MIN_PIN > -1
-    CHECK_ENDSTOP(Y, y, MIN, min)
-#endif
-  }
-  else {
 #if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
-    CHECK_ENDSTOP(Y, y, MAX, max)
+  if (!(out_bits & (1<<Y_AXIS))) CHECK_ENDSTOP(Y, y, MAX, max)
 #endif
-  }
-
-  if (out_bits & (1<<Z_AXIS)) {
-#if defined(Z_MIN_PIN) && Z_MIN_PIN > -1
-    CHECK_ENDSTOP(Z, z, MIN, min)
-#endif
-  }
-  else {
 #if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
-    CHECK_ENDSTOP(Z, z, MAX, max)
+  if (!(out_bits & (1<<Z_AXIS))) CHECK_ENDSTOP(Z, z, MAX, max)
 #endif
-  }
 
   for (int8_t i = 0; i < step_loops; i++) {  // Take multiple steps per interrupt (for high speed moves)
     MSerial.checkRx();  // Check for serial chars.
@@ -479,39 +447,21 @@ void st_init()
 #endif
 
   // Endstops and pullups
-#if defined(X_MIN_PIN) && X_MIN_PIN > -1
-  SET_INPUT(X_MIN_PIN);
-  #ifdef ENDSTOPPULLUP_XMIN
-    WRITE(X_MIN_PIN, HIGH);
-  #endif
-#endif
-#if defined(Y_MIN_PIN) && Y_MIN_PIN > -1
-  SET_INPUT(Y_MIN_PIN);
-  #ifdef ENDSTOPPULLUP_YMIN
-    WRITE(Y_MIN_PIN, HIGH);
-  #endif
-#endif
-#if defined(Z_MIN_PIN) && Z_MIN_PIN > -1
-  SET_INPUT(Z_MIN_PIN);
-  #ifdef ENDSTOPPULLUP_ZMIN
-    WRITE(Z_MIN_PIN, HIGH);
-  #endif
-#endif
 #if defined(X_MAX_PIN) && X_MAX_PIN > -1
   SET_INPUT(X_MAX_PIN);
-  #ifdef ENDSTOPPULLUP_XMAX
+  #ifdef ENDSTOPPULLUPS
     WRITE(X_MAX_PIN, HIGH);
   #endif
 #endif
 #if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
   SET_INPUT(Y_MAX_PIN);
-  #ifdef ENDSTOPPULLUP_YMAX
+  #ifdef ENDSTOPPULLUPS
     WRITE(Y_MAX_PIN, HIGH);
   #endif
 #endif
 #if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
   SET_INPUT(Z_MAX_PIN);
-  #ifdef ENDSTOPPULLUP_ZMAX
+  #ifdef ENDSTOPPULLUPS
     WRITE(Z_MAX_PIN, HIGH);
   #endif
 #endif
