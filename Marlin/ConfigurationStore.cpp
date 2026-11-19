@@ -1,7 +1,6 @@
 #include "Marlin.h"
 #include "planner.h"
 #include "temperature.h"
-#include "ultralcd.h"
 #include "ConfigurationStore.h"
 
 void _EEPROM_writeData(int &pos, uint8_t* value, uint8_t size)
@@ -38,7 +37,7 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
 // wrong data being written to the variables.
 // ALSO:  always make sure the variables in the Store and retrieve sections are in the same order.
 
-#define EEPROM_VERSION "V13"
+#define EEPROM_VERSION "V14"
 
 #ifdef EEPROM_SETTINGS
 void Config_StoreSettings() 
@@ -62,16 +61,6 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i,delta_radius);
   EEPROM_WRITE_VAR(i,delta_diagonal_rod);
   EEPROM_WRITE_VAR(i,delta_segments_per_second);
-  #ifndef ULTIPANEL
-  int plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP, plaPreheatHPBTemp = PLA_PREHEAT_HPB_TEMP, plaPreheatFanSpeed = PLA_PREHEAT_FAN_SPEED;
-  int absPreheatHotendTemp = ABS_PREHEAT_HOTEND_TEMP, absPreheatHPBTemp = ABS_PREHEAT_HPB_TEMP, absPreheatFanSpeed = ABS_PREHEAT_FAN_SPEED;
-  #endif
-  EEPROM_WRITE_VAR(i,plaPreheatHotendTemp);
-  EEPROM_WRITE_VAR(i,plaPreheatHPBTemp);
-  EEPROM_WRITE_VAR(i,plaPreheatFanSpeed);
-  EEPROM_WRITE_VAR(i,absPreheatHotendTemp);
-  EEPROM_WRITE_VAR(i,absPreheatHPBTemp);
-  EEPROM_WRITE_VAR(i,absPreheatFanSpeed);
   EEPROM_WRITE_VAR(i,zprobe_zoffset);
   #ifdef PIDTEMP
     EEPROM_WRITE_VAR(i,Kp);
@@ -84,10 +73,6 @@ void Config_StoreSettings()
     EEPROM_WRITE_VAR(i,dummy);
     EEPROM_WRITE_VAR(i,dummy);
   #endif
-  #ifndef DOGLCD
-    int lcd_contrast = 32;
-  #endif
-  EEPROM_WRITE_VAR(i,lcd_contrast);
   #ifdef FWRETRACT
   EEPROM_WRITE_VAR(i,autoretract_enabled);
   EEPROM_WRITE_VAR(i,retract_length);
@@ -283,16 +268,6 @@ void Config_RetrieveSettings()
 		EEPROM_READ_VAR(i,delta_radius);
 		EEPROM_READ_VAR(i,delta_diagonal_rod);
 		EEPROM_READ_VAR(i,delta_segments_per_second);
-        #ifndef ULTIPANEL
-        int plaPreheatHotendTemp, plaPreheatHPBTemp, plaPreheatFanSpeed;
-        int absPreheatHotendTemp, absPreheatHPBTemp, absPreheatFanSpeed;
-        #endif
-        EEPROM_READ_VAR(i,plaPreheatHotendTemp);
-        EEPROM_READ_VAR(i,plaPreheatHPBTemp);
-        EEPROM_READ_VAR(i,plaPreheatFanSpeed);
-        EEPROM_READ_VAR(i,absPreheatHotendTemp);
-        EEPROM_READ_VAR(i,absPreheatHPBTemp);
-        EEPROM_READ_VAR(i,absPreheatFanSpeed);
         EEPROM_READ_VAR(i,zprobe_zoffset);
         #ifndef PIDTEMP
         float Kp,Ki,Kd;
@@ -301,10 +276,6 @@ void Config_RetrieveSettings()
         EEPROM_READ_VAR(i,Kp);
         EEPROM_READ_VAR(i,Ki);
         EEPROM_READ_VAR(i,Kd);
-        #ifndef DOGLCD
-        int lcd_contrast;
-        #endif
-        EEPROM_READ_VAR(i,lcd_contrast);
 
 		#ifdef FWRETRACT
 		EEPROM_READ_VAR(i,autoretract_enabled);
@@ -374,19 +345,8 @@ void Config_ResetDefault()
 	delta_diagonal_rod= DELTA_DIAGONAL_ROD;
 	delta_segments_per_second= DELTA_SEGMENTS_PER_SECOND;
 	recalc_delta_settings(delta_radius, delta_diagonal_rod);
-#ifdef ULTIPANEL
-    plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP;
-    plaPreheatHPBTemp = PLA_PREHEAT_HPB_TEMP;
-    plaPreheatFanSpeed = PLA_PREHEAT_FAN_SPEED;
-    absPreheatHotendTemp = ABS_PREHEAT_HOTEND_TEMP;
-    absPreheatHPBTemp = ABS_PREHEAT_HPB_TEMP;
-    absPreheatFanSpeed = ABS_PREHEAT_FAN_SPEED;
-#endif
 #ifdef ENABLE_AUTO_BED_LEVELING
     zprobe_zoffset = -Z_PROBE_OFFSET_FROM_EXTRUDER;
-#endif
-#ifdef DOGLCD
-    lcd_contrast = DEFAULT_LCD_CONTRAST;
 #endif
 #ifdef PIDTEMP
     Kp = DEFAULT_Kp;

@@ -162,9 +162,6 @@
 #define DEFAULT_MINTRAVELFEEDRATE     0.0
 
 // Feedrates for manual moves along X, Y, Z, E from panel
-#ifdef ULTIPANEL
-#define MANUAL_FEEDRATE {50*60, 50*60, 4*60, 60}  // set the speeds for manual moves (mm/min)
-#endif
 
 // minimum time in microseconds that a movement needs to take if the buffer is emptied.
 #define DEFAULT_MINSEGMENTTIME        20000
@@ -193,16 +190,6 @@
 // Microstep setting (Only functional when stepper driver microstep pins are connected to MCU.
 #define MICROSTEP_MODES {16,16,16,16,16} // [1,2,4,8,16]
 
-// Motor Current setting (Only functional when motor driver current ref pins are connected to a digital trimpot on supported boards)
-#define DIGIPOT_MOTOR_CURRENT {135,135,135,135,135} // Values 0-255 (RAMBO 135 = ~0.75A, 185 = ~1A)
-
-// uncomment to enable an I2C based DIGIPOT like on the Azteeg X3 Pro
-//#define DIGIPOT_I2C
-// Number of channels available for I2C digipot, For Azteeg X3 Pro we have 8
-#define DIGIPOT_I2C_NUM_CHANNELS 8
-// actual motor currents in Amps, need as many here as DIGIPOT_I2C_NUM_CHANNELS
-#define DIGIPOT_I2C_MOTOR_CURRENTS {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}
-
 //===========================================================================
 //=============================Additional Features===========================
 //===========================================================================
@@ -218,19 +205,6 @@
 // using:
 //#define MENU_ADDAUTOSTART
 
-// Show a progress bar on the LCD when printing from SD
-//#define LCD_PROGRESS_BAR
-
-#ifdef LCD_PROGRESS_BAR
-  // Amount of time (ms) to show the bar
-  #define PROGRESS_BAR_BAR_TIME 2000
-  // Amount of time (ms) to show the status message
-  #define PROGRESS_BAR_MSG_TIME 2000
-  // Amount of time (ms) to retain the status message (0=forever)
-  #define PROGRESS_MSG_EXPIRE   0
-  // Enable this to show messages for MSG_TIME then hide them
-  //#define PROGRESS_MSG_ONCE
-#endif
 
 // The hardware watchdog should reset the Microcontroller disabling all outputs, in case the firmware gets stuck and doesn't do temperature regulation.
 //#define USE_WATCHDOG
@@ -242,7 +216,7 @@
 //#define WATCHDOG_RESET_MANUAL
 #endif
 
-// Enable the option to stop SD printing when hitting and endstops, needs to be enabled from the LCD menu when this option is enabled.
+// Enable the option to stop SD printing when hitting and endstops, needs to be enabled when this option is enabled.
 //#define ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED
 
 // Babystepping enables the user to control the axis in tiny amounts, independently from the normal printing process
@@ -290,10 +264,6 @@ const unsigned int dropsegments=5; //everything with less than this number of st
 // be commented out otherwise
 #define SDCARDDETECTINVERTED 
 
-#ifdef ULTIPANEL
- #undef SDCARDDETECTINVERTED
-#endif
-
 // Power Signal Control Definitions
 // By default use ATX definition
 #ifndef POWER_SUPPLY
@@ -320,7 +290,7 @@ const unsigned int dropsegments=5; //everything with less than this number of st
 // The number of linear motions that can be in the plan at any give time.  
 // THE BLOCK_BUFFER_SIZE NEEDS TO BE A POWER OF 2, i.g. 8,16,32 because shifts and ors are used to do the ringbuffering.
 #if defined SDSUPPORT
-  #define BLOCK_BUFFER_SIZE 16   // SD,LCD,Buttons take more memory, block buffer needs to be smaller
+  #define BLOCK_BUFFER_SIZE 16   // SD take more memory, block buffer needs to be smaller
 #else
   #define BLOCK_BUFFER_SIZE 16 // maximize block buffer
 #endif
@@ -331,7 +301,7 @@ const unsigned int dropsegments=5; //everything with less than this number of st
 #define BUFSIZE 4
 
 
-// Firmware based and LCD controled retract
+// Firmware based retract
 // M207 and M208 can be used to define parameters for the retraction. 
 // The retraction can be called by the slicer using G10 and G11
 // until then, intended retractions can be detected by moves that only extrude and the direction. 
@@ -349,24 +319,6 @@ const unsigned int dropsegments=5; //everything with less than this number of st
   #define RETRACT_RECOVER_FEEDRATE 8     //default feedrate for recovering from retraction (mm/s)
 #endif
 
-//adds support for experimental filament exchange support M600; requires display
-#ifdef ULTIPANEL
-  #define FILAMENTCHANGEENABLE
-  #ifdef FILAMENTCHANGEENABLE
-    #define FILAMENTCHANGE_XPOS 3
-    #define FILAMENTCHANGE_YPOS 3
-    #define FILAMENTCHANGE_ZADD 10
-    #define FILAMENTCHANGE_FIRSTRETRACT -2
-    #define FILAMENTCHANGE_FINALRETRACT -100
-  #endif
-#endif
-
-#ifdef FILAMENTCHANGEENABLE
-  #ifdef EXTRUDER_RUNOUT_PREVENT
-    #error EXTRUDER_RUNOUT_PREVENT currently incompatible with FILAMENTCHANGE
-  #endif 
-#endif
- 
 //===========================================================================
 //=============================  Define Defines  ============================
 //===========================================================================

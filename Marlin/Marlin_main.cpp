@@ -36,7 +36,6 @@
   #endif
 #endif // ENABLE_AUTO_BED_LEVELING
 
-#include "ultralcd.h"
 #include "planner.h"
 #include "stepper.h"
 #include "temperature.h"
@@ -55,10 +54,6 @@
 
 #if NUM_SERVOS > 0
 #include "Servo.h"
-#endif
-
-#if defined(DIGIPOTSS_PIN) && DIGIPOTSS_PIN > -1
-#include <SPI.h>
 #endif
 
 #define VERSION_STRING  "1.0.2"
@@ -85,7 +80,6 @@
 // G92 - Set current position to coordinates given
 
 // M Codes
-// M0   - Unconditional stop - Wait for user to press a button on the LCD (Only if ULTRA_LCD is enabled)
 // M1   - Same as M0
 // M17  - Enable/Power all stepper motors
 // M18  - Disable all stepper motors; same as M84
@@ -149,9 +143,7 @@
 // M221 S<factor in percent>- set extrude factor override percentage
 // M226 P<pin number> S<pin state>- Wait until the specified pin reaches the state required
 // M240 - Trigger a camera to take a photograph
-// M250 - Set LCD contrast C<contrast value> (value 0..63)
 // M280 - set servo position absolute. P: servo index, S: angle or microseconds
-// M300 - Play beep sound S<frequency Hz> P<duration ms>
 // M301 - Set PID parameters P I and D
 // M302 - Allow cold extrudes, or set the minimum extrude S<temperature>.
 // M303 - PID relay autotune S<temperature> sets the target temperature. (default target temperature = 150C)
@@ -168,12 +160,9 @@
 // M502 - reverts to the default "factory settings".  You still need to store them in EEPROM afterwards if you want to.
 // M503 - print the current settings (from memory not from EEPROM)
 // M540 - Use S[0|1] to enable or disable the stop SD card print on endstop hit (requires ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
-// M600 - Pause for filament change X[pos] Y[pos] Z[relative lift] E[initial retract] L[later retract distance for removal]
 // M665 - set delta configurations
 // M666 - set delta endstop adjustment
 // M605 - Set dual x-carriage movement mode: S<mode> [ X<duplication x-offset> R<duplication temp offset> ]
-// M907 - Set digital trimpot motor current using axis codes.
-// M908 - Control digital trimpot directly.
 // M350 - Set microstepping mode.
 // M351 - Toggle MS1 MS2 pins directly.
 
@@ -278,14 +267,6 @@ int EtoPPressure=0;
   float retract_recover_length = RETRACT_RECOVER_LENGTH;
   float retract_recover_length_swap = RETRACT_RECOVER_LENGTH_SWAP;
   float retract_recover_feedrate = RETRACT_RECOVER_FEEDRATE;
-#endif
-
-#ifdef ULTIPANEL
-  #ifdef PS_DEFAULT_OFF
-    bool powersupply = false;
-  #else
-	  bool powersupply = true;
-  #endif
 #endif
 
   float delta[3] = {0.0, 0.0, 0.0};
@@ -581,16 +562,12 @@ void setup()
   servo_init();
   
 
-  lcd_init();
   _delay_ms(1000);	// wait 1sec to display the splash screen
 
   #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
     SET_OUTPUT(CONTROLLERFAN_PIN); //Set pin used for driver cooling fan
   #endif
 
-  #ifdef DIGIPOT_I2C
-    digipot_i2c_init();
-  #endif
 #ifdef Z_PROBE_SLED
   pinMode(SERVO0_PIN, OUTPUT);
   digitalWrite(SERVO0_PIN, LOW); // turn it off
@@ -643,7 +620,6 @@ void loop()
   manage_heater();
   manage_inactivity();
   checkHitEndstops();
-  lcd_update();
 }
 
 void get_command()
@@ -727,7 +703,6 @@ void get_command()
           case 3:
             if (Stopped == true) {
               SERIAL_ERRORLNPGM(MSG_ERR_STOPPED);
-              LCD_MESSAGEPGM(MSG_STOPPED);
             }
             break;
           default:
@@ -783,7 +758,6 @@ void get_command()
         sprintf_P(time, PSTR("%i hours %i minutes"),hours, minutes);
         SERIAL_ECHO_START;
         SERIAL_ECHOLN(time);
-        lcd_setstatus(time);
         card.printingHasFinished();
         card.checkautostart(true);
 
@@ -1180,7 +1154,6 @@ static void dock_sled(bool dock, int offset=0) {
  int z_loc;
  
  if (!((axis_known_position[X_AXIS]) && (axis_known_position[Y_AXIS]))) {
-   LCD_MESSAGEPGM(MSG_POSITION_UNKNOWN);
    SERIAL_ECHO_START;
    SERIAL_ECHOLNPGM(MSG_POSITION_UNKNOWN);
    return;
@@ -1249,7 +1222,6 @@ void process_commands()
       }
       break;
     case 4: // G4 dwell
-      LCD_MESSAGEPGM(MSG_DWELL);
       codenum = 0;
       if(code_seen('P')) codenum = code_value(); // milliseconds to wait
       if(code_seen('S')) codenum = code_value() * 1000; // seconds to wait
@@ -1260,7 +1232,6 @@ void process_commands()
       while(millis() < codenum) {
         manage_heater();
         manage_inactivity();
-        lcd_update();
       }
       break;
       #ifdef FWRETRACT
@@ -1346,7 +1317,6 @@ void process_commands()
             // Prevent user from running a G29 without first homing in X and Y
             if (! (axis_known_position[X_AXIS] && axis_known_position[Y_AXIS]) )
             {
-                LCD_MESSAGEPGM(MSG_POSITION_UNKNOWN);
                 SERIAL_ECHO_START;
                 SERIAL_ECHOLNPGM(MSG_POSITION_UNKNOWN);
                 break; // abort G29, since we don't know where we are
@@ -1547,61 +1517,7 @@ void process_commands()
   {
     switch( (int)code_value() )
     {
-#ifdef ULTIPANEL
-    case 0: // M0 - Unconditional stop - Wait for user button press on LCD
-    case 1: // M1 - Conditional stop - Wait for user button press on LCD
-    {
-      char *src = strchr_pointer + 2;
-
-      codenum = 0;
-
-      bool hasP = false, hasS = false;
-      if (code_seen('P')) {
-        codenum = code_value(); // milliseconds to wait
-        hasP = codenum > 0;
-      }
-      if (code_seen('S')) {
-        codenum = code_value() * 1000; // seconds to wait
-        hasS = codenum > 0;
-      }
-      starpos = strchr(src, '*');
-      if (starpos != NULL) *(starpos) = '\0';
-      while (*src == ' ') ++src;
-      if (!hasP && !hasS && *src != '\0') {
-        lcd_setstatus(src);
-      } else {
-        LCD_MESSAGEPGM(MSG_USERWAIT);
-      }
-
-      lcd_ignore_click();
-      st_synchronize();
-      previous_millis_cmd = millis();
-      if (codenum > 0){
-        codenum += millis();  // keep track of when we started waiting
-        while(millis() < codenum && !lcd_clicked()){
-          manage_heater();
-          manage_inactivity();
-          lcd_update();
-        }
-        lcd_ignore_click(false);
-      }else{
-          if (!lcd_detected())
-            break;
-        while(!lcd_clicked()){
-          manage_heater();
-          manage_inactivity();
-          lcd_update();
-        }
-      }
-      if (IS_SD_PRINTING)
-        LCD_MESSAGEPGM(MSG_RESUMING);
-      else
-        LCD_MESSAGEPGM(WELCOME_MSG);
-    }
-    break;
-#endif
     case 17:
-        LCD_MESSAGEPGM(MSG_NO_MOVE);
         enable_x();
         enable_y();
         enable_z();
@@ -1729,7 +1645,6 @@ void process_commands()
       sprintf_P(time, PSTR("%i min, %i sec"), min, sec);
       SERIAL_ECHO_START;
       SERIAL_ECHOLN(time);
-      lcd_setstatus(time);
       autotempShutdown();
       }
       break;
@@ -2116,7 +2031,6 @@ Sigma_Exit:
       if(setTargetedHotend(109)){
         break;
       }
-      LCD_MESSAGEPGM(MSG_HEATING);
       #ifdef AUTOTEMP
         autotemp_enabled=false;
       #endif
@@ -2179,7 +2093,6 @@ Sigma_Exit:
           }
           manage_heater();
           manage_inactivity();
-          lcd_update();
         #ifdef TEMP_RESIDENCY_TIME
             /* start/restart the TEMP_RESIDENCY_TIME timer whenever we reach target temp for the first time
               or when current temp falls outside the hysteresis after target temp was reached */
@@ -2191,14 +2104,12 @@ Sigma_Exit:
           }
         #endif //TEMP_RESIDENCY_TIME
         }
-        LCD_MESSAGEPGM(MSG_HEATING_COMPLETE);
         starttime=millis();
         previous_millis_cmd = millis();
       }
       break;
     case 190: // M190 - Wait for bed heater to reach target.
     #if defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
-        LCD_MESSAGEPGM(MSG_BED_HEATING);
         if (code_seen('S')) {
           setTargetBed(code_value());
           CooldownNoWait = true;
@@ -2227,9 +2138,7 @@ Sigma_Exit:
           }
           manage_heater();
           manage_inactivity();
-          lcd_update();
         }
-        LCD_MESSAGEPGM(MSG_BED_DONE);
         previous_millis_cmd = millis();
     #endif
         break;
@@ -2292,11 +2201,6 @@ Sigma_Exit:
             WRITE(SUICIDE_PIN, HIGH);
         #endif
 
-        #ifdef ULTIPANEL
-          powersupply = true;
-          LCD_MESSAGEPGM(WELCOME_MSG);
-          lcd_update();
-        #endif
         break;
       #endif
 
@@ -2315,11 +2219,6 @@ Sigma_Exit:
       #elif defined(PS_ON_PIN) && PS_ON_PIN > -1
         SET_OUTPUT(PS_ON_PIN);
         WRITE(PS_ON_PIN, PS_ON_ASLEEP);
-      #endif
-      #ifdef ULTIPANEL
-        powersupply = false;
-        LCD_MESSAGEPGM(MACHINE_NAME" "MSG_OFF".");
-        lcd_update();
       #endif
 	  break;
 
@@ -2394,7 +2293,6 @@ Sigma_Exit:
       starpos = (strchr(strchr_pointer + 5,'*'));
       if(starpos!=NULL)
         *(starpos)='\0';
-      lcd_setstatus(strchr_pointer + 5);
       break;
     case 114: // M114
       SERIAL_PROTOCOLPGM("X:");
@@ -2732,7 +2630,6 @@ Sigma_Exit:
             while(digitalRead(pin_number) != target){
               manage_heater();
               manage_inactivity();
-              lcd_update();
             }
           }
         }
@@ -2777,31 +2674,6 @@ Sigma_Exit:
       }
       break;
     #endif // NUM_SERVOS > 0
-
-    #if (LARGE_FLASH == true && ( BEEPER > 0 || defined(ULTRALCD) || defined(LCD_USE_I2C_BUZZER)))
-    case 300: // M300
-    {
-      int beepS = code_seen('S') ? code_value() : 110;
-      int beepP = code_seen('P') ? code_value() : 1000;
-      if (beepS > 0)
-      {
-        #if BEEPER > 0
-          tone(BEEPER, beepS);
-          delay(beepP);
-          noTone(BEEPER);
-        #elif defined(ULTRALCD)
-		  lcd_buzz(beepS, beepP);
-		#elif defined(LCD_USE_I2C_BUZZER)
-		  lcd_buzz(beepP, beepS);
-        #endif
-      }
-      else
-      {
-        delay(beepP);
-      }
-    }
-    break;
-    #endif // M300
 
     #ifdef PIDTEMP
     case 301: // M301
@@ -2881,18 +2753,6 @@ Sigma_Exit:
       #endif //chdk end if
      }
     break;
-#ifdef DOGLCD
-    case 250: // M250  Set LCD contrast value: C<value> (value 0..63)
-     {
-	  if (code_seen('C')) {
-	   lcd_setcontrast( ((int)code_value())&63 );
-          }
-          SERIAL_PROTOCOLPGM("lcd contrast value: ");
-          SERIAL_PROTOCOL(lcd_contrast);
-          SERIAL_PROTOCOLLN("");
-     }
-    break;
-#endif
     #ifdef PREVENT_DANGEROUS_EXTRUDE
     case 302: // allow cold extrudes, or set the minimum extrude temperature
     {
@@ -3061,170 +2921,6 @@ case 404:  //M404 Enter the nominal filament width (3mm, 1.75mm ) N<3.0> or disp
     }
     #endif // CUSTOM_M_CODE_SET_Z_PROBE_OFFSET
 
-    #ifdef FILAMENTCHANGEENABLE
-    case 600: //Pause for filament change X[pos] Y[pos] Z[relative lift] E[initial retract] L[later retract distance for removal]
-    {
-        float target[4];
-        float lastpos[4];
-        target[X_AXIS]=current_position[X_AXIS];
-        target[Y_AXIS]=current_position[Y_AXIS];
-        target[Z_AXIS]=current_position[Z_AXIS];
-        target[E_AXIS]=current_position[E_AXIS];
-        lastpos[X_AXIS]=current_position[X_AXIS];
-        lastpos[Y_AXIS]=current_position[Y_AXIS];
-        lastpos[Z_AXIS]=current_position[Z_AXIS];
-        lastpos[E_AXIS]=current_position[E_AXIS];
-        //retract by E
-        if(code_seen('E'))
-        {
-          target[E_AXIS]+= code_value();
-        }
-        else
-        {
-          #ifdef FILAMENTCHANGE_FIRSTRETRACT
-            target[E_AXIS]+= FILAMENTCHANGE_FIRSTRETRACT ;
-          #endif
-        }
-        plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], feedrate/60, active_extruder);
-
-        //lift Z
-        if(code_seen('Z'))
-        {
-          target[Z_AXIS]+= code_value();
-        }
-        else
-        {
-          #ifdef FILAMENTCHANGE_ZADD
-            target[Z_AXIS]+= FILAMENTCHANGE_ZADD ;
-          #endif
-        }
-        plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], feedrate/60, active_extruder);
-
-        //move xy
-        if(code_seen('X'))
-        {
-          target[X_AXIS]+= code_value();
-        }
-        else
-        {
-          #ifdef FILAMENTCHANGE_XPOS
-            target[X_AXIS]= FILAMENTCHANGE_XPOS ;
-          #endif
-        }
-        if(code_seen('Y'))
-        {
-          target[Y_AXIS]= code_value();
-        }
-        else
-        {
-          #ifdef FILAMENTCHANGE_YPOS
-            target[Y_AXIS]= FILAMENTCHANGE_YPOS ;
-          #endif
-        }
-
-        plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], feedrate/60, active_extruder);
-
-        if(code_seen('L'))
-        {
-          target[E_AXIS]+= code_value();
-        }
-        else
-        {
-          #ifdef FILAMENTCHANGE_FINALRETRACT
-            target[E_AXIS]+= FILAMENTCHANGE_FINALRETRACT ;
-          #endif
-        }
-
-        plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], feedrate/60, active_extruder);
-
-        //finish moves
-        st_synchronize();
-        //disable extruder steppers so filament can be removed
-        disable_e0();
-        disable_e1();
-        disable_e2();
-        delay(100);
-        LCD_ALERTMESSAGEPGM(MSG_FILAMENTCHANGE);
-        uint8_t cnt=0;
-        while(!lcd_clicked()){
-          cnt++;
-          manage_heater();
-          manage_inactivity(true);
-          lcd_update();
-          if(cnt==0)
-          {
-          #if BEEPER > 0
-            SET_OUTPUT(BEEPER);
-
-            WRITE(BEEPER,HIGH);
-            delay(3);
-            WRITE(BEEPER,LOW);
-            delay(3);
-          #else
-			#if !defined(LCD_FEEDBACK_FREQUENCY_HZ) || !defined(LCD_FEEDBACK_FREQUENCY_DURATION_MS)
-              lcd_buzz(1000/6,100);
-			#else
-			  lcd_buzz(LCD_FEEDBACK_FREQUENCY_DURATION_MS,LCD_FEEDBACK_FREQUENCY_HZ);
-			#endif
-          #endif
-          }
-        }
-
-        //return to normal
-        if(code_seen('L'))
-        {
-          target[E_AXIS]+= -code_value();
-        }
-        else
-        {
-          #ifdef FILAMENTCHANGE_FINALRETRACT
-            target[E_AXIS]+=(-1)*FILAMENTCHANGE_FINALRETRACT ;
-          #endif
-        }
-        current_position[E_AXIS]=target[E_AXIS]; //the long retract of L is compensated by manual filament feeding
-        plan_set_e_position(current_position[E_AXIS]);
-        plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], feedrate/60, active_extruder); //should do nothing
-        plan_buffer_line(lastpos[X_AXIS], lastpos[Y_AXIS], target[Z_AXIS], target[E_AXIS], feedrate/60, active_extruder); //move xy back
-        plan_buffer_line(lastpos[X_AXIS], lastpos[Y_AXIS], lastpos[Z_AXIS], target[E_AXIS], feedrate/60, active_extruder); //move z back
-        plan_buffer_line(lastpos[X_AXIS], lastpos[Y_AXIS], lastpos[Z_AXIS], lastpos[E_AXIS], feedrate/60, active_extruder); //final untretract
-    }
-    break;
-    #endif //FILAMENTCHANGEENABLE
-
-    case 907: // M907 Set digital trimpot motor current using axis codes.
-    {
-      #if defined(DIGIPOTSS_PIN) && DIGIPOTSS_PIN > -1
-        for(int i=0;i<NUM_AXIS;i++) if(code_seen(axis_codes[i])) digipot_current(i,code_value());
-        if(code_seen('B')) digipot_current(4,code_value());
-        if(code_seen('S')) for(int i=0;i<=4;i++) digipot_current(i,code_value());
-      #endif
-      #ifdef MOTOR_CURRENT_PWM_XY_PIN
-        if(code_seen('X')) digipot_current(0, code_value());
-      #endif
-      #ifdef MOTOR_CURRENT_PWM_Z_PIN
-        if(code_seen('Z')) digipot_current(1, code_value());
-      #endif
-      #ifdef MOTOR_CURRENT_PWM_E_PIN
-        if(code_seen('E')) digipot_current(2, code_value());
-      #endif
-      #ifdef DIGIPOT_I2C
-        // this one uses actual amps in floating point
-        for(int i=0;i<NUM_AXIS;i++) if(code_seen(axis_codes[i])) digipot_i2c_set_current(i, code_value());
-        // for each additional extruder (named B,C,D,E..., channels 4,5,6,7...)
-        for(int i=NUM_AXIS;i<DIGIPOT_I2C_NUM_CHANNELS;i++) if(code_seen('B'+i-NUM_AXIS)) digipot_i2c_set_current(i, code_value());
-      #endif
-    }
-    break;
-    case 908: // M908 Control digital trimpot directly.
-    {
-      #if defined(DIGIPOTSS_PIN) && DIGIPOTSS_PIN > -1
-        uint8_t channel,current;
-        if(code_seen('P')) channel=code_value();
-        if(code_seen('S')) current=code_value();
-        digitalPotWrite(channel, current);
-      #endif
-    }
-    break;
     case 350: // M350 Set microstepping mode. Warning: Steps per unit remains unchanged. S code sets stepping mode for all drivers.
     {
       #if defined(X_MS1_PIN) && X_MS1_PIN > -1
@@ -3255,7 +2951,6 @@ case 404:  //M404 Enter the nominal filament width (3mm, 1.75mm ) N<3.0> or disp
     break;
     case 999: // M999: Restart after being stopped
       Stopped = false;
-      lcd_reset_alert_level();
       gcode_LastN = Stopped_gcode_LastN;
       FlushSerialRequestResend();
     break;
@@ -3640,7 +3335,6 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) //default argument s
        {
           enquecommand_P((PSTR("G28")));
           homeDebounceCount++;
-          LCD_ALERTMESSAGEPGM(MSG_AUTO_HOME);
        }
        else if (homeDebounceCount < HOME_DEBOUNCE_DELAY)
        {
@@ -3698,14 +3392,7 @@ void kill()
 #endif
   SERIAL_ERROR_START;
   SERIAL_ERRORLNPGM(MSG_ERR_KILLED);
-  LCD_ALERTMESSAGEPGM(MSG_KILLED);
   
-  // FMC small patch to update the LCD before ending
-  sei();   // enable interrupts
-  for ( int i=5; i--; lcd_update())
-  {
-     delay(200);	
-  }
   cli();   // disable interrupts
   suicide();
   while(1) { /* Intentionally left empty */ } // Wait for reset
@@ -3719,7 +3406,6 @@ void Stop()
     Stopped_gcode_LastN = gcode_LastN; // Save last g_code for restart
     SERIAL_ERROR_START;
     SERIAL_ERRORLNPGM(MSG_ERR_STOPPED);
-    LCD_MESSAGEPGM(MSG_STOPPED);
   }
 }
 

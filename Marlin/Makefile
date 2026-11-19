@@ -50,9 +50,6 @@ UPLOAD_PORT        ?= /dev/arduino
 #Directory used to build files in, contains all the build files, from object files to the final hex file.
 BUILD_DIR          ?= applet
 
-# This defines whether Liquid_TWI2 support will be built
-LIQUID_TWI2        ?= 0
-
 # this defines if Wire is needed
 WIRE               ?= 0
 
@@ -84,13 +81,7 @@ TARGET = $(notdir $(CURDIR))
 VPATH = .
 VPATH += $(BUILD_DIR)
 VPATH += $(HARDWARE_SRC)
-VPATH += $(ARDUINO_INSTALL_DIR)/libraries/LiquidCrystal
 VPATH += $(ARDUINO_INSTALL_DIR)/libraries/SPI
-ifeq ($(LIQUID_TWI2), 1)
-VPATH += $(ARDUINO_INSTALL_DIR)/libraries/Wire
-VPATH += $(ARDUINO_INSTALL_DIR)/libraries/Wire/utility
-VPATH += $(ARDUINO_INSTALL_DIR)/libraries/LiquidTWI2
-endif
 ifeq ($(WIRE), 1)
 VPATH += $(ARDUINO_INSTALL_DIR)/libraries/Wire
 VPATH += $(ARDUINO_INSTALL_DIR)/libraries/Wire/utility
@@ -105,15 +96,8 @@ CXXSRC = WMath.cpp WString.cpp Print.cpp Marlin_main.cpp	\
 	MarlinSerial.cpp Sd2Card.cpp SdBaseFile.cpp SdFatUtil.cpp	\
 	SdFile.cpp SdVolume.cpp motion_control.cpp planner.cpp		\
 	stepper.cpp temperature.cpp cardreader.cpp ConfigurationStore.cpp \
-	watchdog.cpp SPI.cpp Servo.cpp Tone.cpp ultralcd.cpp digipot_mcp4451.cpp \
+	watchdog.cpp SPI.cpp Servo.cpp Tone.cpp \
 	vector_3.cpp qr_solve.cpp
-ifeq ($(LIQUID_TWI2), 0)
-CXXSRC += LiquidCrystal.cpp
-else
-SRC += twi.c
-CXXSRC += Wire.cpp LiquidTWI2.cpp
-endif
-
 ifeq ($(WIRE), 1)
 SRC += twi.c
 CXXSRC += Wire.cpp

@@ -25,13 +25,9 @@
 #include "stepper.h"
 #include "planner.h"
 #include "temperature.h"
-#include "ultralcd.h"
 #include "language.h"
 #include "cardreader.h"
 #include "speed_lookuptable.h"
-#if defined(DIGIPOTSS_PIN) && DIGIPOTSS_PIN > -1
-#include <SPI.h>
-#endif
 
 
 //===========================================================================
@@ -71,9 +67,6 @@ static volatile bool endstop_y_hit=false;
 static volatile bool endstop_z_hit=false;
 #ifdef ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED
 bool abort_on_endstop_hit = false;
-#endif
-#ifdef MOTOR_CURRENT_PWM_XY_PIN
-  int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
 #endif
 
 static bool old_x_min_endstop=false;
@@ -177,15 +170,12 @@ void checkHitEndstops()
    SERIAL_ECHOPGM(MSG_ENDSTOPS_HIT);
    if(endstop_x_hit) {
      SERIAL_ECHOPAIR(" X:",(float)endstops_trigsteps[X_AXIS]/axis_steps_per_unit[X_AXIS]);
-     LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "X");
    }
    if(endstop_y_hit) {
      SERIAL_ECHOPAIR(" Y:",(float)endstops_trigsteps[Y_AXIS]/axis_steps_per_unit[Y_AXIS]);
-     LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "Y");
    }
    if(endstop_z_hit) {
      SERIAL_ECHOPAIR(" Z:",(float)endstops_trigsteps[Z_AXIS]/axis_steps_per_unit[Z_AXIS]);
-     LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "Z");
    }
    SERIAL_ECHOLN("");
    endstop_x_hit=false;
@@ -717,7 +707,6 @@ ISR(TIMER1_COMPA_vect)
 
 void st_init()
 {
-  digipot_init(); //Initialize Digipot Motor Current
   microstep_init(); //Initialize Microstepping Pins
 
   //Initialize Dir Pins
@@ -891,7 +880,6 @@ void st_synchronize()
     while( blocks_queued()) {
     manage_heater();
     manage_inactivity();
-    lcd_update();
   }
 }
 
@@ -1037,53 +1025,6 @@ void babystep(const uint8_t axis,const bool direction)
   }
 }
 #endif //BABYSTEPPING
-
-void digitalPotWrite(int address, int value) // From Arduino DigitalPotControl example
-{
-  #if defined(DIGIPOTSS_PIN) && DIGIPOTSS_PIN > -1
-    digitalWrite(DIGIPOTSS_PIN,LOW); // take the SS pin low to select the chip
-    SPI.transfer(address); //  send in the address and value via SPI:
-    SPI.transfer(value);
-    digitalWrite(DIGIPOTSS_PIN,HIGH); // take the SS pin high to de-select the chip:
-    //delay(10);
-  #endif
-}
-
-void digipot_init() //Initialize Digipot Motor Current
-{
-  #if defined(DIGIPOTSS_PIN) && DIGIPOTSS_PIN > -1
-    const uint8_t digipot_motor_current[] = DIGIPOT_MOTOR_CURRENT;
-
-    SPI.begin();
-    pinMode(DIGIPOTSS_PIN, OUTPUT);
-    for(int i=0;i<=4;i++)
-      //digitalPotWrite(digipot_ch[i], digipot_motor_current[i]);
-      digipot_current(i,digipot_motor_current[i]);
-  #endif
-  #ifdef MOTOR_CURRENT_PWM_XY_PIN
-    pinMode(MOTOR_CURRENT_PWM_XY_PIN, OUTPUT);
-    pinMode(MOTOR_CURRENT_PWM_Z_PIN, OUTPUT);
-    pinMode(MOTOR_CURRENT_PWM_E_PIN, OUTPUT);
-    digipot_current(0, motor_current_setting[0]);
-    digipot_current(1, motor_current_setting[1]);
-    digipot_current(2, motor_current_setting[2]);
-    //Set timer5 to 31khz so the PWM of the motor power is as constant as possible. (removes a buzzing noise)
-    TCCR5B = (TCCR5B & ~(_BV(CS50) | _BV(CS51) | _BV(CS52))) | _BV(CS50);
-  #endif
-}
-
-void digipot_current(uint8_t driver, int current)
-{
-  #if defined(DIGIPOTSS_PIN) && DIGIPOTSS_PIN > -1
-    const uint8_t digipot_ch[] = DIGIPOT_CHANNELS;
-    digitalPotWrite(digipot_ch[driver], current);
-  #endif
-  #ifdef MOTOR_CURRENT_PWM_XY_PIN
-  if (driver == 0) analogWrite(MOTOR_CURRENT_PWM_XY_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
-  if (driver == 1) analogWrite(MOTOR_CURRENT_PWM_Z_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
-  if (driver == 2) analogWrite(MOTOR_CURRENT_PWM_E_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
-  #endif
-}
 
 void microstep_init()
 {

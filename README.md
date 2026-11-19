@@ -6,8 +6,8 @@ Marlin 1.0.2-3 firmware reduced to a clean, English-only build for **delta
 ## What is included
 
 - Delta kinematics (`calculate_delta`, delta calibration, endstop adjustment, M665/M666)
-- English-only LCD and serial messages (`Marlin/language.h`)
-- ATmega2560 / ATmega1280 boards: RAMPS 1.x, RAMBo, RUMBA, Megatronics, Megatronics v2, Minitronics, Azteeg X3 / X3 Pro, Elefu RA
+- English-only serial messages (`Marlin/language.h`)
+- RAMPS 1.x boards only (ATmega2560 / ATmega1280); no LCD or panel support
 - Delta default configuration in `Marlin/Configuration.h` and `Marlin/Configuration_adv.h`
 
 ## Building
