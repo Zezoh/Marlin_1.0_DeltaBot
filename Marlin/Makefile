@@ -30,7 +30,7 @@
 #     upload your program to the Arduino board.
 #
 # Note that all settings are set with ?=, this means you can override them
-# from the commandline with "make HARDWARE_MOTHERBOARD=301" for example
+# from the commandline with "make HARDWARE_MOTHERBOARD=34" for example
 
 # This defined the board you are compiling for (see Configuration.h for the options)
 HARDWARE_MOTHERBOARD ?= 33
