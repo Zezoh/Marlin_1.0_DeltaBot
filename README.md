@@ -29,6 +29,10 @@ Make (avr-gcc + an Arduino core): `cd Marlin && make ARDUINO_INSTALL_DIR=<arduin
 Select your electronics with `MOTHERBOARD` in `Marlin/Configuration.h`
 (board ids are listed in `Marlin/boards.h`) and tune the `DELTA_*` values for your printer.
 
+## Tests
+
+`tests/run_tests.sh` runs the kinematics, arc, planner speed and FAT tests on the host (see `tests/README.md`).
+
 ## License
 
 GPL v3, see `LICENSE`.
