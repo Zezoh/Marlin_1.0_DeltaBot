@@ -164,7 +164,7 @@ void PID_autotune(float temp, int extruder, int ncycles)
   long bias, d;
   float Ku, Tu;
   float Kp, Ki, Kd;
-  float max = 0, min = 10000;
+  float max_temp = 0, min_temp = 10000;
 
 #if (defined(EXTRUDER_0_AUTO_FAN_PIN) && EXTRUDER_0_AUTO_FAN_PIN > -1) || \
     (defined(EXTRUDER_1_AUTO_FAN_PIN) && EXTRUDER_1_AUTO_FAN_PIN > -1)
@@ -202,8 +202,8 @@ void PID_autotune(float temp, int extruder, int ncycles)
 
       input = (extruder<0)?current_temperature_bed:current_temperature[extruder];
 
-      max=max(max,input);
-      min=min(min,input);
+      max_temp=max(max_temp,input);
+      min_temp=min(min_temp,input);
 
       #if (defined(EXTRUDER_0_AUTO_FAN_PIN) && EXTRUDER_0_AUTO_FAN_PIN > -1) || \
           (defined(EXTRUDER_1_AUTO_FAN_PIN) && EXTRUDER_1_AUTO_FAN_PIN > -1)
@@ -222,7 +222,7 @@ void PID_autotune(float temp, int extruder, int ncycles)
             soft_pwm[extruder] = (bias - d) >> 1;
           t1=millis();
           t_high=t1 - t2;
-          max=temp;
+          max_temp=temp;
         }
       }
       if(heating == false && input < temp) {
@@ -238,10 +238,10 @@ void PID_autotune(float temp, int extruder, int ncycles)
 
             SERIAL_PROTOCOLPGM(" bias: "); SERIAL_PROTOCOL(bias);
             SERIAL_PROTOCOLPGM(" d: "); SERIAL_PROTOCOL(d);
-            SERIAL_PROTOCOLPGM(" min: "); SERIAL_PROTOCOL(min);
-            SERIAL_PROTOCOLPGM(" max: "); SERIAL_PROTOCOLLN(max);
+            SERIAL_PROTOCOLPGM(" min: "); SERIAL_PROTOCOL(min_temp);
+            SERIAL_PROTOCOLPGM(" max: "); SERIAL_PROTOCOLLN(max_temp);
             if(cycles > 2) {
-              Ku = (4.0*d)/(3.14159*(max-min)/2.0);
+              Ku = (4.0*d)/(3.14159*(max_temp-min_temp)/2.0);
               Tu = ((float)(t_low + t_high)/1000.0);
               SERIAL_PROTOCOLPGM(" Ku: "); SERIAL_PROTOCOL(Ku);
               SERIAL_PROTOCOLPGM(" Tu: "); SERIAL_PROTOCOLLN(Tu);
@@ -275,7 +275,7 @@ void PID_autotune(float temp, int extruder, int ncycles)
           else
             soft_pwm[extruder] = (bias + d) >> 1;
           cycles++;
-          min=temp;
+          min_temp=temp;
         }
       }
     }
