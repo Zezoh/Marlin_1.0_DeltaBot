@@ -173,6 +173,11 @@ int main(int argc, char **argv) {
     probe_g33(6, 10, false); double m, w = flatness(70, m); transient_fast = transient_slow_once = false;
     printf("8. vibration triggers at the start of moves: bed error %.3f mm\n", w);
     CHECK(delta_calibrated && w < 0.12, "calibration with start-of-move triggers (%.3f)", w); }
+  // 9. a badly built machine: the bed is several mm off and tilted in the first pass
+  { firmware_defaults(); machine(92.0, 210, 0.3, -0.3, 0.2, 3.0, -2.0, 1.0); home_all_axes(); double m, w0 = flatness(70, m); homes = 0;
+    probe_g33(6, 10, false); double w = flatness(70, m);
+    printf("9. start %.2f mm off: after G33 %.3f mm, %d homings\n", w0, w, homes);
+    CHECK(delta_calibrated && w < 0.12, "calibration of a badly built machine (%.3f)", w); }
   printf(fails ? "probe: %d FAILED\n" : "probe: all ok\n", fails);
   return fails ? 1 : 0;
 }

@@ -286,7 +286,7 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
   SERIAL_ECHO_START; SERIAL_ECHOPGM("G33 start: "); SERIAL_ECHOLN("");
   report_geometry();
 
-  const float probe_radius = DELTA_PRINTABLE_RADIUS;
+  const float probe_radius = CALIB_PROBE_RADIUS_MM;
   float prev_rms = 1e9, rms = 0;
   uint8_t verdict = 0;  // 1 calibrated, 2 accepted (noise limited), 3 uncertified, 4 failed, 5 cancelled
   bool changed = false;
@@ -298,11 +298,16 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
     for (int a = 0; a < 3; a++) { g0.ang[a] = delta_tower_angle[a]; g0.off[a] = 0; }
 
     bool probed = true;
+    uint8_t failed_point = 0;
+    float last_z = 0;   // the next point is expected at the height of the previous one
     for (uint8_t i = 0; i < points && probed; i++) {
       float xy[2], z;
       dcal_point_xy(i, points, probe_radius, xy);
-      probed = probe_point(xy[0], xy[1], 0.0, pass == 1 ? CALIB_FIRST_PASS_DEPTH_MM : CALIB_PASS_DEPTH_MM, z);
+      if (i == 0) probed = probe_point(xy[0], xy[1], 0.0, pass == 1 ? CALIB_FIRST_PASS_DEPTH_MM : CALIB_PASS_DEPTH_MM, z);
+      else probed = probe_point(xy[0], xy[1], last_z, CALIB_POINT_DEPTH_MM, z);
+      if (!probed) failed_point = i;
       if (probed) {
+        last_z = z;
         err[i] = -(z - probe_z_offset);
         SERIAL_ECHO_START;
         SERIAL_ECHOPAIR("G33 pass ", (unsigned long)pass);
@@ -311,7 +316,14 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
         SERIAL_ECHOLN("");
       }
     }
-    if (!probed) { verdict = (ui_cancel_requested() || IsStopped()) ? 5 : 4; break; }
+    if (!probed) {
+      verdict = (ui_cancel_requested() || IsStopped()) ? 5 : 4;
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPAIR("G33 pass ", (unsigned long)pass);
+      SERIAL_ECHOPAIR(" stopped at point ", (unsigned long)failed_point);
+      SERIAL_ECHOLN("");
+      break;
+    }
 
     DeltaGeometry out;
     if (!dcal_solve(g0, points, probe_radius, err, factors, out, &rms, &rms_after)) { verdict = 4; break; }
