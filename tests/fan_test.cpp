@@ -15,7 +15,6 @@ static bool stopped = false, moving = false, idle = true;
 static int pwm = 0, safety_pin = 0, request = 0;
 
 unsigned long millis() { return now_ms; }
-void analogWrite(int pin, int duty) { if (pin == 9) pwm = duty; }
 int sim_read(int) { return 0; }
 float degHotend(uint8_t) { return temp; }
 float degTargetHotend(uint8_t) { return target; }
@@ -28,7 +27,7 @@ extern "C" void sim_write(int pin, int v) { if (pin == 8) safety_pin = v; }
 
 static int fails = 0;
 #define CHECK(c, ...) do { if (!(c)) { printf("FAIL: "); printf(__VA_ARGS__); printf("\n"); fails++; } } while (0)
-static void run(unsigned long ms) { for (unsigned long i = 0; i < ms; i += 10) { now_ms += 10; fan_service(); } }
+static void run(unsigned long ms) { for (unsigned long i = 0; i < ms; i += 10) { now_ms += 10; fan_service(); } pwm = fan_output(); }
 static void reset() {
   now_ms += 100000; temp = 20; target = 0; stopped = moving = false; idle = true; request = 0; fanSpeed = 0;
   card.sdprinting = card.paused = false; pwm = 0; safety_pin = 0;
@@ -36,6 +35,9 @@ static void reset() {
 }
 
 int main() {
+  // the slow PWM: 64 steps, 0 and 255 are plain off and on, a low duty is never rounded to off
+  CHECK(fan_pwm_steps(0) == 0 && fan_pwm_steps(255) == 64 && fan_pwm_steps(1) == 1 && fan_pwm_steps(254) == 64 - 0 + 0 || fan_pwm_steps(254) == 64, "steps at the ends");
+  CHECK(fan_pwm_steps(120) == 30 && fan_pwm_steps(128) == 32 && fan_pwm_steps(60) == 15, "steps in between (%d %d %d)", fan_pwm_steps(120), fan_pwm_steps(128), fan_pwm_steps(60));
   // a cold hotend: M106 / M107 as they are, with a kick start
   reset();
   CHECK(pwm == 0, "cold, no request: off (%d)", pwm);

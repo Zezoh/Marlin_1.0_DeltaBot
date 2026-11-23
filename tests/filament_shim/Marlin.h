@@ -14,7 +14,6 @@
 #define RUNOUT_PIN 14
 #define FAN_PIN 9
 #define FAN_SAFETY_PIN 8
-void analogWrite(int pin, int duty);
 extern int fanSpeed;
 #define HIGH 1
 #define LOW 0

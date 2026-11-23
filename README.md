@@ -70,7 +70,8 @@ The button does nothing while a host (OctoPrint, Pronterface...) is printing, ex
 The fan on D9 does what `M106`/`M107` say (the speed of the move being executed) and cools the heat break of the hotend
 (`Marlin/fan.cpp`, `FAN_*` in `Configuration_adv.h`):
 
-- a fan that starts runs at full power for 0.4 s first
+- a fan that starts runs at full power for 0.4 s first. The PWM is slow (64 steps at 976 Hz, 15 Hz, from timer 2): a fan with its own
+  driver electronics only hums, and does not turn, with a PWM of hundreds of Hz
 - hotend at 50 degC or above (or its target): while printing the fan never runs below PWM 120 (M106 can go higher); idle it
   runs at full power until the hotend and its target are below 49 degC
 - temperature unknown (sensor gone) or the printer stopped by an error: full power

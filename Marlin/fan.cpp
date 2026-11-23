@@ -9,6 +9,8 @@
 //   FAN_SAFETY_ON_C to FAN_SAFETY_OFF_C, and when the temperature is unknown or the printer is stopped); the fan on
 //   FAN_PIN is the print fan: what M106/M107 ask for, full power during a cooldown, no safety floor.
 //  A fan that starts gets full power for FAN_KICK_MS so that it spins up before the PWM duty is applied.
+//  The PWM is slow (64 steps at 976 Hz = 15 Hz, from the overflow of timer 2): a fan with its own driver electronics
+//  only hums when it gets a PWM of hundreds of Hz.
 //  A cooldown starts when the heater is shut down or a print ends or is cancelled (fan_start_cooldown()); it ends when
 //  the hotend and its target are below FAN_SAFETY_OFF_C. It also forgets the M106 of the print, as an M107 would.
 
@@ -26,13 +28,45 @@ static unsigned long last_activity = 0;
 static unsigned char output = 0;
 static bool forget_request = false;
 
+#define FAN_PWM_STEPS 64
+
 unsigned char fan_output() { return output; }
+
+// the on time of a duty, in steps of the slow PWM
+unsigned char fan_pwm_steps(unsigned char duty)
+{
+  if (duty == 0) return 0;
+  if (duty == 255) return FAN_PWM_STEPS;
+  unsigned char steps = ((unsigned int)duty * FAN_PWM_STEPS + 127) / 255;
+  return steps ? steps : 1;
+}
+
+static volatile unsigned char pwm_steps = 0;
+static volatile unsigned char pwm_phase = 0;
+
+#ifdef __AVR__
+// Timer 2 runs free at 16 MHz / 64 / 256 = 976 Hz; every overflow is one step of the slow PWM on FAN_PIN
+ISR(TIMER2_OVF_vect)
+{
+  unsigned char steps = pwm_steps;
+  if (steps == 0) { WRITE(FAN_PIN, LOW); return; }
+  if (steps >= FAN_PWM_STEPS) { WRITE(FAN_PIN, HIGH); return; }
+  unsigned char phase = pwm_phase + 1;
+  if (phase >= FAN_PWM_STEPS) phase = 0;
+  pwm_phase = phase;
+  WRITE(FAN_PIN, phase < steps ? HIGH : LOW);
+}
+#endif
 
 static void apply(unsigned char duty)
 {
   if (duty == output) return;
   output = duty;
-  analogWrite(FAN_PIN, duty);   // 255 and 0 are plain high and low
+  CRITICAL_SECTION_START;
+  pwm_steps = fan_pwm_steps(duty);
+  pwm_phase = 0;
+  CRITICAL_SECTION_END;
+  WRITE(FAN_PIN, duty ? HIGH : LOW);   // from here the interrupt takes over
 }
 
 // A duty with the kick start
@@ -66,7 +100,13 @@ static void apply_full()
 void fan_init()
 {
   SET_OUTPUT(FAN_PIN);
-  analogWrite(FAN_PIN, 0);
+  WRITE(FAN_PIN, LOW);
+  #ifdef __AVR__
+    TCCR2A &= ~(_BV(COM2B1) | _BV(COM2B0));                    // the pin is not driven by the timer
+    TCCR2A |= _BV(WGM20) | _BV(WGM21);                         // fast PWM mode: it counts 0..255 and overflows
+    TCCR2B = (TCCR2B & ~(_BV(WGM22) | _BV(CS22) | _BV(CS21) | _BV(CS20))) | _BV(CS22);   // prescaler 64
+    TIMSK2 |= _BV(TOIE2);
+  #endif
   #if FAN_DUAL
     SET_OUTPUT(FAN_SAFETY_PIN);
     WRITE(FAN_SAFETY_PIN, LOW);

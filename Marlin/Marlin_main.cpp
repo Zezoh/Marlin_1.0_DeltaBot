@@ -1444,7 +1444,8 @@ void kill()
 {
   cli(); // Stop interrupts
   disable_heater();
-  analogWrite(FAN_PIN, 255);   // cool what is hot
+  TIMSK2 &= ~_BV(TOIE2);
+  WRITE(FAN_PIN, HIGH);        // cool what is hot
   #if FAN_DUAL
     WRITE(FAN_SAFETY_PIN, HIGH);
   #endif
