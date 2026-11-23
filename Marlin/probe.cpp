@@ -131,8 +131,8 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
   if (current_position[Z_AXIS] > start) {
     wait_ms(PROBE_SETTLE_MS);
     if (stroke(x, y, current_position[Z_AXIS], start, PROBE_FEED_FAST_MM_S, true, zz)) {
-      // contact before the slow approach: the bed is higher than expected. Lift and approach slowly from above it.
-      bed_guess = zz;
+      // Contact before the slow approach: a bump of the fast move, or a bed higher than expected. Either way, lift
+      // and approach slowly from above that point; the depth limit stays relative to where the bed was expected.
       start = zz + PROBE_SLOW_APPROACH_MM + 1.0;
       stroke(x, y, zz, start, PROBE_RETRACT_FEED_MM_S, false, zz);
     }
@@ -144,8 +144,8 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
     wait_ms(PROBE_SETTLE_MS);
     float from = current_position[Z_AXIS];
     if (stroke(x, y, from, bed_guess - depth, PROBE_FEED_MM_S, true, zz)) {
-      if (have_deepest && zz > deepest_contact + PROBE_FALSE_TRIGGER_MM) {
-        note_false_trigger();            // in mid-air: noise or vibration, not the bed
+      if ((from - zz < PROBE_MIN_STROKE_MM) || (have_deepest && zz > deepest_contact + PROBE_FALSE_TRIGGER_MM)) {
+        note_false_trigger();            // right at the start of the move, or in mid-air: vibration or noise, not the bed
         stroke(x, y, zz, zz + 1.0, PROBE_RETRACT_FEED_MM_S, false, zz);
         continue;
       } else {
@@ -162,6 +162,13 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
       stroke(x, y, zz, zz + 1.5, PROBE_RETRACT_FEED_MM_S, false, zz);   // lift a little, probe again
     } else {
       // no contact within the depth limit
+      SERIAL_ERROR_START;
+      SERIAL_ERRORLNPGM("probe: no contact");
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPAIR("the nozzle went down to Z", zz);
+      SERIAL_ECHOPAIR(", the FSR changed by at most ", (unsigned long)st_probe_peak());
+      SERIAL_ECHOPAIR(" counts, it needs ", (unsigned long)fsr_sensitivity);
+      SERIAL_ECHOLN("");
       return false;
     }
   }
@@ -279,7 +286,7 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
   SERIAL_ECHO_START; SERIAL_ECHOPGM("G33 start: "); SERIAL_ECHOLN("");
   report_geometry();
 
-  const float probe_radius = DELTA_PRINTABLE_RADIUS;
+  const float probe_radius = CALIB_PROBE_RADIUS_MM;
   float prev_rms = 1e9, rms = 0;
   uint8_t verdict = 0;  // 1 calibrated, 2 accepted (noise limited), 3 uncertified, 4 failed, 5 cancelled
   bool changed = false;
@@ -291,11 +298,16 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
     for (int a = 0; a < 3; a++) { g0.ang[a] = delta_tower_angle[a]; g0.off[a] = 0; }
 
     bool probed = true;
+    uint8_t failed_point = 0;
+    float last_z = 0;   // the next point is expected at the height of the previous one
     for (uint8_t i = 0; i < points && probed; i++) {
       float xy[2], z;
       dcal_point_xy(i, points, probe_radius, xy);
-      probed = probe_point(xy[0], xy[1], 0.0, pass == 1 ? CALIB_FIRST_PASS_DEPTH_MM : CALIB_PASS_DEPTH_MM, z);
+      if (i == 0) probed = probe_point(xy[0], xy[1], 0.0, pass == 1 ? CALIB_FIRST_PASS_DEPTH_MM : CALIB_PASS_DEPTH_MM, z);
+      else probed = probe_point(xy[0], xy[1], last_z, CALIB_POINT_DEPTH_MM, z);
+      if (!probed) failed_point = i;
       if (probed) {
+        last_z = z;
         err[i] = -(z - probe_z_offset);
         SERIAL_ECHO_START;
         SERIAL_ECHOPAIR("G33 pass ", (unsigned long)pass);
@@ -304,7 +316,14 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
         SERIAL_ECHOLN("");
       }
     }
-    if (!probed) { verdict = (ui_cancel_requested() || IsStopped()) ? 5 : 4; break; }
+    if (!probed) {
+      verdict = (ui_cancel_requested() || IsStopped()) ? 5 : 4;
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPAIR("G33 pass ", (unsigned long)pass);
+      SERIAL_ECHOPAIR(" stopped at point ", (unsigned long)failed_point);
+      SERIAL_ECHOLN("");
+      break;
+    }
 
     DeltaGeometry out;
     if (!dcal_solve(g0, points, probe_radius, err, factors, out, &rms, &rms_after)) { verdict = 4; break; }

@@ -123,6 +123,7 @@
 #define PROBE_TRAVEL_FEED_MM_S 150.0   // moves between probe points
 #define PROBE_TRAVEL_Z_MM 30.0         // height of those moves
 #define PROBE_TRAVEL_Z_FEED_MM_S 80.0  // vertical moves between points
+#define PROBE_MIN_STROKE_MM 0.3        // a contact sooner than this after a stroke started is vibration, not the bed
 #define PROBE_SETTLE_MS 100            // wait after a move before the probe is armed
 #define PROBE_AVERAGE_SAMPLES 3        // strokes in agreement that make a probed point
 #define PROBE_AVERAGE_TOLERANCE_MM 0.05
@@ -139,6 +140,8 @@
 #define CALIB_MAX_PASSES 6             // probe, solve, re-home, verify: at most this many probe passes
 #define CALIB_FIRST_PASS_DEPTH_MM 10.0 // how far below the expected bed the first pass looks for it
 #define CALIB_PASS_DEPTH_MM 5.0
+#define CALIB_POINT_DEPTH_MM 6.0       // after the first point of a pass, how far below the previous point's height to look
+#define CALIB_PROBE_RADIUS_MM 75.0     // the outer ring of probe points (the inner ring is half of it): inside the bed edge
 #define CALIB_MAX_RADIUS_DELTA_MM 15.0 // the solution may move the delta radius by this much from where G33 started,
 #define CALIB_MAX_HEIGHT_DELTA_MM 20.0 // the home height by this much,
 #define CALIB_MAX_TRIM_MM 15.0         // an endstop trim up to this much,

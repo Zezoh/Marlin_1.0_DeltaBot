@@ -24,6 +24,8 @@ static bool armed = false, hit = false;
 static unsigned long now_ms = 0;
 static float contact_noise = 0;
 static int strokes = 0, homes = 0;
+static bool transient_fast = false, transient_slow_once = false, slow_used = false;   // the FSR fires at the start of a move (vibration)
+static float feed_now = 0;
 
 static float frand() { return 2.0f * rand() / RAND_MAX - 1.0f; }
 static float true_z(const float tower[3]) {
@@ -61,7 +63,7 @@ unsigned int st_probe_peak() { return 0; }
 
 static float target[3]; static bool queued = false;
 void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed, const uint8_t &, float) {
-  target[0] = x; target[1] = y; target[2] = z; queued = true;
+  target[0] = x; target[1] = y; target[2] = z; queued = true; feed_now = feed;
 }
 void st_synchronize() {
   if (!queued) return;
@@ -72,7 +74,9 @@ void st_synchronize() {
   for (long k = 1; k <= n; k++) {
     float q[3]; for (int a = 0; a < 3; a++) q[a] = lround((p[a] + (target[a] - p[a]) * k / n) * 80) / 80.0f;
     float z = true_z(q);
-    if (armed && z <= bed_z + contact_noise * frand()) {
+    bool bump = armed && k <= 10 && ((transient_fast && feed_now > 20) || (transient_slow_once && feed_now < 20 && !slow_used));
+    if (bump && feed_now < 20) slow_used = true;
+    if (bump || (armed && z <= bed_z + contact_noise * frand())) {
       for (int a = 0; a < 3; a++) believed[a] = q[a];
       hit = true; strokes++;
       return;
@@ -82,7 +86,8 @@ void st_synchronize() {
   }
   for (int a = 0; a < 3; a++) believed[a] = target[a];
 }
-void move_to(float x, float y, float z, float feed) {   // moves between probe points: no probing, straight in Cartesian space
+void move_to(float x, float y, float z, float feed) {
+  slow_used = false;   // moves between probe points: no probing, straight in Cartesian space
   float c[3] = {x, y, z}; calculate_delta(c);
   for (int a = 0; a < 3; a++) believed[a] = lround(delta[a] * 80) / 80.0f;
   current_position[0] = x; current_position[1] = y; current_position[2] = z;
@@ -163,6 +168,16 @@ int main(int argc, char **argv) {
   { firmware_defaults(); machine(90, 210, 0, 0, 0, 0, 0, 0); bed_z = 0.37; home_all_axes(); move_to(20, -10, 30, 100); st_synchronize();
     g_verbose = 1; printf("7. G30 with the bed 0.37 mm higher than the firmware thinks: "); probe_g30(); g_verbose = argc > 1;
     CHECK(fabs(current_position[2] - 0.37 - 1.5) < 0.3 || current_position[2] > 0, "left lifted"); }
+  // 8. the FSR fires when the fast move starts and when the slow one starts: no wrong heights
+  { firmware_defaults(); machine(90.9, 210, 0.1, -0.1, 0.0, 0.5, -0.4, 0.2); transient_fast = transient_slow_once = true; home_all_axes();
+    probe_g33(6, 10, false); double m, w = flatness(70, m); transient_fast = transient_slow_once = false;
+    printf("8. vibration triggers at the start of moves: bed error %.3f mm\n", w);
+    CHECK(delta_calibrated && w < 0.12, "calibration with start-of-move triggers (%.3f)", w); }
+  // 9. a badly built machine: the bed is several mm off and tilted in the first pass
+  { firmware_defaults(); machine(92.0, 210, 0.3, -0.3, 0.2, 3.0, -2.0, 1.0); home_all_axes(); double m, w0 = flatness(70, m); homes = 0;
+    probe_g33(6, 10, false); double w = flatness(70, m);
+    printf("9. start %.2f mm off: after G33 %.3f mm, %d homings\n", w0, w, homes);
+    CHECK(delta_calibrated && w < 0.12, "calibration of a badly built machine (%.3f)", w); }
   printf(fails ? "probe: %d FAILED\n" : "probe: all ok\n", fails);
   return fails ? 1 : 0;
 }
