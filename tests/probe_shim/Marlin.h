@@ -7,6 +7,8 @@
 #include <math.h>
 #define OVERSAMPLENR 16
 #define PSTR(x) x
+#define CRITICAL_SECTION_START
+#define CRITICAL_SECTION_END
 #define PROGMEM
 #include "Configuration.h"
 #define sq(x) ((x)*(x))
