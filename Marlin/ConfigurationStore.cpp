@@ -162,6 +162,23 @@ void Config_PrintSettings()
 	SERIAL_ECHOPAIR("  M420 S",(unsigned long)mesh_active );
 	SERIAL_ECHOPAIR(" Z",mesh_fade_height );
 	SERIAL_ECHOLN("");
+	if (mesh_have) {
+		SERIAL_ECHO_START;
+		SERIAL_ECHOLNPGM("Bed mesh points (index X Y height above Z0, mm):");
+		for (uint8_t p = 0; p < MESH_POINTS; p++) {
+			float xy[2];
+			mesh_point_xy(p, xy);
+			SERIAL_ECHO_START;
+			SERIAL_ECHOPAIR("  ", (unsigned long)p);
+			SERIAL_ECHOPAIR(" X", xy[0]);
+			SERIAL_ECHOPAIR(" Y", xy[1]);
+			SERIAL_ECHOPAIR(" Z", mesh_z[p]);
+			SERIAL_ECHOLN("");
+		}
+	} else {
+		SERIAL_ECHO_START;
+		SERIAL_ECHOLNPGM("Bed mesh: none stored (run G29)");
+	}
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM("PID settings:");
     SERIAL_ECHO_START;
