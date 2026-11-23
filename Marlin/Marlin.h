@@ -143,8 +143,9 @@ void get_coordinates();
 void calculate_delta(float cartesian[3]);
 void home_all_axes();                                          // G28
 void move_to(float x, float y, float z, float feed_mm_s);      // queue a straight move of the nozzle
-void cancel_print();
-void keep_steppers_on();                                       // restart the idle timer that releases the steppers                                           // stop the SD print, heater off, home
+void cancel_print();                                           // stop the SD print, heater off, home
+void keep_steppers_on();                                       // restart the idle timer that releases the steppers
+bool machine_idle();                                           // no G-code waiting and no move queued
 bool delta_reachable(const float cartesian[3]);
 extern float delta[3];
 void prepare_move();

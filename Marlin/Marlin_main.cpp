@@ -608,7 +608,8 @@ XYZ_CONSTS_FROM_CONFIG(float, home_retract_mm, HOME_RETRACT_MM);
 
 static void axis_is_at_home(int axis) {
   current_position[axis] = base_home_pos(axis) + add_homing[axis];
-  min_pos[axis] =          base_min_pos(axis) + add_homing[axis];
+  // the bed stays at Z = 0: the home offset of Z moves the home height, not the lowest position
+  min_pos[axis] =          base_min_pos(axis) + (axis == Z_AXIS ? 0 : add_homing[axis]);
   max_pos[axis] =          base_max_pos(axis) + add_homing[axis];
 }
 
@@ -729,6 +730,8 @@ void move_to(float x, float y, float z, float feed_mm_s)
 }
 
 void keep_steppers_on() { previous_millis_cmd = millis(); }
+
+bool machine_idle() { return buflen == 0 && !blocks_queued(); }
 
 void cancel_print()
 {
@@ -1366,9 +1369,8 @@ void process_commands()
     case 206: // M206 additional homing offset
       for(int8_t i=0; i < 3; i++)
       {
-        if(code_seen(axis_codes[i])) add_homing[i] = code_value();
+        if(code_seen(axis_codes[i])) { add_homing[i] = code_value(); delta_calibrated = false; }
       }
-      delta_calibrated = false;
       break;
 	case 665: // M665 set delta configurations L<diagonal_rod> R<delta_radius> S<segments_per_sec>
 		if(code_seen('L')) {
@@ -1383,20 +1385,20 @@ void process_commands()
 		if(code_seen('A')) delta_tower_angle[0] = code_value();  // tower angle corrections, degrees
 		if(code_seen('B')) delta_tower_angle[1] = code_value();
 		if(code_seen('C')) delta_tower_angle[2] = code_value();
-		delta_calibrated = false;
+		if(code_seen('L') || code_seen('R') || code_seen('A') || code_seen('B') || code_seen('C')) delta_calibrated = false;
 		recalc_delta_settings(delta_radius, delta_diagonal_rod);
 		break;
     case 666: // M666 set delta endstop adjustemnt
       for(int8_t i=0; i < 3; i++)
       {
-        if(code_seen(axis_codes[i])) endstop_adj[i] = code_value();
+        if(code_seen(axis_codes[i])) { endstop_adj[i] = code_value(); delta_calibrated = false; }
       }
-      delta_calibrated = false;
       break;
     case 851: // M851 Z<mm> - how high above the bed the nozzle is when the probe fires
       if(code_seen('Z')) {
         float z = code_value();
         if(z >= -PROBE_MAX_OFFSET_MM && z <= PROBE_MAX_OFFSET_MM) probe_z_offset = z;
+        else { SERIAL_ERROR_START; SERIAL_ERRORLNPGM("M851: Z must be within +-5 mm"); }
       }
       SERIAL_ECHO_START;
       SERIAL_ECHOPAIR("Probe Z offset: ", probe_z_offset);

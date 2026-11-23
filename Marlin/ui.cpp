@@ -88,7 +88,9 @@ void ui_run()
       starttime = millis();
     } else
     #endif
-    if (!delta_calibrated) {
+    if (!machine_idle() || target_temperature[0] > 0) {
+      // a host is printing (or something is heating): the button does not start anything
+    } else if (!delta_calibrated) {
       enquecommand_P(PSTR("G33"));
     }
     #ifdef SDSUPPORT
