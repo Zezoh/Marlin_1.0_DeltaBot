@@ -56,12 +56,6 @@ long position[NUM_AXIS];  // rescaled from extern when axis_steps_per_unit are c
 static float previous_speed[NUM_AXIS];  // Speed of previous path line segment
 static float previous_nominal_speed;    // Nominal speed of previous path line segment
 
-#ifdef AUTOTEMP
-float autotemp_max = 250;
-float autotemp_min = 210;
-float autotemp_factor = 0.1;
-bool autotemp_enabled = false;
-#endif
 
 //===========================================================================
 //================= semi-private variables, used in inline functions ========
@@ -275,36 +269,6 @@ void plan_init()
   previous_nominal_speed = 0.0;
 }
 
-#ifdef AUTOTEMP
-// Adjust the hotend temperature to the fastest extrusion in the buffer
-static void getHighESpeed()
-{
-  static float oldt = 0;
-  if (!autotemp_enabled) return;
-  if (degTargetHotend0() + 2 < autotemp_min) return;  // probably temperature set to zero.
-
-  float high = 0.0;
-  uint8_t block_index = block_buffer_tail;
-
-  while (block_index != block_buffer_head) {
-    block_t *block = &block_buffer[block_index];
-    if (block->steps_x != 0 || block->steps_y != 0 || block->steps_z != 0) {
-      float se = (float(block->steps_e) / float(block->step_event_count)) * block->nominal_speed;  // mm/sec
-      if (se > high) high = se;
-    }
-    block_index = NEXT_BLOCK_INDEX(block_index);
-  }
-
-  float t = autotemp_min + high*autotemp_factor;
-  if (t < autotemp_min) t = autotemp_min;
-  if (t > autotemp_max) t = autotemp_max;
-  if (oldt > t) {
-    t = AUTOTEMP_OLDWEIGHT*oldt + (1 - AUTOTEMP_OLDWEIGHT)*t;
-  }
-  oldt = t;
-  setTargetHotend0(t);
-}
-#endif
 
 // Disable the axes that have nothing left to do and set the fan speed of the block being executed
 void check_axes_activity()
@@ -352,15 +316,8 @@ void check_axes_activity()
       fan_kick_end = 0;
     }
   #endif // FAN_KICKSTART_TIME
-  #ifdef FAN_SOFT_PWM
-    fanSpeedSoftPwm = tail_fan_speed;
-  #else
     analogWrite(FAN_PIN, tail_fan_speed);
-  #endif // !FAN_SOFT_PWM
 #endif // FAN_PIN > -1
-#ifdef AUTOTEMP
-  getHighESpeed();
-#endif
 }
 
 // Add a new linear movement to the buffer. x, y and z are the carriage positions in mm
@@ -417,7 +374,6 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   block->steps_y = labs(target[Y_AXIS] - position[Y_AXIS]);
   block->steps_z = labs(target[Z_AXIS] - position[Z_AXIS]);
   block->steps_e = labs(target[E_AXIS] - position[E_AXIS]);
-  block->steps_e *= volumetric_multiplier[active_extruder];
   block->steps_e *= extrudemultiply;
   block->steps_e /= 100;
   block->step_event_count = max(block->steps_x, max(block->steps_y, max(block->steps_z, block->steps_e)));
@@ -454,18 +410,7 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
       {
         enable_e0();
         extruder_last_move[0] = BLOCK_BUFFER_SIZE*2;
-#if EXTRUDERS > 1
-        if (extruder_last_move[1] == 0) disable_e1();
-#endif
       }
-#if EXTRUDERS > 1
-      else
-      {
-        enable_e1();
-        extruder_last_move[1] = BLOCK_BUFFER_SIZE*2;
-        if (extruder_last_move[0] == 0) disable_e0();
-      }
-#endif
     }
     else  // enable all
     {
@@ -488,7 +433,7 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   delta_mm[X_AXIS] = (target[X_AXIS] - position[X_AXIS]) / axis_steps_per_unit[X_AXIS];
   delta_mm[Y_AXIS] = (target[Y_AXIS] - position[Y_AXIS]) / axis_steps_per_unit[Y_AXIS];
   delta_mm[Z_AXIS] = (target[Z_AXIS] - position[Z_AXIS]) / axis_steps_per_unit[Z_AXIS];
-  delta_mm[E_AXIS] = ((target[E_AXIS] - position[E_AXIS]) / axis_steps_per_unit[E_AXIS]) * volumetric_multiplier[active_extruder] * extrudemultiply / 100.0;
+  delta_mm[E_AXIS] = ((target[E_AXIS] - position[E_AXIS]) / axis_steps_per_unit[E_AXIS]) * extrudemultiply / 100.0;
   if (block->steps_x <= dropsegments && block->steps_y <= dropsegments && block->steps_z <= dropsegments)
   {
     block->millimeters = fabs(delta_mm[E_AXIS]);

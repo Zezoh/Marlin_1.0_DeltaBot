@@ -30,10 +30,7 @@
 #     upload your program to the Arduino board.
 #
 # Note that all settings are set with ?=, this means you can override them
-# from the commandline with "make HARDWARE_MOTHERBOARD=34" for example
-
-# This defined the board you are compiling for (see Configuration.h for the options)
-HARDWARE_MOTHERBOARD ?= 33
+# from the commandline with "make ARDUINO_INSTALL_DIR=/path/to/arduino" for example
 
 # Arduino source install directory, and version number
 ARDUINO_INSTALL_DIR  ?= /Applications/Arduino.app/Contents/Resources/Java
@@ -136,9 +133,6 @@ CWARN = -Wall -Wstrict-prototypes
 CTUNING = -funsigned-char -funsigned-bitfields -fpack-struct \
 	-fshort-enums -w -ffunction-sections -fdata-sections \
 	-DARDUINO=$(ARDUINO_VERSION)
-ifneq ($(HARDWARE_MOTHERBOARD),)
-CTUNING += -DMOTHERBOARD=${HARDWARE_MOTHERBOARD}
-endif
 #CEXTRA = -Wa,-adhlns=$(<:.c=.lst)
 CEXTRA = -fno-use-cxa-atexit
 

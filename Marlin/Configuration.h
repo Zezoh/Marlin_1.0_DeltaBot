@@ -1,8 +1,6 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#include "boards.h"
-
 // Delta printer firmware: basic settings (board, delta geometry, temperature sensors, axis scaling, endstops).
 // Advanced settings can be found in Configuration_adv.h
 
@@ -19,12 +17,6 @@
 
 // This determines the communication speed of the printer
 #define BAUDRATE 250000
-
-// The following define selects which electronics board you have.
-// Please choose the name from boards.h that matches your setup
-#ifndef MOTHERBOARD
-  #define MOTHERBOARD BOARD_RAMPS_13_EFB
-#endif
 
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
 // You can use an online service to generate a random UUID. (eg http://www.uuidgenerator.net/version4)
@@ -139,15 +131,6 @@
 // so you shouldn't use it unless you are OK with PWM on your bed.  (see the comment on enabling PIDTEMPBED)
 #define MAX_BED_POWER 255 // limits duty cycle to bed; 255=full current
 
-#ifdef PIDTEMPBED
-// Example: 120v 250W silicone heater into 4mm borosilicate glass
-//from FOPDT model - kp=.39 Tp=405 Tdead=66, Tc set to 79.2, aggressive factor of .15 (vs .1, 1, 10)
-    #define  DEFAULT_bedKp 10.00
-    #define  DEFAULT_bedKi .023
-    #define  DEFAULT_bedKd 305.4
-
-// FIND YOUR OWN: "M303 E-1 C8 S90" to run autotune on the bed at 90 degreesC for 8 cycles.
-#endif // PIDTEMPBED
 
 
 
@@ -298,9 +281,6 @@ const bool Z_MAX_ENDSTOP_INVERTING = true;
 // However, control resolution will be halved for each increment;
 // at zero value, there are 128 effective control positions.
 #define SOFT_PWM_SCALE 0
-
-// Default filament diameter in mm (3.0 or 1.75) used for volumetric extrusion (M200)
-#define DEFAULT_NOMINAL_FILAMENT_DIA  3.0
 
 #include "Configuration_adv.h"
 #include "thermistortables.h"

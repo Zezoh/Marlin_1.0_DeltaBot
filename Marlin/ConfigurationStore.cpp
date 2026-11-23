@@ -39,7 +39,7 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
 // wrong data being written to the variables.
 // ALSO:  always make sure the variables in the Store and retrieve sections are in the same order.
 
-#define EEPROM_VERSION "V20"
+#define EEPROM_VERSION "V21"
 
 void Config_StoreSettings() 
 {
@@ -82,11 +82,6 @@ void Config_StoreSettings()
   #endif
 
   // Save filament sizes
-  EEPROM_WRITE_VAR(i, volumetric_enabled);
-  EEPROM_WRITE_VAR(i, filament_size[0]);
-  #if EXTRUDERS > 1
-  EEPROM_WRITE_VAR(i, filament_size[1]);
-  #endif
   
   char ver2[4]=EEPROM_VERSION;
   i=EEPROM_OFFSET;
@@ -234,12 +229,6 @@ void Config_RetrieveSettings()
         EEPROM_READ_VAR(i,Ki);
         EEPROM_READ_VAR(i,Kd);
 
-		EEPROM_READ_VAR(i, volumetric_enabled);
-		EEPROM_READ_VAR(i, filament_size[0]);
-#if EXTRUDERS > 1
-		EEPROM_READ_VAR(i, filament_size[1]);
-#endif
-		calculate_volumetric_multipliers();
 		// Call updatePID (similar to when we have processed M301)
 		updatePID();
         SERIAL_ECHO_START;
@@ -298,12 +287,6 @@ void Config_ResetDefault()
     
 #endif//PIDTEMP
 
-	volumetric_enabled = false;
-	filament_size[0] = DEFAULT_NOMINAL_FILAMENT_DIA;
-#if EXTRUDERS > 1
-	filament_size[1] = DEFAULT_NOMINAL_FILAMENT_DIA;
-#endif
-	calculate_volumetric_multipliers();
 
 SERIAL_ECHO_START;
 SERIAL_ECHOLNPGM("Hardcoded Default Settings Loaded");

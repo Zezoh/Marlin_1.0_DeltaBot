@@ -54,9 +54,6 @@ volatile long endstops_trigsteps[3] = {0, 0, 0};
 static volatile bool endstop_x_hit = false;
 static volatile bool endstop_y_hit = false;
 static volatile bool endstop_z_hit = false;
-#ifdef ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED
-bool abort_on_endstop_hit = false;
-#endif
 
 #if defined(X_MAX_PIN) && X_MAX_PIN > -1
 static bool old_x_max_endstop = false;
@@ -174,16 +171,6 @@ void checkHitEndstops()
     }
     SERIAL_ECHOLN("");
     endstops_hit_on_purpose();
-#if defined(ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED) && defined(SDSUPPORT)
-    if (abort_on_endstop_hit)
-    {
-      card.sdprinting = false;
-      card.closefile();
-      quickStop();
-      setTargetHotend0(0);
-      setTargetHotend1(0);
-    }
-#endif
   }
 }
 

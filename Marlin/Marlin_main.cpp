@@ -44,92 +44,14 @@
 #include "pins_arduino.h"
 #include "math.h"
 
-// look here for descriptions of G-codes: http://linuxcnc.org/handbook/gcode/g-code.html
-// http://objects.reprap.org/wiki/Mendel_User_Manual:_RepRapGCodes
-
-// Implemented codes
-//-------------------
-// G0  -> G1
-// G1  - Coordinated Movement X Y Z E
-// G2  - CW ARC
-// G3  - CCW ARC
-// G4  - Dwell S<seconds> or P<milliseconds>
-// G28 - Home all Axis (a delta always homes all three towers)
-// G90 - Use Absolute Coordinates
-// G91 - Use Relative Coordinates
-// G92 - Set current position to coordinates given
-
-// T<n> - Select extruder n
-
-// M Codes
-// M17  - Enable/Power all stepper motors
-// M18  - Disable all stepper motors; same as M84
-// M20  - List SD card
-// M21  - Init SD card
-// M22  - Release SD card
-// M23  - Select SD file (M23 filename.g)
-// M24  - Start/resume SD print
-// M25  - Pause SD print
-// M26  - Set SD position in bytes (M26 S12345)
-// M27  - Report SD print status
-// M28  - Start SD write (M28 filename.g)
-// M29  - Stop SD write
-// M30  - Delete file from SD (M30 filename.g)
-// M31  - Output time since last M109 or SD card start to serial
-// M32  - Select file and start SD print (Can be used _while_ printing from SD card files):
-//        syntax "M32 /path/filename#", or "M32 S<startpos bytes> !filename#"
-//        Call gcode file : "M32 P !filename#" and return to caller file after finishing (similar to #include).
-//        The '#' is necessary when calling from within sd files, as it stops buffer prereading
-// M42  - Change pin status via gcode Use M42 Px Sy to set pin x to value y, when omitting Px the onboard led will be used.
-// M80  - Turn on Power Supply
-// M81  - Turn off Power Supply
-// M82  - Set E codes absolute (default)
-// M83  - Set E codes relative while in Absolute Coordinates (G90) mode
-// M84  - Disable steppers until next move,
-//        or use S<seconds> to specify an inactivity timeout, after which the steppers will be disabled.  S0 to disable the timeout.
-// M85  - Set inactivity shutdown timer with parameter S<seconds>. To disable set zero (default)
-// M92  - Set axis_steps_per_unit - same syntax as G92
-// M104 - Set extruder target temp
-// M105 - Read current temp
-// M106 - Fan on
-// M107 - Fan off
-// M109 - Sxxx Wait for extruder current temp to reach target temp. Waits only when heating
-//        Rxxx Wait for extruder current temp to reach target temp. Waits when heating and cooling
-//        IF AUTOTEMP is enabled, S<mintemp> B<maxtemp> F<factor>. Exit autotemp by any M109 without F
-// M112 - Emergency stop
-// M114 - Output current position to serial port
-// M115 - Capabilities string
-// M117 - Accepted and ignored (there is no display)
-// M119 - Output Endstop status to serial port
-// M120 - Enable endstop detection
-// M121 - Disable endstop detection
-// M140 - Set bed target temp
-// M190 - Sxxx Wait for bed current temp to reach target temp. Waits only when heating
-//        Rxxx Wait for bed current temp to reach target temp. Waits when heating and cooling
-// M200 D<millimeters>- set filament diameter and set E axis units to cubic millimeters (use D0 to set back to millimeters).
-// M201 - Set max acceleration in units/s^2 for print moves (M201 X1000 Y1000)
-// M203 - Set maximum feedrate that your machine can sustain (M203 X200 Y200 Z300 E10000) in mm/sec
-// M204 - Set default acceleration: S normal moves T filament only moves (M204 S3000 T7000) in mm/sec^2
-// M205 - Advanced settings: minimum travel speed S=while printing T=travel only, X= maximum xy jerk, Z=maximum Z jerk, E=maximum E jerk
-// M206 - Set additional homing offset
-// M218 - Set hotend offset (in mm): T<extruder_number> X<offset_on_X> Y<offset_on_Y>
-// M220 S<factor in percent>- set speed factor override percentage
-// M221 S<factor in percent>- set extrude factor override percentage
-// M226 P<pin number> S<pin state>- Wait until the specified pin reaches the state required
-// M301 - Set PID parameters P I and D
-// M302 - Allow cold extrudes, or set the minimum extrude S<temperature>.
-// M303 - PID relay autotune S<temperature> sets the target temperature. (default target temperature = 150C)
-// M304 - Set bed PID parameters P I and D (if PIDTEMPBED is enabled)
-// M400 - Finish all moves
-// M500 - stores parameters in EEPROM
-// M501 - reads parameters from EEPROM (if you need reset them after you changed them temporarily).
-// M502 - reverts to the default "factory settings".  You still need to store them in EEPROM afterwards if you want to.
-// M503 - print the current settings (from memory not from EEPROM)
-// M540 - Use S[0|1] to enable or disable the stop SD card print on endstop hit (requires ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
-// M665 - set delta configurations: L<diagonal rod> R<delta radius> S<segments per second>
-// M666 - set delta endstop adjustment
-// M928 - Start SD logging (M928 filename.g) - ended by M29
-// M999 - Restart after being stopped by error
+// G-codes: G0/G1 move, G2/G3 arc, G4 dwell, G28 home, G29 bed mesh, G30 probe, G33 delta calibration,
+//          G90/G91 absolute/relative, G92 set E
+// M-codes: M17/M18/M84 steppers, M20-M32/M928 SD card, M80/M81, M82/M83, M92 steps per unit, M104/M109 hotend,
+//          M105 temperatures, M106/M107 fan, M112 emergency stop, M114 position, M115 firmware, M119 endstops,
+//          M201-M205 limits, M206 home offset, M220/M221 speed and flow, M301 PID, M302 cold extrusion, M303 PID autotune,
+//          M400 finish moves, M412 runout sensor, M420 bed mesh, M500-M503 settings, M600 filament change,
+//          M665/M666 delta geometry, M851 probe offset, M974 FSR sensitivity, M999 restart after an error.
+// Accepted and ignored: M117, M140, M190 (there is no display and no heated bed), T0.
 
 //Stepper Movement Variables
 
@@ -149,22 +71,6 @@ bool axis_relative_modes[] = AXIS_RELATIVE_MODES;
 int feedmultiply=100; //100->1 200->2
 int saved_feedmultiply;
 int extrudemultiply=100; //100->1 200->2
-int extruder_multiply[EXTRUDERS] = {100
-  #if EXTRUDERS > 1
-    , 100
-  #endif
-};
-bool volumetric_enabled = false;
-float filament_size[EXTRUDERS] = { DEFAULT_NOMINAL_FILAMENT_DIA
-  #if EXTRUDERS > 1
-      , DEFAULT_NOMINAL_FILAMENT_DIA
-  #endif
-};
-float volumetric_multiplier[EXTRUDERS] = {1.0
-  #if EXTRUDERS > 1
-    , 1.0
-  #endif
-};
 float current_position[NUM_AXIS] = { 0.0, 0.0, 0.0, 0.0 };
 float add_homing[3]={0,0,0};
 float endstop_adj[3]={0,0,0};
@@ -174,14 +80,6 @@ float max_pos[3] = { X_MAX_POS, Y_MAX_POS, Z_MAX_POS };
 bool axis_known_position[3] = {false, false, false};
 
 // Extruder offset
-#if EXTRUDERS > 1
-  #define NUM_EXTRUDER_OFFSETS 2 // only in XY plane
-float extruder_offset[NUM_EXTRUDER_OFFSETS][EXTRUDERS] = {
-#if defined(EXTRUDER_OFFSET_X) && defined(EXTRUDER_OFFSET_Y)
-  EXTRUDER_OFFSET_X, EXTRUDER_OFFSET_Y
-#endif
-};
-#endif
 uint8_t active_extruder = 0;
 int fanSpeed=0;
 
@@ -229,20 +127,17 @@ static int serial_count = 0;
 static boolean comment_mode = false;
 static char *strchr_pointer; // just a pointer to find chars in the command string like X, Y, Z, E, etc
 
-const int sensitive_pins[] = SENSITIVE_PINS; // Sensitive pin list for M42
 
 //static float tt = 0;
 //static float bt = 0;
 
 //Inactivity shutdown variables
 static unsigned long previous_millis_cmd = 0;
-static unsigned long max_inactive_time = 0;
 static unsigned long stepper_inactive_time = DEFAULT_STEPPER_DEACTIVE_TIME*1000l;
 
 unsigned long starttime=0;
 unsigned long stoptime=0;
 
-static uint8_t tmp_extruder;
 
 
 bool Stopped=false;
@@ -256,7 +151,6 @@ bool target_direction;
 //===========================================================================
 
 void get_arc_coordinates();
-bool setTargetedHotend(int code);
 
 void serial_echopair_P(const char *s_P, float v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
@@ -351,9 +245,6 @@ void setup()
   filament_sensor_init();
   
 
-  #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
-    SET_OUTPUT(CONTROLLERFAN_PIN); //Set pin used for driver cooling fan
-  #endif
 
 }
 
@@ -993,125 +884,36 @@ void process_commands()
       sprintf_P(time, PSTR("%i min, %i sec"), min, sec);
       SERIAL_ECHO_START;
       SERIAL_ECHOLN(time);
-      autotempShutdown();
       }
       break;
-    case 42: //M42 -Change pin status via gcode
-      if (code_seen('S'))
-      {
-        int pin_status = code_value();
-        int pin_number = LED_PIN;
-        if (code_seen('P') && pin_status >= 0 && pin_status <= 255)
-          pin_number = code_value();
-        for(int8_t i = 0; i < (int8_t)(sizeof(sensitive_pins)/sizeof(int)); i++)
-        {
-          if (sensitive_pins[i] == pin_number)
-          {
-            pin_number = -1;
-            break;
-          }
-        }
-      #if defined(FAN_PIN) && FAN_PIN > -1
-        if (pin_number == FAN_PIN)
-          fanSpeed = pin_status;
-      #endif
-        if (pin_number > -1)
-        {
-          pinMode(pin_number, OUTPUT);
-          digitalWrite(pin_number, pin_status);
-          analogWrite(pin_number, pin_status);
-        }
-      }
-     break;
-
     case 104: // M104
-      if(setTargetedHotend(104)){
-        break;
-      }
-      if (code_seen('S')) setTargetHotend(code_value(), tmp_extruder);
+      if (code_seen('S')) setTargetHotend(code_value(), 0);
       break;
     case 112: //  M112 -Emergency Stop
       kill();
       break;
-    case 140: // M140 set bed temp
-      if (code_seen('S')) setTargetBed(code_value());
-      break;
-    case 105 : // M105
-      if(setTargetedHotend(105)){
-        break;
-        }
-      #if defined(TEMP_0_PIN) && TEMP_0_PIN > -1
-        SERIAL_PROTOCOLPGM("ok T:");
-        SERIAL_PROTOCOL_F(degHotend(tmp_extruder),1);
-        SERIAL_PROTOCOLPGM(" /");
-        SERIAL_PROTOCOL_F(degTargetHotend(tmp_extruder),1);
-        #if defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
-          SERIAL_PROTOCOLPGM(" B:");
-          SERIAL_PROTOCOL_F(degBed(),1);
-          SERIAL_PROTOCOLPGM(" /");
-          SERIAL_PROTOCOL_F(degTargetBed(),1);
-        #endif //TEMP_BED_PIN
-        for (int8_t cur_extruder = 0; cur_extruder < EXTRUDERS; ++cur_extruder) {
-          SERIAL_PROTOCOLPGM(" T");
-          SERIAL_PROTOCOL(cur_extruder);
-          SERIAL_PROTOCOLPGM(":");
-          SERIAL_PROTOCOL_F(degHotend(cur_extruder),1);
-          SERIAL_PROTOCOLPGM(" /");
-          SERIAL_PROTOCOL_F(degTargetHotend(cur_extruder),1);
-        }
-      #else
-        SERIAL_ERROR_START;
-        SERIAL_ERRORLNPGM(MSG_ERR_NO_THERMISTORS);
-      #endif
-
-        SERIAL_PROTOCOLPGM(" @:");
-      #ifdef EXTRUDER_WATTS
-        SERIAL_PROTOCOL((EXTRUDER_WATTS * getHeaterPower(tmp_extruder))/127);
-        SERIAL_PROTOCOLPGM("W");
-      #else
-        SERIAL_PROTOCOL(getHeaterPower(tmp_extruder));
-      #endif
-
-        SERIAL_PROTOCOLPGM(" B@:");
-      #ifdef BED_WATTS
-        SERIAL_PROTOCOL((BED_WATTS * getHeaterPower(-1))/127);
-        SERIAL_PROTOCOLPGM("W");
-      #else
-        SERIAL_PROTOCOL(getHeaterPower(-1));
-      #endif
-
-        SERIAL_PROTOCOLLN("");
+    case 105: // M105
+      SERIAL_PROTOCOLPGM("ok T:");
+      SERIAL_PROTOCOL_F(degHotend(0),1);
+      SERIAL_PROTOCOLPGM(" /");
+      SERIAL_PROTOCOL_F(degTargetHotend(0),1);
+      SERIAL_PROTOCOLPGM(" @:");
+      SERIAL_PROTOCOL(getHeaterPower(0));
+      SERIAL_PROTOCOLLN("");
       return;
-      break;
     case 109:
     {// M109 - Wait for extruder heater to reach target.
-      if(setTargetedHotend(109)){
-        break;
-      }
-      #ifdef AUTOTEMP
-        autotemp_enabled=false;
-      #endif
       if (code_seen('S')) {
-        setTargetHotend(code_value(), tmp_extruder);
+        setTargetHotend(code_value(), 0);
         CooldownNoWait = true;
       } else if (code_seen('R')) {
-        setTargetHotend(code_value(), tmp_extruder);
+        setTargetHotend(code_value(), 0);
         CooldownNoWait = false;
       }
-      #ifdef AUTOTEMP
-        if (code_seen('S')) autotemp_min=code_value();
-        if (code_seen('B')) autotemp_max=code_value();
-        if (code_seen('F'))
-        {
-          autotemp_factor=code_value();
-          autotemp_enabled=true;
-        }
-      #endif
-
       codenum = millis();
 
       /* See if we are heating up or cooling down */
-      target_direction = isHeatingHotend(tmp_extruder); // true if heating, false if cooling
+      target_direction = isHeatingHotend(0); // true if heating, false if cooling
 
       cancel_heatup = false;
 
@@ -1123,14 +925,14 @@ void process_commands()
         while((!cancel_heatup)&&((residencyStart == -1) ||
               (residencyStart >= 0 && (((unsigned int) (millis() - residencyStart)) < (TEMP_RESIDENCY_TIME * 1000UL)))) ) {
       #else
-        while ( target_direction ? (isHeatingHotend(tmp_extruder)) : (isCoolingHotend(tmp_extruder)&&(CooldownNoWait==false)) ) {
+        while ( target_direction ? (isHeatingHotend(0)) : (isCoolingHotend(0)&&(CooldownNoWait==false)) ) {
       #endif //TEMP_RESIDENCY_TIME
           if( (millis() - codenum) > 1000UL )
           { //Print Temp Reading and remaining time every 1 second while heating up/cooling down
             SERIAL_PROTOCOLPGM("T:");
-            SERIAL_PROTOCOL_F(degHotend(tmp_extruder),1);
+            SERIAL_PROTOCOL_F(degHotend(0),1);
             SERIAL_PROTOCOLPGM(" E:");
-            SERIAL_PROTOCOL((int)tmp_extruder);
+            SERIAL_PROTOCOL((int)0);
             #ifdef TEMP_RESIDENCY_TIME
               SERIAL_PROTOCOLPGM(" W:");
               if(residencyStart > -1)
@@ -1152,9 +954,9 @@ void process_commands()
         #ifdef TEMP_RESIDENCY_TIME
             /* start/restart the TEMP_RESIDENCY_TIME timer whenever we reach target temp for the first time
               or when current temp falls outside the hysteresis after target temp was reached */
-          if ((residencyStart == -1 &&  target_direction && (degHotend(tmp_extruder) >= (degTargetHotend(tmp_extruder)-TEMP_WINDOW))) ||
-              (residencyStart == -1 && !target_direction && (degHotend(tmp_extruder) <= (degTargetHotend(tmp_extruder)+TEMP_WINDOW))) ||
-              (residencyStart > -1 && labs(degHotend(tmp_extruder) - degTargetHotend(tmp_extruder)) > TEMP_HYSTERESIS) )
+          if ((residencyStart == -1 &&  target_direction && (degHotend(0) >= (degTargetHotend(0)-TEMP_WINDOW))) ||
+              (residencyStart == -1 && !target_direction && (degHotend(0) <= (degTargetHotend(0)+TEMP_WINDOW))) ||
+              (residencyStart > -1 && labs(degHotend(0) - degTargetHotend(0)) > TEMP_HYSTERESIS) )
           {
             residencyStart = millis();
           }
@@ -1164,40 +966,10 @@ void process_commands()
         previous_millis_cmd = millis();
       }
       break;
-    case 190: // M190 - Wait for bed heater to reach target.
-    #if defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
-        if (code_seen('S')) {
-          setTargetBed(code_value());
-          CooldownNoWait = true;
-        } else if (code_seen('R')) {
-          setTargetBed(code_value());
-          CooldownNoWait = false;
-        }
-        codenum = millis();
-        
-        cancel_heatup = false;
-        target_direction = isHeatingBed(); // true if heating, false if cooling
-
-        while ( (target_direction)&&(!cancel_heatup) ? (isHeatingBed()) : (isCoolingBed()&&(CooldownNoWait==false)) )
-        {
-          if(( millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
-          {
-            float tt=degHotend(active_extruder);
-            SERIAL_PROTOCOLPGM("T:");
-            SERIAL_PROTOCOL(tt);
-            SERIAL_PROTOCOLPGM(" E:");
-            SERIAL_PROTOCOL((int)active_extruder);
-            SERIAL_PROTOCOLPGM(" B:");
-            SERIAL_PROTOCOL_F(degBed(),1);
-            SERIAL_PROTOCOLLN("");
-            codenum = millis();
-          }
-          manage_heater();
-          manage_inactivity();
-        }
-        previous_millis_cmd = millis();
-    #endif
-        break;
+    case 117: // M117 display message: there is no display
+    case 140: // M140 / M190: there is no heated bed
+    case 190:
+      break;
 
     #if defined(FAN_PIN) && FAN_PIN > -1
       case 106: //M106 Fan On
@@ -1255,11 +1027,6 @@ void process_commands()
         }
       }
       break;
-    case 85: // M85
-      if(code_seen('S')) {
-        max_inactive_time = code_value() * 1000;
-      }
-      break;
     case 92: // M92
       for(int8_t i=0; i < NUM_AXIS; i++)
       {
@@ -1284,8 +1051,6 @@ void process_commands()
     case 115: // M115
       SERIAL_PROTOCOLPGM(MSG_M115_REPORT);
       break;
-    case 117: // M117 display message: there is no display, accepted and ignored
-      break;
     case 114: // M114
       SERIAL_PROTOCOLPGM("X:");
       SERIAL_PROTOCOL(current_position[X_AXIS]);
@@ -1305,12 +1070,6 @@ void process_commands()
 
       SERIAL_PROTOCOLLN("");
       break;
-    case 120: // M120
-      enable_endstops(false) ;
-      break;
-    case 121: // M121
-      enable_endstops(true) ;
-      break;
     case 119: // M119
     SERIAL_PROTOCOLLN(MSG_M119_REPORT);
       #if defined(X_MAX_PIN) && X_MAX_PIN > -1
@@ -1327,42 +1086,6 @@ void process_commands()
       #endif
       break;
       //TODO: update for all axis, use for loop
-    case 200: // M200 D<millimeters> set filament diameter and set E axis units to cubic millimeters (use S0 to set back to millimeters).
-      {
-
-        tmp_extruder = active_extruder;
-        if(code_seen('T')) {
-          tmp_extruder = code_value();
-          if(tmp_extruder >= EXTRUDERS) {
-            SERIAL_ECHO_START;
-            SERIAL_ECHO(MSG_M200_INVALID_EXTRUDER);
-            break;
-          }
-        }
-
-        if(code_seen('D')) {
-		  float diameter = (float)code_value();
-		  if (diameter == 0.0) {
-			// setting any extruder filament size disables volumetric on the assumption that
-			// slicers either generate in extruder values as cubic mm or as as filament feeds
-			// for all extruders
-		    volumetric_enabled = false;
-		  } else {
-            filament_size[tmp_extruder] = (float)code_value();
-			// make sure all extruders have some sane value for the filament size
-			filament_size[0] = (filament_size[0] == 0.0 ? DEFAULT_NOMINAL_FILAMENT_DIA : filament_size[0]);
-            #if EXTRUDERS > 1
-			filament_size[1] = (filament_size[1] == 0.0 ? DEFAULT_NOMINAL_FILAMENT_DIA : filament_size[1]);
-            #endif
-			volumetric_enabled = true;
-		  }
-        } else {
-          //reserved for setting filament diameter via UFID or filament measuring device
-          break;
-        }
-		calculate_volumetric_multipliers();
-      }
-      break;
     case 201: // M201
       for(int8_t i=0; i < NUM_AXIS; i++)
       {
@@ -1471,32 +1194,6 @@ void process_commands()
       SERIAL_ECHOPAIR(" counts, reading now: ", (unsigned long)fsr_raw);   // watch it while pressing on the bed
       SERIAL_ECHOLN("");
       break;
-    #if EXTRUDERS > 1
-    case 218: // M218 - set hotend offset (in mm), T<extruder_number> X<offset_on_X> Y<offset_on_Y>
-    {
-      if(setTargetedHotend(218)){
-        break;
-      }
-      if(code_seen('X'))
-      {
-        extruder_offset[X_AXIS][tmp_extruder] = code_value();
-      }
-      if(code_seen('Y'))
-      {
-        extruder_offset[Y_AXIS][tmp_extruder] = code_value();
-      }
-      SERIAL_ECHO_START;
-      SERIAL_ECHOPGM(MSG_HOTEND_OFFSET);
-      for(tmp_extruder = 0; tmp_extruder < EXTRUDERS; tmp_extruder++)
-      {
-         SERIAL_ECHO(" ");
-         SERIAL_ECHO(extruder_offset[X_AXIS][tmp_extruder]);
-         SERIAL_ECHO(",");
-         SERIAL_ECHO(extruder_offset[Y_AXIS][tmp_extruder]);
-      }
-      SERIAL_ECHOLN("");
-    }break;
-    #endif
     case 220: // M220 S<factor in percent>- set speed factor override percentage
     {
       if(code_seen('S') && code_value() > 0)  // 0 would divide by zero in prepare_move()
@@ -1507,72 +1204,7 @@ void process_commands()
     break;
     case 221: // M221 S<factor in percent>- set extrude factor override percentage
     {
-      if(code_seen('S'))
-      {
-        int tmp_code = code_value();
-        if (code_seen('T'))
-        {
-          if(setTargetedHotend(221)){
-            break;
-          }
-          extruder_multiply[tmp_extruder] = tmp_code;
-        }
-        else
-        {
-          extrudemultiply = tmp_code ;
-        }
-      }
-    }
-    break;
-
-	case 226: // M226 P<pin number> S<pin state>- Wait until the specified pin reaches the state required
-	{
-      if(code_seen('P')){
-        int pin_number = code_value(); // pin number
-        int pin_state = -1; // required pin state - default is inverted
-
-        if(code_seen('S')) pin_state = code_value(); // required pin state
-
-        if(pin_state >= -1 && pin_state <= 1){
-
-          for(int8_t i = 0; i < (int8_t)(sizeof(sensitive_pins)/sizeof(int)); i++)
-          {
-            if (sensitive_pins[i] == pin_number)
-            {
-              pin_number = -1;
-              break;
-            }
-          }
-
-          if (pin_number > -1)
-          {
-            int target = LOW;
-
-            st_synchronize();
-
-            pinMode(pin_number, INPUT);
-
-            switch(pin_state){
-            case 1:
-              target = HIGH;
-              break;
-
-            case 0:
-              target = LOW;
-              break;
-
-            case -1:
-              target = !digitalRead(pin_number);
-              break;
-            }
-
-            while(digitalRead(pin_number) != target){
-              manage_heater();
-              manage_inactivity();
-            }
-          }
-        }
-      }
+      if(code_seen('S') && code_value() > 0) extrudemultiply = code_value();
     }
     break;
 
@@ -1591,25 +1223,6 @@ void process_commands()
         SERIAL_PROTOCOL(unscalePID_i(Ki));
         SERIAL_PROTOCOL(" d:");
         SERIAL_PROTOCOL(unscalePID_d(Kd));
-        SERIAL_PROTOCOLLN("");
-      }
-      break;
-    #endif //PIDTEMP
-    #ifdef PIDTEMPBED
-    case 304: // M304
-      {
-        if(code_seen('P')) bedKp = code_value();
-        if(code_seen('I')) bedKi = scalePID_i(code_value());
-        if(code_seen('D')) bedKd = scalePID_d(code_value());
-
-        updatePID();
-        SERIAL_PROTOCOL(MSG_OK);
-        SERIAL_PROTOCOL(" p:");
-        SERIAL_PROTOCOL(bedKp);
-        SERIAL_PROTOCOL(" i:");
-        SERIAL_PROTOCOL(unscalePID_i(bedKi));
-        SERIAL_PROTOCOL(" d:");
-        SERIAL_PROTOCOL(unscalePID_d(bedKd));
         SERIAL_PROTOCOLLN("");
       }
       break;
@@ -1665,13 +1278,6 @@ void process_commands()
         Config_PrintSettings();
     }
     break;
-    #ifdef ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED
-    case 540:
-    {
-        if(code_seen('S')) abort_on_endstop_hit = code_value() > 0;
-    }
-    break;
-    #endif
 
 
    case 999: // M999: Restart after being stopped
@@ -1684,49 +1290,7 @@ void process_commands()
 
   else if(code_seen('T'))
   {
-    tmp_extruder = code_value();
-    if(tmp_extruder >= EXTRUDERS) {
-      SERIAL_ECHO_START;
-      SERIAL_ECHO("T");
-      SERIAL_ECHO(tmp_extruder);
-      SERIAL_ECHOLN(MSG_INVALID_EXTRUDER);
-    }
-    else {
-      bool make_move = code_seen('F');  // move to the old position after changing the extruder offset
-      if(make_move) {
-        next_feedrate = code_value();
-        if(next_feedrate > 0.0) {
-          feedrate = next_feedrate;
-        }
-      }
-      #if EXTRUDERS > 1
-      if(tmp_extruder != active_extruder) {
-        // Save current position to return to after applying extruder offset
-        memcpy(destination, current_position, sizeof(destination));
-        // Offset extruder (only by XY)
-        int i;
-        for(i = 0; i < 2; i++) {
-           current_position[i] = current_position[i] -
-                                 extruder_offset[i][active_extruder] +
-                                 extruder_offset[i][tmp_extruder];
-        }
-        // Set the new active extruder and position
-        active_extruder = tmp_extruder;
-
-  calculate_delta(current_position); // change cartesian kinematic  to  delta kinematic;
-   //sent position to plan_set_position();
-  plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS],current_position[E_AXIS]);
-            
-        // Move to the old position if 'F' was in the parameters
-        if(make_move && Stopped == false) {
-           prepare_move();
-        }
-      }
-      #endif
-      SERIAL_ECHO_START;
-      SERIAL_ECHO(MSG_ACTIVE_EXTRUDER);
-      SERIAL_PROTOCOLLN((int)active_extruder);
-    }
+    // there is one extruder: T0 is accepted, nothing to select
   }
 
   else
@@ -1924,46 +1488,6 @@ void prepare_arc_move(char isclockwise) {
   previous_millis_cmd = millis();
 }
 
-#if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
-
-#if defined(FAN_PIN)
-  #if CONTROLLERFAN_PIN == FAN_PIN
-    #error "You cannot set CONTROLLERFAN_PIN equal to FAN_PIN"
-  #endif
-#endif
-
-unsigned long lastMotor = 0; //Save the time for when a motor was turned on last
-unsigned long lastMotorCheck = 0;
-
-void controllerFan()
-{
-  if ((millis() - lastMotorCheck) >= 2500) //Not a time critical function, so we only check every 2500ms
-  {
-    lastMotorCheck = millis();
-
-    if(!READ(X_ENABLE_PIN) || !READ(Y_ENABLE_PIN) || !READ(Z_ENABLE_PIN) || (soft_pwm_bed > 0)
-    #if EXTRUDERS > 1
-       || !READ(E1_ENABLE_PIN)
-    #endif
-       || !READ(E0_ENABLE_PIN)) //If any of the drivers are enabled...
-    {
-      lastMotor = millis(); //... set time to NOW so the fan will turn on
-    }
-
-    if ((millis() - lastMotor) >= (CONTROLLERFAN_SECS*1000UL) || lastMotor == 0) //If the last time any driver was enabled, is longer since than CONTROLLERSEC...
-    {
-        digitalWrite(CONTROLLERFAN_PIN, 0);
-        analogWrite(CONTROLLERFAN_PIN, 0);
-    }
-    else
-    {
-        // allows digital or PWM fan output to be used (see M42 handling)
-        digitalWrite(CONTROLLERFAN_PIN, CONTROLLERFAN_SPEED);
-        analogWrite(CONTROLLERFAN_PIN, CONTROLLERFAN_SPEED);
-    }
-  }
-}
-#endif
 
 void manage_inactivity(bool ignore_stepper_queue/*=false*/) //default argument set in Marlin.h
 {
@@ -1972,9 +1496,6 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) //default argument s
   if(buflen < (BUFSIZE-1))
     get_command();
 
-  if( (millis() - previous_millis_cmd) >  max_inactive_time )
-    if(max_inactive_time)
-      kill();
   if(stepper_inactive_time)  {
     if( (millis() - previous_millis_cmd) >  stepper_inactive_time )
     {
@@ -1988,9 +1509,6 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) //default argument s
     }
   }
   
-  #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
-    controllerFan(); //Check if fan should be turned on to cool stepper drivers down
-  #endif
   check_axes_activity();
   filament_sensor_poll();
   ui_poll();
@@ -2026,91 +1544,3 @@ void Stop()
 }
 
 bool IsStopped() { return Stopped; };
-
-#ifdef FAST_PWM_FAN
-void setPwmFrequency(uint8_t pin, int val)
-{
-  val &= 0x07;
-  // timers 0 and 1 are used by millis() and the stepper interrupt and are left alone
-  switch(digitalPinToTimer(pin))
-  {
-    case TIMER2A:
-    case TIMER2B:
-      TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22));
-      TCCR2B |= val;
-      break;
-    case TIMER3A:
-    case TIMER3B:
-    case TIMER3C:
-      TCCR3B &= ~(_BV(CS30) | _BV(CS31) | _BV(CS32));
-      TCCR3B |= val;
-      break;
-    case TIMER4A:
-    case TIMER4B:
-    case TIMER4C:
-      TCCR4B &= ~(_BV(CS40) | _BV(CS41) | _BV(CS42));
-      TCCR4B |= val;
-      break;
-    case TIMER5A:
-    case TIMER5B:
-    case TIMER5C:
-      TCCR5B &= ~(_BV(CS50) | _BV(CS51) | _BV(CS52));
-      TCCR5B |= val;
-      break;
-  }
-}
-#endif //FAST_PWM_FAN
-
-bool setTargetedHotend(int code){
-  tmp_extruder = active_extruder;
-  if(code_seen('T')) {
-    tmp_extruder = code_value();
-    if(tmp_extruder >= EXTRUDERS) {
-      SERIAL_ECHO_START;
-      switch(code){
-        case 104:
-          SERIAL_ECHO(MSG_M104_INVALID_EXTRUDER);
-          break;
-        case 105:
-          SERIAL_ECHO(MSG_M105_INVALID_EXTRUDER);
-          break;
-        case 109:
-          SERIAL_ECHO(MSG_M109_INVALID_EXTRUDER);
-          break;
-        case 218:
-          SERIAL_ECHO(MSG_M218_INVALID_EXTRUDER);
-          break;
-        case 221:
-          SERIAL_ECHO(MSG_M221_INVALID_EXTRUDER);
-          break;
-      }
-      SERIAL_ECHOLN(tmp_extruder);
-      return true;
-    }
-  }
-  return false;
-}
-
-
-float calculate_volumetric_multiplier(float diameter) {
-	float area = .0;
-	float radius = .0;
-
-	radius = diameter * .5;
-	if (! volumetric_enabled || radius == 0) {
-		area = 1;
-	}
-	else {
-		area = M_PI * pow(radius, 2);
-	}
-
-	return 1.0 / area;
-}
-
-void calculate_volumetric_multipliers() {
-	volumetric_multiplier[0] = calculate_volumetric_multiplier(filament_size[0]);
-#if EXTRUDERS > 1
-	volumetric_multiplier[1] = calculate_volumetric_multiplier(filament_size[1]);
-#endif
-}
-

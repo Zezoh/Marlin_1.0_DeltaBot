@@ -24,20 +24,20 @@ echo "== one button";  $CXX -I"$ROOT/Marlin" "$T/onebutton_test.cpp" -o "$B/ob";
 
 echo "== probe and G33 on a simulated delta"
 Q="$B/probe"; mkdir "$Q"
-for f in probe.cpp probe.h ui.h mesh.cpp mesh.h delta_calibration.cpp delta_calibration.h Configuration.h Configuration_adv.h boards.h Default_Version.h thermistortables.h pins.h; do cp "$ROOT/Marlin/$f" "$Q/"; done
+for f in probe.cpp probe.h ui.h mesh.cpp mesh.h delta_calibration.cpp delta_calibration.h Configuration.h Configuration_adv.h Default_Version.h thermistortables.h pins.h; do cp "$ROOT/Marlin/$f" "$Q/"; done
 cp "$T"/probe_shim/*.h "$Q/"; cp "$T/probe_test.cpp" "$B/"
 ZH=$(awk '/#define Z_HOME_POS/{print $3}' "$ROOT/Marlin/Configuration.h")
 (cd "$Q" && $CXX -DZ_HOME_POS=$ZH -I. -I"$B" probe.cpp mesh.cpp delta_calibration.cpp "$B/probe_test.cpp" -o probe_test); "$Q/probe_test"
 
 echo "== filament change and runout"
 F="$B/filament"; mkdir "$F"
-for f in filament.cpp filament.h ui.h Configuration.h Configuration_adv.h boards.h Default_Version.h thermistortables.h; do cp "$ROOT/Marlin/$f" "$F/"; done
+for f in filament.cpp filament.h ui.h Configuration.h Configuration_adv.h Default_Version.h thermistortables.h; do cp "$ROOT/Marlin/$f" "$F/"; done
 cp "$T"/filament_shim/*.h "$F/"; cp "$T/filament_test.cpp" "$F/"
 (cd "$F" && $CXX -I. filament.cpp filament_test.cpp -o filament_test); "$F/filament_test"
 
 echo "== planner speed"
 P="$B/planner"; mkdir "$P"
-for f in planner.cpp planner.h Configuration.h Configuration_adv.h language.h boards.h Default_Version.h pins.h thermistortables.h; do cp "$ROOT/Marlin/$f" "$P/"; done
+for f in planner.cpp planner.h Configuration.h Configuration_adv.h language.h Default_Version.h pins.h thermistortables.h; do cp "$ROOT/Marlin/$f" "$P/"; done
 cp "$T"/shim/*.h "$P/"; cp "$T/planner_speed_test.cpp" "$P/"
 (cd "$P" && $CXX -I. planner_speed_test.cpp planner.cpp -o speed); "$P/speed"
 

@@ -5,22 +5,7 @@
 //=============================Thermal Settings  ============================
 //===========================================================================
 
-#ifdef BED_LIMIT_SWITCHING
-  #define BED_HYSTERESIS 2 //only disable heating if T>target+BED_HYSTERESIS and enable heating if T>target-BED_HYSTERESIS
-#endif
 #define BED_CHECK_INTERVAL 5000 //ms between checks in bang-bang control
-
-//automatic temperature: The hot end target temperature is calculated by all the buffered lines of gcode.
-//The maximum buffered steps/sec of the extruder motor are called "se".
-//You enter the autotemp mode by a M109 S<mintemp> T<maxtemp> F<factor>
-// the target temperature is set to mintemp+factor*se[steps/sec] and limited by mintemp and maxtemp
-// you exit the value by any M109 without F*
-// Also, if the temperature is set to a value <mintemp, it is not changed by autotemp.
-// on an ultimaker, some initial testing worked with M109 S215 B260 F1 in the start.gcode
-#define AUTOTEMP
-#ifdef AUTOTEMP
-  #define AUTOTEMP_OLDWEIGHT 0.98
-#endif
 
 //These defines help to calibrate the AD595 sensor in case you get wrong temperature measurements.
 //The measured temperature is defined as "actualTemp = (measuredTemp * TEMP_SENSOR_AD595_GAIN) + TEMP_SENSOR_AD595_OFFSET"
@@ -224,45 +209,12 @@
 //=============================  Define Defines  ============================
 //===========================================================================
 
-#if EXTRUDERS > 1 && defined TEMP_SENSOR_1_AS_REDUNDANT
-  #error "You cannot use TEMP_SENSOR_1_AS_REDUNDANT if EXTRUDERS > 1"
-#endif
 
-#if TEMP_SENSOR_0 > 0
   #define THERMISTORHEATER_0 TEMP_SENSOR_0
   #define HEATER_0_USES_THERMISTOR
-#endif
-#if TEMP_SENSOR_1 > 0
-  #define THERMISTORHEATER_1 TEMP_SENSOR_1
-  #define HEATER_1_USES_THERMISTOR
-#endif
-#if TEMP_SENSOR_BED > 0
-  #define THERMISTORBED TEMP_SENSOR_BED
-  #define BED_USES_THERMISTOR
-#endif
-#if TEMP_SENSOR_0 == -1
-  #define HEATER_0_USES_AD595
-#endif
-#if TEMP_SENSOR_1 == -1
-  #define HEATER_1_USES_AD595
-#endif
-#if TEMP_SENSOR_BED == -1
-  #define BED_USES_AD595
-#endif
-#if TEMP_SENSOR_0 == -2
-  #define HEATER_0_USES_MAX6675
-#endif
-#if TEMP_SENSOR_0 == 0
-  #undef HEATER_0_MINTEMP
-  #undef HEATER_0_MAXTEMP
-#endif
-#if TEMP_SENSOR_1 == 0
   #undef HEATER_1_MINTEMP
   #undef HEATER_1_MAXTEMP
-#endif
-#if TEMP_SENSOR_BED == 0
   #undef BED_MINTEMP
   #undef BED_MAXTEMP
-#endif
 
 #endif //__CONFIGURATION_ADV_H

@@ -35,13 +35,7 @@ extern int target_temperature[EXTRUDERS];
 extern float current_temperature[EXTRUDERS];
 extern int target_temperature_bed;
 extern float current_temperature_bed;
-#ifdef TEMP_SENSOR_1_AS_REDUNDANT
-  extern float redundant_temperature;
-#endif
 
-#if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
-  extern unsigned char soft_pwm_bed;
-#endif
 
 #ifdef PIDTEMP
   extern float Kp,Ki,Kd;
@@ -50,9 +44,6 @@ extern float current_temperature_bed;
   float unscalePID_i(float i);
   float unscalePID_d(float d);
 
-#endif
-#ifdef PIDTEMPBED
-  extern float bedKp,bedKi,bedKd;
 #endif
 
 //high level conversion routines, for use outside of temperature.cpp
@@ -104,33 +95,12 @@ FORCE_INLINE bool isCoolingBed() {
 #define setTargetHotend0(_celsius) setTargetHotend((_celsius), 0)
 #define isHeatingHotend0() isHeatingHotend(0)
 #define isCoolingHotend0() isCoolingHotend(0)
-#if EXTRUDERS > 1
-#define degHotend1() degHotend(1)
-#define degTargetHotend1() degTargetHotend(1)
-#define setTargetHotend1(_celsius) setTargetHotend((_celsius), 1)
-#define isHeatingHotend1() isHeatingHotend(1)
-#define isCoolingHotend1() isCoolingHotend(1)
-#else
 #define setTargetHotend1(_celsius) do{}while(0)
-#endif
-#if EXTRUDERS > 2
-#error RAMPS supports at most 2 extruders
-#endif
 
 int getHeaterPower(int heater);
 void disable_heater();
 void updatePID();
 
-FORCE_INLINE void autotempShutdown(){
- #ifdef AUTOTEMP
- if(autotemp_enabled)
- {
-  autotemp_enabled=false;
-  if(degTargetHotend(active_extruder)>autotemp_min)
-    setTargetHotend(0,active_extruder);
- }
- #endif
-}
 
 void PID_autotune(float temp, int extruder, int ncycles);
 

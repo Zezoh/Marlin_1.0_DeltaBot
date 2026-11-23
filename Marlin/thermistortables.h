@@ -218,47 +218,20 @@ const short temptable_104[][2] PROGMEM = {
 # endif
 #endif
 
-#ifdef THERMISTORHEATER_1
-# define HEATER_1_TEMPTABLE TT_NAME(THERMISTORHEATER_1)
-# define HEATER_1_TEMPTABLE_LEN (sizeof(HEATER_1_TEMPTABLE)/sizeof(*HEATER_1_TEMPTABLE))
-#else
-# ifdef HEATER_1_USES_THERMISTOR
-#  error No heater 1 thermistor table specified
-# else  // HEATER_1_USES_THERMISTOR
 #  define HEATER_1_TEMPTABLE NULL
 #  define HEATER_1_TEMPTABLE_LEN 0
-# endif // HEATER_1_USES_THERMISTOR
-#endif
 
 //Set the high and low raw values for the heater, this indicates which raw value is a high or low temperature
 #ifndef HEATER_1_RAW_HI_TEMP
-# ifdef HEATER_1_USES_THERMISTOR   //In case of a thermistor the highest temperature results in the lowest ADC value
-#  define HEATER_1_RAW_HI_TEMP 0
-#  define HEATER_1_RAW_LO_TEMP 16383
-# else                          //In case of an thermocouple the highest temperature results in the highest ADC value
 #  define HEATER_1_RAW_HI_TEMP 16383
 #  define HEATER_1_RAW_LO_TEMP 0
-# endif
 #endif
 
-#ifdef THERMISTORBED
-# define BEDTEMPTABLE TT_NAME(THERMISTORBED)
-# define BEDTEMPTABLE_LEN (sizeof(BEDTEMPTABLE)/sizeof(*BEDTEMPTABLE))
-#else
-# ifdef BED_USES_THERMISTOR
-#  error No bed thermistor table specified
-# endif // BED_USES_THERMISTOR
-#endif
 
 //Set the high and low raw values for the heater, this indicates which raw value is a high or low temperature
 #ifndef HEATER_BED_RAW_HI_TEMP
-# ifdef BED_USES_THERMISTOR   //In case of a thermistor the highest temperature results in the lowest ADC value
-#  define HEATER_BED_RAW_HI_TEMP 0
-#  define HEATER_BED_RAW_LO_TEMP 16383
-# else                          //In case of an thermocouple the highest temperature results in the highest ADC value
 #  define HEATER_BED_RAW_HI_TEMP 16383
 #  define HEATER_BED_RAW_LO_TEMP 0
-# endif
 #endif
 
 #endif //THERMISTORTABLES_H_

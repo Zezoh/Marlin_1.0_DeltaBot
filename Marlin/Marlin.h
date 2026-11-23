@@ -123,13 +123,8 @@ void manage_inactivity(bool ignore_stepper_queue=false);
   #define disable_e0() /* nothing */
 #endif
 
-#if (EXTRUDERS > 1) && defined(E1_ENABLE_PIN) && (E1_ENABLE_PIN > -1)
-  #define enable_e1() WRITE(E1_ENABLE_PIN, E_ENABLE_ON)
-  #define disable_e1() WRITE(E1_ENABLE_PIN,!E_ENABLE_ON)
-#else
   #define enable_e1()  /* nothing */
   #define disable_e1() /* nothing */
-#endif
 
 
 
@@ -160,9 +155,6 @@ void enquecommand_P(const char *cmd); //put an ASCII command at the end of the c
 void prepare_arc_move(char isclockwise);
 void clamp_to_software_endstops(float target[3]);
 
-#ifdef FAST_PWM_FAN
-void setPwmFrequency(uint8_t pin, int val);
-#endif
 
 #ifndef CRITICAL_SECTION_START
   #define CRITICAL_SECTION_START  unsigned char _sreg = SREG; cli();
@@ -173,10 +165,6 @@ extern float homing_feedrate[];
 extern bool axis_relative_modes[];
 extern int feedmultiply;
 extern int extrudemultiply; // Sets extrude multiply factor (in percent) for all extruders
-extern bool volumetric_enabled;
-extern int extruder_multiply[EXTRUDERS]; // sets extrude multiply factor (in percent) for each extruder individually
-extern float filament_size[EXTRUDERS]; // cross-sectional area of filament (in millimeters), typically around 1.75 or 2.85, 0 disables the volumetric calculations for the extruder.
-extern float volumetric_multiplier[EXTRUDERS]; // reciprocal of cross-sectional area of filament (in square millimeters), stored this way to reduce computational burden in planner
 extern float current_position[NUM_AXIS] ;
 extern float add_homing[3];
 extern float endstop_adj[3];
@@ -190,9 +178,6 @@ extern float max_pos[3];
 extern bool axis_known_position[3];
 extern int fanSpeed;
 
-#ifdef FAN_SOFT_PWM
-extern unsigned char fanSpeedSoftPwm;
-#endif
 
 extern unsigned long starttime;
 extern unsigned long stoptime;
@@ -202,5 +187,4 @@ extern uint8_t active_extruder;
 
 #endif
 
-extern void calculate_volumetric_multipliers();
 
