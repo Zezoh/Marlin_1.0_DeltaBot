@@ -32,6 +32,7 @@
 // This is a trade-off between visible corners (not enough segments)
 // and processor overload (too many expensive sqrt calls).
 #define DELTA_SEGMENTS_PER_SECOND 200
+#define DELTA_MIN_SEGMENT_MM 1.0     // never cut a move into pieces shorter than this
 
 // NOTE NB all values for DELTA_* values MUST be floating point, so always have a decimal point in them
 
