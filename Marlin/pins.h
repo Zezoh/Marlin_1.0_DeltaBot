@@ -4,22 +4,17 @@
 /****************************************************************************************
 * RAMPS pin assignments (Arduino Mega 1280 / 2560)
 ****************************************************************************************/
-#define KNOWN_BOARD 1
-
 #if !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega2560__)
   #error Oops!  Make sure you have 'Arduino Mega' selected from the 'Tools -> Boards' menu.
 #endif
 
-// Hardware SPI pins of the ATmega1280/2560, used by the SD card and the MAX6675 thermocouple
+// Hardware SPI pins of the ATmega1280/2560, used by the SD card
 #define SS_PIN           53
 #define SCK_PIN          52
 #define MISO_PIN         50
 #define MOSI_PIN         51
-// Do not use pin 53 or 49 for the MAX6675: they are used by the SD card socket
-#define MAX6675_SS       66
 
 #define SDSS             53
-#define LED_PIN          13
 
 //---------------------------------------------------------------------------------
 // RAMPS 1.3 / 1.4
@@ -42,8 +37,6 @@
 #define E0_STEP_PIN        26
 #define E0_DIR_PIN         28
 #define E0_ENABLE_PIN      24
-
-#define SDPOWER            -1
 
 // One button (D3, the RAMPS X-MIN header, active low with pullup) and status LED (D12, the RAMPS PS_ON header)
 #define BUTTON_PIN          3
