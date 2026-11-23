@@ -51,10 +51,8 @@ static unsigned int led_period()
   if (filament_mode == 2) return LED_WAIT_PERIOD_MS;
   if (filament_mode == 1) return LED_CHANGE_PERIOD_MS;
   if (target_temperature[0] > 0 && abs(target_temperature[0] - (int)degHotend(0)) > 3) return LED_HEAT_PERIOD_MS;
-  #ifdef SDSUPPORT
   if (card.sdprinting) return LED_PRINT_PERIOD_MS;
   if (card.isPaused()) return LED_PAUSED_PERIOD_MS;
-  #endif
   if (busy_depth || blocks_queued()) return LED_BUSY_PERIOD_MS;
   if (degHotend(0) > LED_COOL_TEMP) return LED_COOL_PERIOD_MS;
   return LED_READY_PERIOD_MS;
@@ -96,12 +94,9 @@ void ui_run()
   if (e == OneButton::BOOT_HOLD) {
     enquecommand_P(PSTR("G33"));
   } else if (e == OneButton::LONG) {
-    #ifdef SDSUPPORT
     if (card.sdprinting || card.isPaused()) cancel_print(); else
-    #endif
     disable_heater();   // idle: heater off, no motion
   } else if (e == OneButton::SHORT) {
-    #ifdef SDSUPPORT
     if (card.sdprinting) {
       card.pauseSDPrint();
     } else if (card.isPaused()) {
@@ -113,7 +108,6 @@ void ui_run()
         starttime = millis();
       }
     } else
-    #endif
     if (!machine_idle() || target_temperature[0] > 0) {
       // a host is printing (or something is heating): the button does not start anything
     } else if (!delta_calibrated) {
@@ -121,17 +115,11 @@ void ui_run()
     } else if (filament_absent()) {
       filament_change(true);   // load filament first; a click then starts the print
     }
-    #ifdef SDSUPPORT
     else {
       card.startNewest();
     }
-    #endif
   } else if (e == OneButton::DOUBLE) {
-    #ifdef SDSUPPORT
     if (card.isPaused()) filament_change(false);   // paused print: change the filament, a click resumes it
     else if (!card.sdprinting && machine_idle() && target_temperature[0] == 0) filament_change(true);
-    #else
-    if (machine_idle() && target_temperature[0] == 0) filament_change(true);
-    #endif
   }
 }

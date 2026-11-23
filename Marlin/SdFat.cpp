@@ -6,7 +6,6 @@
  */
 #include "SdFat.h"
 
-#ifdef SDSUPPORT
 
 cache_t  SdVolume::cacheBuffer_;
 uint32_t SdVolume::cacheBlockNumber_;
@@ -585,4 +584,3 @@ int16_t SdFile::write(const char* str) {
   return write(str, strlen(str));
 }
 
-#endif  // SDSUPPORT

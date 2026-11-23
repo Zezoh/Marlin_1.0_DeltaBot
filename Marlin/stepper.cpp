@@ -55,15 +55,9 @@ static volatile bool endstop_x_hit = false;
 static volatile bool endstop_y_hit = false;
 static volatile bool endstop_z_hit = false;
 
-#if defined(X_MAX_PIN) && X_MAX_PIN > -1
 static bool old_x_max_endstop = false;
-#endif
-#if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
 static bool old_y_max_endstop = false;
-#endif
-#if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
 static bool old_z_max_endstop = false;
-#endif
 
 static bool check_endstops = true;
 
@@ -343,15 +337,9 @@ ISR(TIMER1_COMPA_vect)
   }
 
   // Check the max endstops while a tower moves up (a delta only has max endstops)
-#if defined(X_MAX_PIN) && X_MAX_PIN > -1
   if (!(out_bits & (1<<X_AXIS))) CHECK_ENDSTOP(X, x, MAX, max)
-#endif
-#if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
   if (!(out_bits & (1<<Y_AXIS))) CHECK_ENDSTOP(Y, y, MAX, max)
-#endif
-#if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
   if (!(out_bits & (1<<Z_AXIS))) CHECK_ENDSTOP(Z, z, MAX, max)
-#endif
 
   if (probe_armed) {
     unsigned int raw = fsr_raw;
@@ -434,90 +422,42 @@ ISR(TIMER1_COMPA_vect)
 void st_init()
 {
   // Direction pins
-#if defined(X_DIR_PIN) && X_DIR_PIN > -1
   SET_OUTPUT(X_DIR_PIN);
-#endif
-#if defined(Y_DIR_PIN) && Y_DIR_PIN > -1
   SET_OUTPUT(Y_DIR_PIN);
-#endif
-#if defined(Z_DIR_PIN) && Z_DIR_PIN > -1
   SET_OUTPUT(Z_DIR_PIN);
-#endif
-#if defined(E0_DIR_PIN) && E0_DIR_PIN > -1
   SET_OUTPUT(E0_DIR_PIN);
-#endif
-#if defined(E1_DIR_PIN) && (E1_DIR_PIN > -1)
-  SET_OUTPUT(E1_DIR_PIN);
-#endif
 
   // Enable pins - steppers default to disabled.
-#if defined(X_ENABLE_PIN) && X_ENABLE_PIN > -1
   SET_OUTPUT(X_ENABLE_PIN);
   if (!X_ENABLE_ON) WRITE(X_ENABLE_PIN, HIGH);
-#endif
-#if defined(Y_ENABLE_PIN) && Y_ENABLE_PIN > -1
   SET_OUTPUT(Y_ENABLE_PIN);
   if (!Y_ENABLE_ON) WRITE(Y_ENABLE_PIN, HIGH);
-#endif
-#if defined(Z_ENABLE_PIN) && Z_ENABLE_PIN > -1
   SET_OUTPUT(Z_ENABLE_PIN);
   if (!Z_ENABLE_ON) WRITE(Z_ENABLE_PIN, HIGH);
-#endif
-#if defined(E0_ENABLE_PIN) && (E0_ENABLE_PIN > -1)
   SET_OUTPUT(E0_ENABLE_PIN);
   if (!E_ENABLE_ON) WRITE(E0_ENABLE_PIN, HIGH);
-#endif
-#if defined(E1_ENABLE_PIN) && (E1_ENABLE_PIN > -1)
-  SET_OUTPUT(E1_ENABLE_PIN);
-  if (!E_ENABLE_ON) WRITE(E1_ENABLE_PIN, HIGH);
-#endif
 
   // Endstops and pullups
-#if defined(X_MAX_PIN) && X_MAX_PIN > -1
   SET_INPUT(X_MAX_PIN);
-  #ifdef ENDSTOPPULLUPS
     WRITE(X_MAX_PIN, HIGH);
-  #endif
-#endif
-#if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
   SET_INPUT(Y_MAX_PIN);
-  #ifdef ENDSTOPPULLUPS
     WRITE(Y_MAX_PIN, HIGH);
-  #endif
-#endif
-#if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
   SET_INPUT(Z_MAX_PIN);
-  #ifdef ENDSTOPPULLUPS
     WRITE(Z_MAX_PIN, HIGH);
-  #endif
-#endif
 
   // Step pins
-#if defined(X_STEP_PIN) && (X_STEP_PIN > -1)
   SET_OUTPUT(X_STEP_PIN);
   WRITE(X_STEP_PIN, INVERT_X_STEP_PIN);
   disable_x();
-#endif
-#if defined(Y_STEP_PIN) && (Y_STEP_PIN > -1)
   SET_OUTPUT(Y_STEP_PIN);
   WRITE(Y_STEP_PIN, INVERT_Y_STEP_PIN);
   disable_y();
-#endif
-#if defined(Z_STEP_PIN) && (Z_STEP_PIN > -1)
   SET_OUTPUT(Z_STEP_PIN);
   WRITE(Z_STEP_PIN, INVERT_Z_STEP_PIN);
   disable_z();
-#endif
-#if defined(E0_STEP_PIN) && (E0_STEP_PIN > -1)
   SET_OUTPUT(E0_STEP_PIN);
   WRITE(E0_STEP_PIN, INVERT_E_STEP_PIN);
   disable_e0();
-#endif
-#if defined(E1_STEP_PIN) && (E1_STEP_PIN > -1)
-  SET_OUTPUT(E1_STEP_PIN);
-  WRITE(E1_STEP_PIN, INVERT_E_STEP_PIN);
-
-#endif
 
   // waveform generation = 0100 = CTC
   TCCR1B &= ~(1<<WGM13);

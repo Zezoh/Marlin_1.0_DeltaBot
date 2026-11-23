@@ -198,10 +198,8 @@ bool filament_change(bool service)
   const float saved_target = degTargetHotend(0);
   const float change_target = saved_target > FILAMENT_CHANGE_TEMP_C ? saved_target : FILAMENT_CHANGE_TEMP_C;
   bool was_sd = false;
-  #ifdef SDSUPPORT
   was_sd = card.sdprinting;
   if (was_sd) card.pauseSDPrint();
-  #endif
   const bool load_only = service && filament_absent();   // nothing to unload
   seen_absent = filament_absent() || load_only;
   bool retracted = false, ok = true;
@@ -256,18 +254,14 @@ bool filament_change(bool service)
     current_position[E_AXIS] = e;       // the new filament is primed to the nozzle: what the slicer counted stays valid
     plan_set_e_position(e);
     setTargetHotend(saved_target, 0);
-    #ifdef SDSUPPORT
     if (was_sd) card.startFileprint();
-    #endif
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM("FILAMENT change done");
   } else {
     if (!failed) { SERIAL_ECHO_START; SERIAL_ECHOLNPGM("FILAMENT change cancelled"); }
     disable_heater();
     ui_busy(false);
-    #ifdef SDSUPPORT
     if (was_sd || card.isPaused()) ui_defer_cancel();   // the print cannot go on (not here: this runs inside a command)
-    #endif
     return false;
   }
   ui_busy(false);
@@ -278,11 +272,7 @@ bool filament_change(bool service)
 void filament_service()
 {
   if (changing) return;
-  #ifdef SDSUPPORT
   bool printing = card.sdprinting;
-  #else
-  bool printing = false;
-  #endif
   if (!printing && !blocks_queued() && machine_idle()) { armed = false; return; }   // nothing is printing any more
   if (!enabled || !armed || !filament_absent() || IsStopped()) return;
   if (!(axis_known_position[X_AXIS] && axis_known_position[Y_AXIS] && axis_known_position[Z_AXIS])) return;

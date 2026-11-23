@@ -63,9 +63,7 @@
 //===========================================================================
 //=============================public variables=============================
 //===========================================================================
-#ifdef SDSUPPORT
 CardReader card;
-#endif
 float homing_feedrate[] = HOMING_FEEDRATE;
 bool axis_relative_modes[] = AXIS_RELATIVE_MODES;
 int feedmultiply=100; //100->1 200->2
@@ -213,8 +211,6 @@ void setup()
   SERIAL_ECHOPGM(MSG_MARLIN);
   SERIAL_ECHOLNPGM(" " SHORT_BUILD_VERSION);
 
-  #ifdef STRING_DISTRIBUTION_DATE
-    #ifdef STRING_CONFIG_H_AUTHOR
       SERIAL_ECHO_START;
       SERIAL_ECHOPGM(MSG_CONFIGURATION_VER);
       SERIAL_ECHOPGM(STRING_VERSION_CONFIG_H);
@@ -222,8 +218,6 @@ void setup()
       SERIAL_ECHOLNPGM(STRING_CONFIG_H_AUTHOR);
       SERIAL_ECHOPGM("Compiled: ");
       SERIAL_ECHOLNPGM(__DATE__);
-    #endif
-  #endif
   SERIAL_ECHO_START;
   SERIAL_ECHOPGM(MSG_FREE_MEMORY);
   SERIAL_ECHO(freeMemory());
@@ -253,12 +247,9 @@ void loop()
 {
   if(buflen < (BUFSIZE-1))
     get_command();
-  #ifdef SDSUPPORT
   card.checkautostart(false);
-  #endif
   if(buflen)
   {
-    #ifdef SDSUPPORT
       if(card.saving)
       {
         if(strstr_P(cmdbuffer[bufindr], PSTR("M29")) == NULL)
@@ -283,9 +274,6 @@ void loop()
       {
         process_commands();
       }
-    #else
-      process_commands();
-    #endif //SDSUPPORT
     buflen = (buflen-1);
     bufindr = (bufindr + 1)%BUFSIZE;
   }
@@ -403,7 +391,6 @@ void get_command()
       if(!comment_mode) cmdbuffer[bufindw][serial_count++] = serial_char;
     }
   }
-  #ifdef SDSUPPORT
   if(!card.sdprinting || serial_count!=0){
     return;
   }
@@ -463,7 +450,6 @@ void get_command()
     }
   }
 
-  #endif //SDSUPPORT
 
 }
 
@@ -602,9 +588,7 @@ void home_all_axes()
       calculate_delta(current_position);
       plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);
 
-  #ifdef ENDSTOPS_ONLY_FOR_HOMING
     enable_endstops(false);
-  #endif
 
   feedrate = saved_feedrate;
   feedmultiply = saved_feedmultiply;
@@ -651,10 +635,8 @@ bool machine_idle() { return buflen == 0 && !blocks_queued(); }
 
 void cancel_print()
 {
-  #ifdef SDSUPPORT
   card.sdprinting = false;
   card.closefile();
-  #endif
   buflen = 0;
   bufindr = bufindw;
   quickStop();
@@ -764,7 +746,6 @@ void process_commands()
         enable_e0();
       break;
 
-#ifdef SDSUPPORT
     case 20: // M20 - list SD card
       SERIAL_PROTOCOLLNPGM(MSG_BEGIN_FILE_LIST);
       card.ls();
@@ -870,7 +851,6 @@ void process_commands()
       card.openLogFile(strchr_pointer+5);
       break;
 
-#endif //SDSUPPORT
 
     case 31: //M31 take time since the start of the SD print or an M109 command
       {
@@ -916,23 +896,18 @@ void process_commands()
 
       cancel_heatup = false;
 
-      #ifdef TEMP_RESIDENCY_TIME
         long residencyStart;
         residencyStart = -1;
         /* continue to loop until we have reached the target temp
           _and_ until TEMP_RESIDENCY_TIME hasn't passed since we reached it */
         while((!cancel_heatup)&&((residencyStart == -1) ||
               (residencyStart >= 0 && (((unsigned int) (millis() - residencyStart)) < (TEMP_RESIDENCY_TIME * 1000UL)))) ) {
-      #else
-        while ( target_direction ? (isHeatingHotend(0)) : (isCoolingHotend(0)&&(CooldownNoWait==false)) ) {
-      #endif //TEMP_RESIDENCY_TIME
           if( (millis() - codenum) > 1000UL )
           { //Print Temp Reading and remaining time every 1 second while heating up/cooling down
             SERIAL_PROTOCOLPGM("T:");
             SERIAL_PROTOCOL_F(degHotend(0),1);
             SERIAL_PROTOCOLPGM(" E:");
             SERIAL_PROTOCOL((int)0);
-            #ifdef TEMP_RESIDENCY_TIME
               SERIAL_PROTOCOLPGM(" W:");
               if(residencyStart > -1)
               {
@@ -943,14 +918,10 @@ void process_commands()
               {
                  SERIAL_PROTOCOLLN( "?" );
               }
-            #else
-              SERIAL_PROTOCOLLN("");
-            #endif
             codenum = millis();
           }
           manage_heater();
           manage_inactivity();
-        #ifdef TEMP_RESIDENCY_TIME
             /* start/restart the TEMP_RESIDENCY_TIME timer whenever we reach target temp for the first time
               or when current temp falls outside the hysteresis after target temp was reached */
           if ((residencyStart == -1 &&  target_direction && (degHotend(0) >= (degTargetHotend(0)-TEMP_WINDOW))) ||
@@ -959,7 +930,6 @@ void process_commands()
           {
             residencyStart = millis();
           }
-        #endif //TEMP_RESIDENCY_TIME
         }
         starttime=millis();
         previous_millis_cmd = millis();
@@ -970,7 +940,6 @@ void process_commands()
     case 190:
       break;
 
-    #if defined(FAN_PIN) && FAN_PIN > -1
       case 106: //M106 Fan On
         if (code_seen('S')){
            fanSpeed=constrain(code_value(),0,255);
@@ -982,7 +951,6 @@ void process_commands()
       case 107: //M107 Fan Off
         fanSpeed = 0;
         break;
-    #endif //FAN_PIN
 
     case 80: // M80 - power supply on: there is no power supply control, accepted for host compatibility
       break;
@@ -1066,18 +1034,12 @@ void process_commands()
       break;
     case 119: // M119
     SERIAL_PROTOCOLLN(MSG_M119_REPORT);
-      #if defined(X_MAX_PIN) && X_MAX_PIN > -1
         SERIAL_PROTOCOLPGM(MSG_X_MAX);
         SERIAL_PROTOCOLLN(((READ(X_MAX_PIN)^X_MAX_ENDSTOP_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
         SERIAL_PROTOCOLPGM(MSG_Y_MAX);
         SERIAL_PROTOCOLLN(((READ(Y_MAX_PIN)^Y_MAX_ENDSTOP_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
         SERIAL_PROTOCOLPGM(MSG_Z_MAX);
         SERIAL_PROTOCOLLN(((READ(Z_MAX_PIN)^Z_MAX_ENDSTOP_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
       break;
       //TODO: update for all axis, use for loop
     case 201: // M201
@@ -1302,10 +1264,8 @@ void FlushSerialRequestResend()
 void ClearToSend()
 {
   previous_millis_cmd = millis();
-  #ifdef SDSUPPORT
   if(fromsd[bufindr])
     return;
-  #endif //SDSUPPORT
   SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 

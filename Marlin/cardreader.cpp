@@ -3,7 +3,6 @@
 #include "temperature.h"
 #include "language.h"
 
-#ifdef SDSUPPORT
 
 CardReader::CardReader()
 {
@@ -21,10 +20,6 @@ CardReader::CardReader()
   autostart_atmillis = millis() + 5000;
 
   // power to SD reader
-  #if SDPOWER > -1
-    SET_OUTPUT(SDPOWER);
-    WRITE(SDPOWER, HIGH);
-  #endif
 }
 
 void CardReader::initsd()
@@ -32,11 +27,7 @@ void CardReader::initsd()
   cardOK = false;
   if (root.isOpen()) root.close();
 
-  #ifdef SDSLOW
-    if (!card.init(SPI_HALF_SPEED, SDSS))
-  #else
     if (!card.init(SPI_FULL_SPEED, SDSS))
-  #endif
   {
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
@@ -370,4 +361,3 @@ void CardReader::printingHasFinished()
   }
 }
 
-#endif //SDSUPPORT

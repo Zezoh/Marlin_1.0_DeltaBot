@@ -3,7 +3,6 @@
 
 #include "Marlin.h"
 
-#ifdef SDSUPPORT
 
 #include "SdFat.h"
 
@@ -67,9 +66,4 @@ extern CardReader card;
 
 #define IS_SD_PRINTING (card.sdprinting)
 
-#else
-
-#define IS_SD_PRINTING (false)
-
-#endif //SDSUPPORT
 #endif

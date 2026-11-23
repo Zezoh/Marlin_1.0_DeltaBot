@@ -282,11 +282,7 @@ void tp_init()
   #ifdef DIDR2
     DIDR2 = 0;
   #endif
-  #if TEMP_0_PIN < 8
-     DIDR0 |= 1 << TEMP_0_PIN;
-  #else
      DIDR2 |= 1<<(TEMP_0_PIN - 8);
-  #endif
   #if FSR_PIN < 8
     DIDR0 |= 1<<FSR_PIN;
   #else
@@ -351,11 +347,7 @@ ISR(TIMER0_COMPB_vect)
 
   switch(temp_state) {
     case 0: // Prepare TEMP_0
-      #if TEMP_0_PIN > 7
         ADCSRB = 1<<MUX5;
-      #else
-        ADCSRB = 0;
-      #endif
       ADMUX = ((1 << REFS0) | (TEMP_0_PIN & 0x07));
       ADCSRA |= 1<<ADSC; // Start conversion
       temp_state = 1;
