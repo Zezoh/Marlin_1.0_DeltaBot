@@ -154,7 +154,7 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
   // up, across, down to where the slow approach begins
   start = bed_guess + PROBE_SLOW_APPROACH_MM;
   float travel = have_top ? bed_top + PROBE_CLEARANCE_MM : PROBE_TRAVEL_Z_MM;
-  if (travel < start + 1.0) travel = start + 1.0;
+  if (travel < start + PROBE_MIN_TRAVEL_ABOVE_START_MM) travel = start + PROBE_MIN_TRAVEL_ABOVE_START_MM;
   if (z < travel) { stroke(current_position[X_AXIS], current_position[Y_AXIS], z, travel, PROBE_TRAVEL_Z_FEED_MM_S, false, zz); }
   move_to(x, y, travel, PROBE_TRAVEL_FEED_MM_S);
   st_synchronize();
@@ -163,7 +163,7 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
     if (stroke(x, y, current_position[Z_AXIS], start, PROBE_FEED_FAST_MM_S, true, zz)) {
       // Contact before the slow approach: a bump of the fast move, or a bed higher than expected. Either way, lift
       // and approach slowly from above that point; the depth limit stays relative to where the bed was expected.
-      start = zz + PROBE_SLOW_APPROACH_MM + 1.0;
+      start = zz + PROBE_SLOW_APPROACH_MM + PROBE_EARLY_CONTACT_EXTRA_MM;
       stroke(x, y, zz, start, PROBE_RETRACT_FEED_MM_S, false, zz);
     }
   }
@@ -180,7 +180,7 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
         SERIAL_ECHOPAIR("ignored a contact at Z", zz);
         SERIAL_ECHOPAIR(", ", from - zz);
         SERIAL_ECHOLNPGM(" mm after the stroke started");
-        stroke(x, y, zz, zz + 1.0, PROBE_RETRACT_FEED_MM_S, false, zz);
+        stroke(x, y, zz, zz + PROBE_FALSE_LIFT_MM, PROBE_RETRACT_FEED_MM_S, false, zz);
         continue;
       } else {
         false_triggers = 0;
@@ -192,7 +192,7 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
           if (hi - lo <= PROBE_AVERAGE_TOLERANCE_MM) break;
         }
       }
-      stroke(x, y, zz, zz + 1.5, PROBE_RETRACT_FEED_MM_S, false, zz);   // lift a little, probe again
+      stroke(x, y, zz, zz + PROBE_LIFT_MM, PROBE_RETRACT_FEED_MM_S, false, zz);   // lift a little, probe again
     } else {
       // no contact within the depth limit
       SERIAL_ERROR_START;

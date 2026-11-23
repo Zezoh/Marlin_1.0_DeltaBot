@@ -92,6 +92,10 @@
 #define PROBE_TRAVEL_Z_MM 30.0         // height of those moves until the bed height is known
 #define PROBE_CLEARANCE_MM 5.0         // then: this far above the highest contact found in the pass
 #define PROBE_TRAVEL_Z_FEED_MM_S 80.0  // vertical moves between points
+#define PROBE_MIN_TRAVEL_ABOVE_START_MM 1.0 // the travel height is at least this far above where the slow approach begins
+#define PROBE_EARLY_CONTACT_EXTRA_MM 1.0    // after a contact during the fast approach: lift to this far above the approach start
+#define PROBE_FALSE_LIFT_MM 1.0        // lift after a contact that was vibration or noise
+#define PROBE_LIFT_MM 1.5              // lift after every real contact, before the next stroke
 #define PROBE_MIN_STROKE_MM 0.3        // a contact sooner than this after a stroke started is vibration, not the bed
 #define PROBE_SETTLE_MS 100            // wait after a move before the probe is armed
 #define PROBE_AVERAGE_SAMPLES 3        // strokes in agreement that make a probed point
