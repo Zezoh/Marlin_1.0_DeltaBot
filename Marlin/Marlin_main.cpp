@@ -717,9 +717,10 @@ void home_all_axes()
 void move_to(float x, float y, float z, float feed_mm_s)
 {
   int saved = feedmultiply;
-  float saved_feed = feedrate;
+  float saved_feed = feedrate, saved_segments = delta_segments_per_second;
   feedmultiply = 100;
   feedrate = feed_mm_s * 60;
+  delta_segments_per_second = PROBE_TRAVEL_SEGMENTS_PER_SECOND;   // a travel move does not have to follow its line closely
   destination[X_AXIS] = x;
   destination[Y_AXIS] = y;
   destination[Z_AXIS] = z;
@@ -727,6 +728,7 @@ void move_to(float x, float y, float z, float feed_mm_s)
   prepare_move();
   feedrate = saved_feed;
   feedmultiply = saved;
+  delta_segments_per_second = saved_segments;
 }
 
 void keep_steppers_on() { previous_millis_cmd = millis(); }

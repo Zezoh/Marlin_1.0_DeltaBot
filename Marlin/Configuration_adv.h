@@ -121,6 +121,7 @@
 #define PROBE_SLOW_APPROACH_MM 4.0
 #define PROBE_RETRACT_FEED_MM_S 25.0   // lift after contact
 #define PROBE_TRAVEL_FEED_MM_S 150.0   // moves between probe points
+#define PROBE_TRAVEL_SEGMENTS_PER_SECOND 40 // travel moves need no 200 segments/s: fewer segments keep the planner ahead of the steppers
 #define PROBE_TRAVEL_Z_MM 30.0         // height of those moves until the bed height is known
 #define PROBE_CLEARANCE_MM 5.0         // then: this far above the highest contact found in the pass
 #define PROBE_TRAVEL_Z_FEED_MM_S 80.0  // vertical moves between points
