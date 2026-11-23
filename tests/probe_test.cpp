@@ -26,6 +26,7 @@ static float contact_noise = 0;
 static int strokes = 0, homes = 0;
 static bool transient_fast = false, transient_slow_once = false, slow_used = false;   // the FSR fires at the start of a move (vibration)
 static float feed_now = 0;
+static int low_travels = 0, drags = 0;
 
 static float frand() { return 2.0f * rand() / RAND_MAX - 1.0f; }
 static float true_z(const float tower[3]) {
@@ -89,6 +90,15 @@ void st_synchronize() {
 void move_to(float x, float y, float z, float feed) {
   slow_used = false;   // moves between probe points: no probing, straight in Cartesian space
   float c[3] = {x, y, z}; calculate_delta(c);
+  if (hypot(x - current_position[0], y - current_position[1]) > 1.0) {   // a travel move: does the nozzle clear the bed on the way?
+    if (z < 15) low_travels++;
+    for (int k = 0; k <= 10; k++) {
+      float cc[3] = {current_position[0] + (x - current_position[0]) * k / 10, current_position[1] + (y - current_position[1]) * k / 10, z};
+      calculate_delta(cc); float t[3] = {delta[0], delta[1], delta[2]};
+      if (true_z(t) < bed_z + 1.0) drags++;
+    }
+    calculate_delta(c);
+  }
   for (int a = 0; a < 3; a++) believed[a] = lround(delta[a] * 80) / 80.0f;
   current_position[0] = x; current_position[1] = y; current_position[2] = z;
 }
@@ -178,6 +188,12 @@ int main(int argc, char **argv) {
     probe_g33(6, 10, false); double w = flatness(70, m);
     printf("9. start %.2f mm off: after G33 %.3f mm, %d homings\n", w0, w, homes);
     CHECK(delta_calibrated && w < 0.12, "calibration of a badly built machine (%.3f)", w); }
+  // 10. the bed is 5 mm below where the firmware thinks: pass 2 must not treat the new heights as noise; low travel moves
+  { firmware_defaults(); machine(90.5, 210, 0.1, 0.0, 0.0, 5.2, 4.8, 5.0); fsr_sensitivity = 12; home_all_axes(); low_travels = drags = 0;
+    probe_g33(6, 10, false); double m, w = flatness(70, m);
+    printf("10. bed 5 mm too low at the start: after G33 %.3f mm, FSR sensitivity %u, %d low travel moves, %d moves dragging on the bed\n", w, (unsigned)fsr_sensitivity, low_travels, drags);
+    CHECK(delta_calibrated && w < 0.12 && fsr_sensitivity == 12, "second pass after a large correction");
+    CHECK(low_travels >= 8 && drags == 0, "travel moves stay low (%d) and clear the bed (%d)", low_travels, drags); }
   printf(fails ? "probe: %d FAILED\n" : "probe: all ok\n", fails);
   return fails ? 1 : 0;
 }

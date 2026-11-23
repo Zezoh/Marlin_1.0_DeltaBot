@@ -21,6 +21,8 @@ bool delta_calibrated = false;
 static uint8_t false_triggers = 0;   // spurious contacts in a row
 static float deepest_contact = 0.0;  // lowest accepted contact height since the session began
 static bool have_deepest = false;
+static float bed_top = 0.0;          // highest contact found in the pass: the moves between points clear it
+static bool have_top = false;
 
 bool probe_set_sensitivity(unsigned int counts)
 {
@@ -91,10 +93,17 @@ static void adapt_to_noise()
   }
 }
 
-static void begin_session()
+// Heights are only comparable within one pass: G33 re-homes with new settings between passes.
+static void new_pass()
 {
   false_triggers = 0;
   have_deepest = false;
+  have_top = false;
+}
+
+static void begin_session()
+{
+  new_pass();
   adapt_to_noise();
 }
 
@@ -124,10 +133,12 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
   float start;
 
   // up, across, down to where the slow approach begins
-  if (z < PROBE_TRAVEL_Z_MM) { stroke(current_position[X_AXIS], current_position[Y_AXIS], z, PROBE_TRAVEL_Z_MM, PROBE_TRAVEL_Z_FEED_MM_S, false, zz); }
-  move_to(x, y, PROBE_TRAVEL_Z_MM, PROBE_TRAVEL_FEED_MM_S);
-  st_synchronize();
   start = bed_guess + PROBE_SLOW_APPROACH_MM;
+  float travel = have_top ? bed_top + PROBE_CLEARANCE_MM : PROBE_TRAVEL_Z_MM;
+  if (travel < start + 1.0) travel = start + 1.0;
+  if (z < travel) { stroke(current_position[X_AXIS], current_position[Y_AXIS], z, travel, PROBE_TRAVEL_Z_FEED_MM_S, false, zz); }
+  move_to(x, y, travel, PROBE_TRAVEL_FEED_MM_S);
+  st_synchronize();
   if (current_position[Z_AXIS] > start) {
     wait_ms(PROBE_SETTLE_MS);
     if (stroke(x, y, current_position[Z_AXIS], start, PROBE_FEED_FAST_MM_S, true, zz)) {
@@ -151,6 +162,7 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
       } else {
         false_triggers = 0;
         if (!have_deepest || zz < deepest_contact) { deepest_contact = zz; have_deepest = true; }
+        if (!have_top || zz > bed_top) { bed_top = zz; have_top = true; }
         samples[n++] = zz;
         if (n >= PROBE_AVERAGE_SAMPLES) {  // the last strokes agree?
           float lo = samples[n - 1], hi = lo;
@@ -293,6 +305,7 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
 
   for (uint8_t pass = 1; pass <= CALIB_MAX_PASSES; pass++) {
     float err[DCAL_MAX_POINTS], rms_after;
+    new_pass();
     DeltaGeometry g0;
     g0.R = delta_radius; g0.L = delta_diagonal_rod;
     for (int a = 0; a < 3; a++) { g0.ang[a] = delta_tower_angle[a]; g0.off[a] = 0; }
