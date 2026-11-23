@@ -25,10 +25,17 @@ CardReader::CardReader()
 
 void CardReader::initsd()
 {
+  // M21 while a file is open: close it, the old cluster chain does not survive a volume re-init
+  if (file.isOpen()) file.close();
+  saving = logging = sdprinting = false;
   cardOK = false;
   if (root.isOpen()) root.close();
 
+  #ifdef SDSLOW   // Configuration.h: slower SPI for a card that fails to init at full speed
+    if (!card.init(SPI_HALF_SPEED, SDSS))
+  #else
     if (!card.init(SPI_FULL_SPEED, SDSS))
+  #endif
   {
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);

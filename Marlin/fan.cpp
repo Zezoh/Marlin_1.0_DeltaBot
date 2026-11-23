@@ -103,6 +103,7 @@ void fan_init()
   WRITE(FAN_PIN, LOW);
   #ifdef __AVR__
     TCCR2A &= ~(_BV(COM2B1) | _BV(COM2B0));                    // the pin is not driven by the timer
+    TCCR2A &= ~(_BV(COM2A1) | _BV(COM2A0));                    // OC2A is the heater pin (PB4/D10): keep the timer off it
     TCCR2A |= _BV(WGM20) | _BV(WGM21);                         // fast PWM mode: it counts 0..255 and overflows
     TCCR2B = (TCCR2B & ~(_BV(WGM22) | _BV(CS22) | _BV(CS21) | _BV(CS20))) | _BV(CS22);   // prescaler 64
     TIMSK2 |= _BV(TOIE2);

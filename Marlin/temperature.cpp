@@ -25,7 +25,7 @@
 #include "fan.h"
 
 int target_temperature[EXTRUDERS] = { 0 };
-int current_temperature_raw[EXTRUDERS] = { 0 };
+volatile int current_temperature_raw[EXTRUDERS] = { 0 };
 float current_temperature[EXTRUDERS] = { 0.0 };
 float Kp = DEFAULT_Kp;
 float Ki = DEFAULT_Ki * PID_dT;
@@ -39,7 +39,7 @@ volatile unsigned int fsr_raw = 0;
 
 static float temp_iState = 0, temp_dState = 0, dTerm = 0, temp_iState_max;
 static bool pid_reset = true;
-static unsigned char soft_pwm = 0;     // heater power, 0..127
+static volatile unsigned char soft_pwm = 0;     // heater power, 0..127; the ISR reads it, the main loop writes it
 
 // The thermistor reads LOW raw values when it is hot. Limits are found at start from the temperatures in Configuration.h.
 static int minttemp_raw = 16383;       // at or above this raw value: too cold, wire broken
@@ -69,6 +69,8 @@ void PID_autotune(float temp, int ncycles)
   float Kp, Ki, Kd;
   float max_temp = 0, min_temp = 10000;
 
+  if (temp < EXTRUDE_MINTEMP) temp = EXTRUDE_MINTEMP;
+  if (temp > HEATER_0_MAXTEMP - 15) temp = HEATER_0_MAXTEMP - 15;   // the autotune cycles the heater around it, keep room for the emergency stop
   SERIAL_ECHOLN("PID Autotune start");
 
   disable_heater();
@@ -76,6 +78,11 @@ void PID_autotune(float temp, int ncycles)
   bias = d = (PID_MAX)/2;
 
   for(;;) {
+    if(IsStopped()) {       // the emergency stop fired: get out, manage_hotends can no longer hold the heater back
+      disable_heater();
+      return;
+    }
+    fan_service();          // the hotend fan must run during an autotune
     if(temp_meas_ready == true) { // temp sample ready
       updateTemperaturesFromRawValues();
 
@@ -162,6 +169,7 @@ int getHeaterPower(int heater) { return soft_pwm; }
 // Thermal runaway: after the target was reached once, the temperature must not stay too far below it.
 static int runaway_state = 0;
 static unsigned long runaway_timer = 0;
+static int timer_target = 0;           // the target the current stability period started with
 static bool thermal_runaway = false;
 
 static void thermal_runaway_protection(float temperature, float target)
@@ -176,23 +184,23 @@ static void thermal_runaway_protection(float temperature, float target)
       if (target > 0) runaway_state = 1;
       break;
     case 1: // "First Heating" state
-      if (temperature >= target) runaway_state = 2;
+      if (temperature >= target) { runaway_state = 2; runaway_timer = millis(); timer_target = target; }
       break;
     case 2: // "Temperature Stable" state
+      if (target > timer_target) { runaway_state = 1; break; }   // the target was raised: allow heating up to it first
       if (temperature >= (target - THERMAL_RUNAWAY_PROTECTION_HYSTERESIS)) {
         runaway_timer = millis();
       } else if ((millis() - runaway_timer) > ((unsigned long) THERMAL_RUNAWAY_PROTECTION_PERIOD) * 1000) {
         SERIAL_ERROR_START;
         SERIAL_ERRORLNPGM("Thermal Runaway, system stopped!");
         thermal_runaway = true;
-        while(1) {   // the watchdog resets the board
+        while(1) {   // the watchdog resets the board: nothing here may feed it (no manage_heater())
           disable_heater();
           disable_x();
           disable_y();
           disable_z();
           disable_e0();
-          manage_heater();
-          fan_service();
+          // no manage_heater()/fan_service() here: they reach watchdog_reset() and would stop the reset
         }
       }
       break;

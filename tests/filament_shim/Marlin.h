@@ -51,6 +51,7 @@ extern float current_position[4], max_pos[3];
 extern bool axis_known_position[3];
 extern bool cancel_heatup;
 bool IsStopped();
+bool command_is(const char *line, char letter, int code);
 void manage_heater();
 void manage_inactivity(bool ignore_stepper_queue = false);
 unsigned long millis();

@@ -69,7 +69,6 @@ extern const char echomagic[] PROGMEM;
 #define SERIAL_ECHOPAIR(name,value) (serial_echopair_P(PSTR(name),(value)))
 
 void serial_echopair_P(const char *s_P, float v);
-void serial_echopair_P(const char *s_P, double v);
 void serial_echopair_P(const char *s_P, unsigned long v);
 
 
@@ -123,6 +122,7 @@ bool IsStopped();
 
 void enquecommand(const char *cmd); //put an ASCII command at the end of the current buffer.
 void enquecommand_P(const char *cmd); //put an ASCII command at the end of the current buffer, read from flash
+bool command_is(const char *line, char letter, int code); // the line is exactly this command (no substring matches)
 void prepare_arc_move(char isclockwise);
 void clamp_to_software_endstops(float target[3]);
 

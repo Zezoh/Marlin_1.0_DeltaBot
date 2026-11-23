@@ -28,6 +28,7 @@
  */
 
 #include "Marlin.h"
+#include <avr/wdt.h>
 
 #include "planner.h"
 #include "stepper.h"
@@ -120,15 +121,12 @@ static bool fromsd[BUFSIZE];
 static int bufindr = 0;
 static int bufindw = 0;
 static int buflen = 0;
-//static int i = 0;
 static char serial_char;
 static int serial_count = 0;
 static boolean comment_mode = false;
 static char *strchr_pointer; // just a pointer to find chars in the command string like X, Y, Z, E, etc
 
 
-//static float tt = 0;
-//static float bt = 0;
 
 //Inactivity shutdown variables
 static unsigned long previous_millis_cmd = 0;
@@ -150,8 +148,6 @@ bool Stopped=false;
 void get_arc_coordinates();
 
 void serial_echopair_P(const char *s_P, float v)
-    { serialprintPGM(s_P); SERIAL_ECHO(v); }
-void serial_echopair_P(const char *s_P, double v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
 void serial_echopair_P(const char *s_P, unsigned long v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
@@ -180,6 +176,7 @@ static void enquecommand_internal(const char *cmd, bool from_flash)
     if (from_flash) strncpy_P(dst, cmd, MAX_CMD_SIZE - 1);
     else strncpy(dst, cmd, MAX_CMD_SIZE - 1);
     dst[MAX_CMD_SIZE - 1] = 0;
+    fromsd[bufindw] = false;   // a queued command must never inherit the from-SD flag of the slot it reuses (cancel_print reuses slots)
     SERIAL_ECHO_START;
     SERIAL_ECHOPGM(MSG_Enqueing);
     SERIAL_ECHO(dst);
@@ -192,8 +189,26 @@ static void enquecommand_internal(const char *cmd, bool from_flash)
 void enquecommand(const char *cmd) { enquecommand_internal(cmd, false); }
 void enquecommand_P(const char *cmd) { enquecommand_internal(cmd, true); }
 
+// True when the line is exactly this command (an optional N line number first, then the code,
+// then end of line, a space, '\r' or a checksum '*'), so a message like "M117 M108 hello"
+// is not taken for the M108 itself.
+bool command_is(const char *line, char letter, int code)
+{
+  char c;
+  while (*line == ' ') line++;
+  if (*line == 'N') {                     // optional line-number prefix: "N123 M108"
+    while ((c = *(++line)) >= '0' && c <= '9') {}
+    while (*line == ' ') line++;
+  }
+  if (*line != letter) return false;
+  int v = 0;
+  while ((c = *(++line)) >= '0' && c <= '9') v = v * 10 + (c - '0');
+  return v == code && (c == 0 || c == ' ' || c == '\r' || c == '\n' || c == '*');
+}
+
 void setup()
 {
+  wdt_disable();   // after a watchdog reset on the 2560 the WDT is still running (and can force a 15 ms timeout): we must not boot-loop
   MYSERIAL.begin(BAUDRATE);
   SERIAL_PROTOCOLLNPGM("start");
   SERIAL_ECHO_START;
@@ -252,7 +267,7 @@ void loop()
   {
       if(card.saving)
       {
-        if(strstr_P(cmdbuffer[bufindr], PSTR("M29")) == NULL)
+        if(!command_is(cmdbuffer[bufindr], 'M', 29))
         {
           card.write_command(cmdbuffer[bufindr]);
           if(card.logging)
@@ -306,7 +321,7 @@ void get_command()
         {
           strchr_pointer = strchr(cmdbuffer[bufindw], 'N');
           gcode_N = (strtol(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL, 10));
-          if(gcode_N != gcode_LastN+1 && (strstr_P(cmdbuffer[bufindw], PSTR("M110")) == NULL) ) {
+          if(gcode_N != gcode_LastN+1 && !command_is(cmdbuffer[bufindw], 'M', 110)) {
             SERIAL_ERROR_START;
             SERIAL_ERRORPGM(MSG_ERR_LINE_NO);
             SERIAL_ERRORLN(gcode_LastN);
@@ -365,6 +380,7 @@ void get_command()
           case 2:
           case 3:
             if (Stopped == true) {
+              SERIAL_ERROR_START;
               SERIAL_ERRORLNPGM(MSG_ERR_STOPPED);
             }
             break;
@@ -378,7 +394,7 @@ void get_command()
         if(strcmp(cmdbuffer[bufindw], "M112") == 0)
           kill();
         
-        if(strstr_P(cmdbuffer[bufindw], PSTR("M108")) != NULL) {   // ends a wait at once
+        if(command_is(cmdbuffer[bufindw], 'M', 108)) {   // ends a wait at once
           cancel_heatup = true;
           SERIAL_PROTOCOLLNPGM(MSG_OK);
         } else if(!filament_hotkey(cmdbuffer[bufindw])) {   // M24 and M701 go on at once while a filament change waits
@@ -407,6 +423,19 @@ void get_command()
 
   while( !card.eof()  && buflen < BUFSIZE && !stop_buffering) {
     int16_t n=card.get();
+    if(n == -1)
+    {
+      // the card failed mid-print: stop feeding commands, say where, drop the half-read line.
+      // The file stays open (paused), so a transient failure can be retried with M24.
+      SERIAL_ERROR_START;
+      SERIAL_ERRORPGM("SD read error at ");
+      SERIAL_ERROR(card.position());
+      SERIAL_ERRORLNPGM(" bytes, the print is paused (M24 retries from there)");
+      card.pauseSDPrint();
+      serial_count = 0;
+      comment_mode = false;
+      return;
+    }
     serial_char = (char)n;
     if(serial_char == '\n' ||
        serial_char == '\r' ||
@@ -784,7 +813,10 @@ void process_commands()
       break;
     case 26: //M26 - Set SD index
       if(card.cardOK && code_seen('S')) {
-        card.setIndex(code_value_long());
+        if(!card.setIndex(code_value_long())) {
+          SERIAL_ERROR_START;
+          SERIAL_ERRORLNPGM("M26: the position is beyond the end of the file");
+        }
       }
       break;
     case 27: //M27 - Get SD status
@@ -794,7 +826,7 @@ void process_commands()
       starpos = (strchr(strchr_pointer + 4,'*'));
       if(starpos != NULL){
         char* npos = strchr(cmdbuffer[bufindr], 'N');
-        strchr_pointer = strchr(npos,' ') + 1;
+        if(npos) strchr_pointer = strchr(npos,' ') + 1;   // no 'N' line number: keep strchr_pointer as the dispatcher left it
         *(starpos) = '\0';
       }
       card.openFile(strchr_pointer+4,false);
@@ -854,7 +886,7 @@ void process_commands()
       starpos = (strchr(strchr_pointer + 5,'*'));
       if(starpos != NULL){
         char* npos = strchr(cmdbuffer[bufindr], 'N');
-        strchr_pointer = strchr(npos,' ') + 1;
+        if(npos) strchr_pointer = strchr(npos,' ') + 1;   // no 'N' line number: keep strchr_pointer as the dispatcher left it
         *(starpos) = '\0';
       }
       card.openLogFile(strchr_pointer+5);
@@ -991,6 +1023,7 @@ void process_commands()
           }
         }
       }
+      reset_acceleration_rates();   // the per-tower acceleration limit depends on the step rates
       break;
     case 115: // M115
       SERIAL_PROTOCOLPGM(MSG_M115_REPORT);
@@ -1129,7 +1162,13 @@ void process_commands()
       }
       SERIAL_ECHO_START;
       SERIAL_ECHOPAIR("FSR sensitivity: ", (unsigned long)fsr_sensitivity);
-      SERIAL_ECHOPAIR(" counts, reading now: ", (unsigned long)fsr_raw);   // watch it while pressing on the bed
+      {
+        unsigned int v;
+        CRITICAL_SECTION_START;
+        v = fsr_raw;   // 16 bits: read it with interrupts off
+        CRITICAL_SECTION_END;
+        SERIAL_ECHOPAIR(" counts, reading now: ", (unsigned long)v);   // watch it while pressing on the bed
+      }
       SERIAL_ECHOLN("");
       break;
     case 220: // M220 S<factor in percent>- set speed factor override percentage
@@ -1289,10 +1328,8 @@ void clamp_to_software_endstops(float target[3])
   if (min_software_endstops) {
     if (target[X_AXIS] < min_pos[X_AXIS]) target[X_AXIS] = min_pos[X_AXIS];
     if (target[Y_AXIS] < min_pos[Y_AXIS]) target[Y_AXIS] = min_pos[Y_AXIS];
-    
-    float negative_z_offset = 0;
-    
-    if (target[Z_AXIS] < min_pos[Z_AXIS]+negative_z_offset) target[Z_AXIS] = min_pos[Z_AXIS]+negative_z_offset;
+
+    if (target[Z_AXIS] < min_pos[Z_AXIS]) target[Z_AXIS] = min_pos[Z_AXIS];
   }
 
   if (max_software_endstops) {
@@ -1348,15 +1385,6 @@ void calculate_delta(float cartesian[3])
                        - sq(delta_tower3_x-cartesian[X_AXIS])
                        - sq(delta_tower3_y-cartesian[Y_AXIS])
                        ) + z;
-  /*
-  SERIAL_ECHOPGM("cartesian x="); SERIAL_ECHO(cartesian[X_AXIS]);
-  SERIAL_ECHOPGM(" y="); SERIAL_ECHO(cartesian[Y_AXIS]);
-  SERIAL_ECHOPGM(" z="); SERIAL_ECHOLN(cartesian[Z_AXIS]);
-
-  SERIAL_ECHOPGM("delta x="); SERIAL_ECHO(delta[X_AXIS]);
-  SERIAL_ECHOPGM(" y="); SERIAL_ECHO(delta[Y_AXIS]);
-  SERIAL_ECHOPGM(" z="); SERIAL_ECHOLN(delta[Z_AXIS]);
-  */
 }
 
 void prepare_move()
@@ -1391,8 +1419,10 @@ void prepare_move()
   if (difference[E_AXIS] > 0.0001 && axis_known_position[X_AXIS] && axis_known_position[Y_AXIS] && axis_known_position[Z_AXIS])
     filament_note_extrusion();   // from now on running out of filament matters
   bool extruder_only = cartesian_mm < 0.000001;
-  if (extruder_only) { cartesian_mm = abs(difference[E_AXIS]); }
+  if (extruder_only) { cartesian_mm = fabsf(difference[E_AXIS]); }   // was abs(): an integer abs on a core without the floating-point macro would truncate it
   if (cartesian_mm < 0.000001) { return; }
+  // feedrate 0 (G1 F0) would divide by zero: fall back to the last sane rate
+  if (feedrate == 0) feedrate = 1.0;
   float seconds = 6000 * cartesian_mm / feedrate / feedmultiply;
   // a move of the extruder alone needs no segments of the nozzle path
   // and short segments (a few steps each) only make the planner stutter: at least DELTA_MIN_SEGMENT_MM long

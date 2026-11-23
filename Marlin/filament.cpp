@@ -20,7 +20,7 @@ static bool raw_absent = false, stable_absent = false, valid = false;
 static unsigned long changed_ms = 0;
 static bool armed = false;            // an extrusion happened: runout is worth acting on
 static bool seen_absent = false;
-static bool seen_present = false;     // the sensor has shown filament since power-on: it is connected and works      // the old filament was out of the sensor at some time since the change began
+static bool seen_present = false;     // the sensor has shown filament since power-on: it is connected and works
 
 static float park_y() { return -DELTA_PRINTABLE_RADIUS * FILAMENT_PARK_RADIUS_PERCENT / 100.0; }
 static float min_park_z() { return max_pos[Z_AXIS] * FILAMENT_PARK_MIN_Z_PERCENT / 100.0; }
@@ -79,10 +79,7 @@ bool filament_waiting() { return changing && waiting; }
 bool filament_hotkey(const char *line)
 {
   if (!filament_waiting()) return false;
-  const char *m = strchr(line, 'M');
-  if (m == NULL) return false;
-  int code = atoi(m + 1);
-  if (code == 24 || code == 701) ui_virtual_short();
+  if (command_is(line, 'M', 24) || command_is(line, 'M', 701)) ui_virtual_short();
   else return false;
   SERIAL_PROTOCOLLNPGM(MSG_OK);
   return true;

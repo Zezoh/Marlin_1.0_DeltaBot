@@ -35,7 +35,8 @@ public:
   FORCE_INLINE bool isFileOpen() { return file.isOpen(); }
   FORCE_INLINE bool isPaused() { return cardOK && !saving && !sdprinting && file.isOpen() && sdpos < filesize; }
   FORCE_INLINE int16_t get() { sdpos = file.curPosition(); return file.read(); }
-  FORCE_INLINE void setIndex(long index) { sdpos = index; file.seekSet(index); }
+  FORCE_INLINE bool setIndex(long index) { if (!file.seekSet(index)) return false; sdpos = index; return true; }  // false: index beyond the file, sdpos untouched
+  FORCE_INLINE uint32_t position() { return sdpos; }   // byte offset of the next G-code byte to be read
 
   bool saving;
   bool logging;
@@ -59,7 +60,6 @@ private:
   bool autostart_stilltocheck;
   int8_t autostart_nr;               // number of the next autoN.g file, -1 when done
 
-  bool openParentDir(char* name, SdFile& dir, char*& fname);
   void lsDive(const char *prepend, SdFile& dir);
 };
 extern CardReader card;

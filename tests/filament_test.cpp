@@ -61,6 +61,20 @@ void manage_inactivity(bool) {
   }
 }
 bool machine_idle() { return true; }
+// verbatim from Marlin_main.cpp (pure logic; filament_hotkey uses it)
+bool command_is(const char *line, char letter, int code)
+{
+  char c;
+  while (*line == ' ') line++;
+  if (*line == 'N') {                     // optional line-number prefix: "N123 M108"
+    while ((c = *(++line)) >= '0' && c <= '9') {}
+    while (*line == ' ') line++;
+  }
+  if (*line != letter) return false;
+  int v = 0;
+  while ((c = *(++line)) >= '0' && c <= '9') v = v * 10 + (c - '0');
+  return v == code && (c == 0 || c == ' ' || c == '\r' || c == '\n' || c == '*');
+}
 bool blocks_queued() { return false; }
 void st_synchronize() {}
 void plan_set_e_position(const float &e) { last_e_set = e; }

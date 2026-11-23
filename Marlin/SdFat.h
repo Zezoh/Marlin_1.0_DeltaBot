@@ -188,7 +188,6 @@ class SdFile {
   static void dirName(const dir_t& dir, char* name);
   uint32_t curPosition() const {return curPosition_;}
   uint32_t fileSize() const {return fileSize_;}
-  bool getFilename(char* name);
   bool isOpen() const {return type_ != TYPE_CLOSED;}
   bool open(SdFile* dirFile, const char* path, uint8_t oflag);
   bool openRoot(SdVolume* vol);
@@ -201,7 +200,7 @@ class SdFile {
   bool seekSet(uint32_t pos);
   bool sync();
   int16_t write(const void* buf, uint16_t nbyte);
-  int16_t write(const char* str);
+  int16_t write(const char* str) { return write(str, strlen(str)); }
 
  private:
   // values for type_

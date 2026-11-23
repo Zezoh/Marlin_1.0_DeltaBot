@@ -88,23 +88,25 @@ bool SdVolume::allocCluster(uint32_t* curCluster) {
 /** Size in bytes of a cluster chain. */
 bool SdVolume::chainSize(uint32_t cluster, uint32_t* size) {
   uint32_t s = 0;
-  do {
+  // a sane chain is shorter than the volume: a corrupt FAT entry that loops must not hang the printer
+  for (uint32_t n = 0; n <= clusterCount_; n++) {
     if (!fatGet(cluster, &cluster)) return false;
     s += 512UL << clusterSizeShift_;
-  } while (!isEOC(cluster));
-  *size = s;
-  return true;
+    if (isEOC(cluster)) { *size = s; return true; }
+  }
+  return false;
 }
 
 /** Free a cluster chain. */
 bool SdVolume::freeChain(uint32_t cluster) {
   uint32_t next;
   allocSearchStart_ = 2;
-  do {
+  for (uint32_t n = 0; n <= clusterCount_; n++) {   // bounded: see chainSize
     if (!fatGet(cluster, &next) || !fatPut(cluster, 0)) return false;
+    if (isEOC(next)) return true;
     cluster = next;
-  } while (!isEOC(cluster));
-  return true;
+  }
+  return false;   // the chain loops: refuse, do not spin forever
 }
 
 /** Initialize a volume. part is 1..4 for a partition or 0 for no partition table. */
@@ -213,20 +215,6 @@ bool SdFile::sync() {
     flags_ &= ~F_FILE_DIR_DIRTY;
   }
   return SdVolume::cacheFlush();
-}
-
-/** Get the 8.3 name ("NAME.EXT") of the file, or "/" for the root. */
-bool SdFile::getFilename(char* name) {
-  if (!isOpen()) return false;
-  if (isRoot()) {
-    name[0] = '/';
-    name[1] = '\0';
-    return true;
-  }
-  dir_t* p = cacheDirEntry(false);
-  if (!p) return false;
-  dirName(*p, name);
-  return true;
 }
 
 void SdFile::dirName(const dir_t& dir, char* name) {
@@ -479,6 +467,13 @@ bool SdFile::remove() {
   dir_t* d = cacheDirEntry(true);
   if (!d) return false;
   d->name[0] = DIR_NAME_DELETED;
+  // Long file name entries precede the 8.3 entry: clear them too, or the next file
+  // created into this slot pairs with the stale long name and the host reads a wrong file.
+  for (uint8_t i = dirIndex_; i > 0; i--) {
+    dir_t* prev = SdVolume::cacheBuffer_.dir + i - 1;
+    if (prev->attributes != 0x0F) break;   // 0x0F = long file name entry
+    prev->name[0] = DIR_NAME_DELETED;
+  }
   type_ = TYPE_CLOSED;
   return SdVolume::cacheFlush();
 }
@@ -580,7 +575,4 @@ int16_t SdFile::write(const void* buf, uint16_t nbyte) {
   return -1;
 }
 
-int16_t SdFile::write(const char* str) {
-  return write(str, strlen(str));
-}
 
