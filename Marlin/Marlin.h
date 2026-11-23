@@ -42,8 +42,7 @@
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
 
-
-  #define MYSERIAL MSerial
+#define MYSERIAL MSerial
 
 #define SERIAL_PROTOCOL(x) (MYSERIAL.print(x))
 #define SERIAL_PROTOCOL_F(x,y) (MYSERIAL.print(x,y))
@@ -91,42 +90,14 @@ void process_commands();
 
 void manage_inactivity(bool ignore_stepper_queue=false);
 
-#if defined(X_ENABLE_PIN) && X_ENABLE_PIN > -1
-  #define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ON)
-  #define disable_x() { WRITE(X_ENABLE_PIN,!X_ENABLE_ON); axis_known_position[X_AXIS] = false; }
-#else
-  #define enable_x() ;
-  #define disable_x() ;
-#endif
-
-#if defined(Y_ENABLE_PIN) && Y_ENABLE_PIN > -1
-  #define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ON)
-  #define disable_y() { WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON); axis_known_position[Y_AXIS] = false; }
-#else
-  #define enable_y() ;
-  #define disable_y() ;
-#endif
-
-#if defined(Z_ENABLE_PIN) && Z_ENABLE_PIN > -1
-  #define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ON)
-  #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); axis_known_position[Z_AXIS] = false; }
-#else
-  #define enable_z() ;
-  #define disable_z() ;
-#endif
-
-#if defined(E0_ENABLE_PIN) && (E0_ENABLE_PIN > -1)
-  #define enable_e0() WRITE(E0_ENABLE_PIN, E_ENABLE_ON)
-  #define disable_e0() WRITE(E0_ENABLE_PIN,!E_ENABLE_ON)
-#else
-  #define enable_e0()  /* nothing */
-  #define disable_e0() /* nothing */
-#endif
-
-  #define enable_e1()  /* nothing */
-  #define disable_e1() /* nothing */
-
-
+#define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ON)
+#define disable_x() { WRITE(X_ENABLE_PIN,!X_ENABLE_ON); axis_known_position[X_AXIS] = false; }
+#define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ON)
+#define disable_y() { WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON); axis_known_position[Y_AXIS] = false; }
+#define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ON)
+#define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); axis_known_position[Z_AXIS] = false; }
+#define enable_e0() WRITE(E0_ENABLE_PIN, E_ENABLE_ON)
+#define disable_e0() WRITE(E0_ENABLE_PIN,!E_ENABLE_ON)
 
 enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
 
@@ -164,7 +135,7 @@ void clamp_to_software_endstops(float target[3]);
 extern float homing_feedrate[];
 extern bool axis_relative_modes[];
 extern int feedmultiply;
-extern int extrudemultiply; // Sets extrude multiply factor (in percent) for all extruders
+extern int extrudemultiply; // extrusion factor in percent (M221)
 extern float current_position[NUM_AXIS] ;
 extern float add_homing[3];
 extern float endstop_adj[3];
@@ -182,8 +153,7 @@ extern int fanSpeed;
 extern unsigned long starttime;
 extern unsigned long stoptime;
 
-// Handling multiple extruders pins
-extern uint8_t active_extruder;
+extern uint8_t active_extruder;   // always 0: there is one extruder
 
 #endif
 

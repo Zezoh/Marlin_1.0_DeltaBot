@@ -762,7 +762,6 @@ void process_commands()
         enable_y();
         enable_z();
         enable_e0();
-        enable_e1();
       break;
 
 #ifdef SDSUPPORT
@@ -1018,12 +1017,7 @@ void process_commands()
           if(code_seen('X')) disable_x();
           if(code_seen('Y')) disable_y();
           if(code_seen('Z')) disable_z();
-          #if ((E0_ENABLE_PIN != X_ENABLE_PIN) && (E1_ENABLE_PIN != Y_ENABLE_PIN)) // Only enable on boards that have seperate ENABLE_PINS
-            if(code_seen('E')) {
-              disable_e0();
-              disable_e1();
-            }
-          #endif
+          if(code_seen('E')) disable_e0();
         }
       }
       break;
@@ -1496,7 +1490,7 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) //default argument s
         disable_y();
         disable_z();
         disable_e0();
-        disable_e1();
+
       }
     }
   }
@@ -1515,7 +1509,7 @@ void kill()
   disable_y();
   disable_z();
   disable_e0();
-  disable_e1();
+
 
   SERIAL_ERROR_START;
   SERIAL_ERRORLNPGM(MSG_ERR_KILLED);

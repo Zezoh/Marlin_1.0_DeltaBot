@@ -5,7 +5,7 @@
 #include "planner.h"
 int extrudemultiply=100; float volumetric_multiplier[1]={1}; int fanSpeed=0; uint8_t active_extruder=0;
 void manage_inactivity(bool){} void manage_heater(){}
-float degHotend(uint8_t){return 200;} float degTargetHotend0(){return 200;} void setTargetHotend0(float){}
+float degHotend(uint8_t){return 200;} float degTargetHotend(uint8_t){return 200;} void setTargetHotend0(float){}
 void st_wake_up(){} void st_set_position(const long&,const long&,const long&,const long&){} void st_set_e_position(const long&){}
 #define DELTA_RADIUS_V 124.0
 static float tx[3],ty[3]; static float L=250.0f, delta_[3];

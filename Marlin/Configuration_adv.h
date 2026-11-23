@@ -5,6 +5,12 @@
 //=============================Mechanical Settings===========================
 //===========================================================================
 
+// The fan on FAN_PIN cools the print and the heat break: while the hotend is hot it never runs below FAN_MIN_PWM
+#define FAN_SAFETY_ON_C 50.0
+#define FAN_SAFETY_OFF_C 49.0
+#define FAN_MIN_PWM 120
+#define FAN_KICK_MS 400        // full power for this long when the fan starts
+
 #define ENDSTOPS_ONLY_FOR_HOMING // If defined the endstops will only be used for homing
 
 //homing hits the endstop, then retracts by this distance, before it tries to slowly bump again:

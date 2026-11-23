@@ -516,7 +516,7 @@ void st_init()
 #if defined(E1_STEP_PIN) && (E1_STEP_PIN > -1)
   SET_OUTPUT(E1_STEP_PIN);
   WRITE(E1_STEP_PIN, INVERT_E_STEP_PIN);
-  disable_e1();
+
 #endif
 
   // waveform generation = 0100 = CTC
@@ -585,7 +585,7 @@ void finishAndDisableSteppers()
   disable_y();
   disable_z();
   disable_e0();
-  disable_e1();
+
 }
 
 void quickStop()

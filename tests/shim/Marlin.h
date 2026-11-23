@@ -53,7 +53,7 @@ extern int fanSpeed;
 extern uint8_t active_extruder;
 void manage_inactivity(bool ignore_stepper_queue=false);
 float degHotend(uint8_t);
-float degTargetHotend0();
+float degTargetHotend(uint8_t);
 void setTargetHotend0(float);
 void st_wake_up();
 void st_set_position(const long&,const long&,const long&,const long&);

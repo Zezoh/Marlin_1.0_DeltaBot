@@ -70,7 +70,6 @@ volatile unsigned char block_buffer_tail;  // Index of the block to process now
 float extrude_min_temp = EXTRUDE_MINTEMP;
 
 // Number of moves of each extruder since it was last used, to disable inactive extruders
-static unsigned char extruder_last_move[2] = {0, 0};
 
 // Index of the next / previous block in the ring buffer (BLOCK_BUFFER_SIZE is a power of 2)
 #define NEXT_BLOCK_INDEX(i) (((i) + 1) & (BLOCK_BUFFER_SIZE - 1))
@@ -268,54 +267,30 @@ void plan_init()
 }
 
 
-// Disable the axes that have nothing left to do and set the fan speed of the block being executed
+// The fan: M106/M107 set the speed of the block being executed. The same fan cools the heat break, so it never
+// runs below FAN_MIN_PWM while the hotend is hot (from FAN_SAFETY_ON_C until it and its target are below
+// FAN_SAFETY_OFF_C), and it starts with full power for FAN_KICK_MS.
 void check_axes_activity()
 {
-  unsigned char x_active = 0;
-  unsigned char y_active = 0;
-  unsigned char z_active = 0;
-  unsigned char e_active = 0;
-  unsigned char tail_fan_speed = fanSpeed;
+  static bool hot = false, was_on = false;
+  static unsigned long kick_end = 0;
+  unsigned char duty = (block_buffer_tail != block_buffer_head) ? block_buffer[block_buffer_tail].fan_speed : fanSpeed;
+  float t = degHotend(0), target = degTargetHotend(0);
 
-  if (block_buffer_tail != block_buffer_head)
-  {
-    uint8_t block_index = block_buffer_tail;
-    tail_fan_speed = block_buffer[block_index].fan_speed;
-    while (block_index != block_buffer_head)
-    {
-      block_t *block = &block_buffer[block_index];
-      if (block->steps_x != 0) x_active++;
-      if (block->steps_y != 0) y_active++;
-      if (block->steps_z != 0) z_active++;
-      if (block->steps_e != 0) e_active++;
-      block_index = NEXT_BLOCK_INDEX(block_index);
-    }
+  if (!(t > -50 && t < 1000)) hot = true;                                      // nonsense from the sensor: cool it
+  else if (t >= FAN_SAFETY_ON_C || target >= FAN_SAFETY_ON_C) hot = true;
+  else if (t <= FAN_SAFETY_OFF_C && target <= FAN_SAFETY_OFF_C) hot = false;
+  if (hot && duty < FAN_MIN_PWM) duty = FAN_MIN_PWM;
+
+  if (duty == 0) {
+    was_on = false;
+    kick_end = 0;
+  } else {
+    if (!was_on) { was_on = true; kick_end = millis() + FAN_KICK_MS; }
+    if (kick_end && (long)(millis() - kick_end) < 0) duty = 255;
+    else kick_end = 0;
   }
-  if ((DISABLE_X) && (x_active == 0)) disable_x();
-  if ((DISABLE_Y) && (y_active == 0)) disable_y();
-  if ((DISABLE_Z) && (z_active == 0)) disable_z();
-  if ((DISABLE_E) && (e_active == 0))
-  {
-    disable_e0();
-    disable_e1();
-  }
-#if defined(FAN_PIN) && FAN_PIN > -1
-  #ifdef FAN_KICKSTART_TIME
-    static unsigned long fan_kick_end;
-    if (tail_fan_speed) {
-      if (fan_kick_end == 0) {
-        // Just starting up fan - run at full power.
-        fan_kick_end = millis() + FAN_KICKSTART_TIME;
-        tail_fan_speed = 255;
-      } else if (fan_kick_end > millis())
-        // Fan still spinning up.
-        tail_fan_speed = 255;
-    } else {
-      fan_kick_end = 0;
-    }
-  #endif // FAN_KICKSTART_TIME
-    analogWrite(FAN_PIN, tail_fan_speed);
-#endif // FAN_PIN > -1
+  analogWrite(FAN_PIN, duty);
 }
 
 // Add a new linear movement to the buffer. x, y and z are the carriage positions in mm
@@ -391,27 +366,7 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   if (block->steps_y != 0) enable_y();
   if (block->steps_z != 0) enable_z();
 
-  // Enable extruder(s)
-  if (block->steps_e != 0)
-  {
-    if (DISABLE_INACTIVE_EXTRUDER)  // enable only the selected extruder
-    {
-      for (uint8_t i = 0; i < 2; i++)
-      {
-        if (extruder_last_move[i] > 0) extruder_last_move[i]--;
-      }
-      if (extruder == 0)
-      {
-        enable_e0();
-        extruder_last_move[0] = BLOCK_BUFFER_SIZE*2;
-      }
-    }
-    else  // enable all
-    {
-      enable_e0();
-      enable_e1();
-    }
-  }
+  if (block->steps_e != 0) enable_e0();
 
   if (block->steps_e == 0)
   {
