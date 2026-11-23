@@ -1411,7 +1411,8 @@ void process_commands()
       }
       SERIAL_ECHO_START;
       SERIAL_ECHOPAIR("FSR sensitivity: ", (unsigned long)fsr_sensitivity);
-      SERIAL_ECHOLNPGM(" counts");
+      SERIAL_ECHOPAIR(" counts, reading now: ", (unsigned long)fsr_raw);   // watch it while pressing on the bed
+      SERIAL_ECHOLN("");
       break;
     #if EXTRUDERS > 1
     case 218: // M218 - set hotend offset (in mm), T<extruder_number> X<offset_on_X> Y<offset_on_Y>

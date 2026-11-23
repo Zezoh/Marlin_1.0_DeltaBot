@@ -131,8 +131,8 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
   if (current_position[Z_AXIS] > start) {
     wait_ms(PROBE_SETTLE_MS);
     if (stroke(x, y, current_position[Z_AXIS], start, PROBE_FEED_FAST_MM_S, true, zz)) {
-      // contact before the slow approach: the bed is higher than expected. Lift and approach slowly from above it.
-      bed_guess = zz;
+      // Contact before the slow approach: a bump of the fast move, or a bed higher than expected. Either way, lift
+      // and approach slowly from above that point; the depth limit stays relative to where the bed was expected.
       start = zz + PROBE_SLOW_APPROACH_MM + 1.0;
       stroke(x, y, zz, start, PROBE_RETRACT_FEED_MM_S, false, zz);
     }
@@ -144,8 +144,8 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
     wait_ms(PROBE_SETTLE_MS);
     float from = current_position[Z_AXIS];
     if (stroke(x, y, from, bed_guess - depth, PROBE_FEED_MM_S, true, zz)) {
-      if (have_deepest && zz > deepest_contact + PROBE_FALSE_TRIGGER_MM) {
-        note_false_trigger();            // in mid-air: noise or vibration, not the bed
+      if ((from - zz < PROBE_MIN_STROKE_MM) || (have_deepest && zz > deepest_contact + PROBE_FALSE_TRIGGER_MM)) {
+        note_false_trigger();            // right at the start of the move, or in mid-air: vibration or noise, not the bed
         stroke(x, y, zz, zz + 1.0, PROBE_RETRACT_FEED_MM_S, false, zz);
         continue;
       } else {
@@ -162,6 +162,13 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
       stroke(x, y, zz, zz + 1.5, PROBE_RETRACT_FEED_MM_S, false, zz);   // lift a little, probe again
     } else {
       // no contact within the depth limit
+      SERIAL_ERROR_START;
+      SERIAL_ERRORLNPGM("probe: no contact");
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPAIR("the nozzle went down to Z", zz);
+      SERIAL_ECHOPAIR(", the FSR changed by at most ", (unsigned long)st_probe_peak());
+      SERIAL_ECHOPAIR(" counts, it needs ", (unsigned long)fsr_sensitivity);
+      SERIAL_ECHOLN("");
       return false;
     }
   }
