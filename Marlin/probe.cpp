@@ -261,7 +261,7 @@ void probe_g29(bool save)
   mesh_set_active(false);
   begin_session();
   float stage[MESH_POINTS], last_z = 0, lo = 1e9, hi = -1e9;
-  bool ok = true;
+  bool ok = true, committed = false;
   uint8_t i;
   for (i = 0; i < MESH_POINTS && ok; i++) {
     float xy[2], z;
@@ -293,13 +293,14 @@ void probe_g29(bool save)
     mesh_have = true;
     mesh_changed();
     mesh_was = true;   // a new mesh is switched on
+    committed = true;
     SERIAL_ECHO_START;
     SERIAL_ECHOPAIR("G29 OK, the bed is between ", lo);
     SERIAL_ECHOPAIR(" and ", hi);
     SERIAL_ECHOLNPGM(" mm");
-    if (save) Config_StoreSettings();
   }
   mesh_set_active(mesh_was);
+  if (committed && save) Config_StoreSettings();   // after the mesh is on: what is stored includes that
   ui_busy(false);
 }
 
@@ -377,7 +378,7 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
   const float probe_radius = CALIB_PROBE_RADIUS_MM;
   float prev_rms = 1e9, rms = 0;
   uint8_t verdict = 0;  // 1 calibrated, 2 accepted (noise limited), 3 uncertified, 4 failed, 5 cancelled
-  bool changed = false;
+  bool changed = false, store = false;
 
   for (uint8_t pass = 1; pass <= CALIB_MAX_PASSES; pass++) {
     float err[DCAL_MAX_POINTS], rms_after;
@@ -452,7 +453,7 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
       if (verdict == 1) { SERIAL_ECHOPAIR("G33 OK calibrated rms ", rms); }
       else { SERIAL_ECHOPAIR("G33 OK (noise limited) rms ", rms); }
       SERIAL_ECHOLNPGM(" mm");
-      if (save) Config_StoreSettings();
+      store = save;
     }
     if (changed && verdict == 3) delta_calibrated = false;
     if (changed && mesh_have) {   // a mesh belongs to the geometry it was probed with
@@ -464,5 +465,6 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
   }
   lift_to_travel();
   mesh_set_active(mesh_was);
+  if (store) Config_StoreSettings();   // after the mesh is back: what is stored includes whether it is on
   ui_busy(false);
 }

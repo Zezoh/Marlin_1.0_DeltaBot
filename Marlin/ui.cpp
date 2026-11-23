@@ -28,7 +28,10 @@ void ui_init()
 
 void ui_busy(bool busy)
 {
-  if (busy) busy_depth++;
+  if (busy) {
+    busy_depth++;
+    if (pending == OneButton::SHORT) pending = OneButton::NONE;   // do not carry a click out after the job it was not meant for
+  }
   else if (busy_depth > 0 && --busy_depth == 0) cancel_flag = false;
 }
 
