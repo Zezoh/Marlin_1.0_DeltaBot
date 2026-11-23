@@ -38,13 +38,15 @@ own threshold.
 | Code | |
 |---|---|
 | `G30` | probe at the current X/Y and print the bed height |
+| `G29 [S0]` | bed mesh: probes 19 points (12 at 80 mm, 6 at 40 mm, the centre) and, if the bed is within 5 mm of Z 0, switches the mesh on and saves it (S0: do not save). Z is then corrected by the interpolated bed height. Run G33 first. A failed G29 keeps the old mesh. |
+| `M420 [S0\|1] [Z<mm>]` | mesh on/off without moving the nozzle; Z = height where the correction has faded out (0 = never) |
 | `G33 [F3\|4\|6] [P7\|10] [S0]` | least-squares delta calibration: probes P points, fits F factors (3 = endstops, 4 = + delta radius, **6 = + tower angles, default**), applies the result, re-homes and probes again, up to 6 passes. It ends calibrated (RMS <= 0.05 mm), noise limited (<= 0.25 mm) or uncertified. S0 does not save to EEPROM. A result outside the allowed range is refused and the old settings are restored. |
 | `M974 [S<counts>]` | FSR sensitivity |
 | `M851 [Z<mm>]` | nozzle height above the bed when the probe fires (default 0) |
 | `M665 A B C` | tower angle corrections in degrees (set by G33) |
 
 The endstop trims G33 finds are stored in `M666` (a delta can only lower a carriage after the endstop), the rest of the
-height change goes into the home offset (`M206 Z`). Editing M665/M666/M206 by hand clears the "calibrated" flag.
+height change goes into the home offset (`M206 Z`). Editing M665/M666/M206 by hand clears the "calibrated" flag. A G33 that changes the geometry also drops the mesh (run G29 again). G92 only sets E on a delta; X, Y and Z are the machine's.
 
 ## One button
 
@@ -61,7 +63,7 @@ Pressed to GND on D3, the LED on D12 shows the state (blink period: error 0.2 s,
 | held at power-on (2.5 s) | | calibrate (G33) once |
 
 Not ported from DeltaCore (on purpose, for now): filament runout sensor, M600 filament change, the second extruder
-through a Y splitter, G29 bed mesh, ESP32 serial bridge.
+through a Y splitter, ESP32 serial bridge.
 
 ## Building
 

@@ -4,6 +4,7 @@
 #   arc_test            G2/G3 arcs on a delta and the reach check
 #   planner_speed_test  the nozzle speed equals the feed rate
 #   calibration_test    the G33 solver recovers a simulated machine's geometry
+#   mesh_test           the bed mesh: interpolation, fade, inverse
 #   onebutton_test      the button decoder: clicks, long press, boot hold, bounce
 #   probe_test          G30 / G33 end to end on a simulated delta with a wrong geometry and an FSR probe
 #   sdfat_test          the FAT16/FAT32 code on real disk images (needs mkfs.fat and mtools)
@@ -13,18 +14,19 @@ T=$(cd "$(dirname "$0")" && pwd); ROOT=$(dirname "$T"); B=$(mktemp -d); trap 'rm
 CXX="g++ -O1 -w -std=gnu++11 -fpermissive"
 python3 "$T/extract.py" "$ROOT" "$B"
 
-echo "== kinematics"; $CXX -I"$B" "$T/kinematics_test.cpp" -o "$B/kin"; "$B/kin"
-echo "== arcs";       $CXX -I"$B" "$T/arc_test.cpp" -o "$B/arc"; "$B/arc"
+echo "== kinematics"; $CXX -I"$B" -I"$ROOT/Marlin" "$T/kinematics_test.cpp" "$ROOT/Marlin/mesh.cpp" -o "$B/kin"; "$B/kin"
+echo "== arcs";       $CXX -I"$B" -I"$ROOT/Marlin" "$T/arc_test.cpp" "$ROOT/Marlin/mesh.cpp" -o "$B/arc"; "$B/arc"
 
 echo "== G33 solver";  $CXX -I"$ROOT/Marlin" "$T/calibration_test.cpp" "$ROOT/Marlin/delta_calibration.cpp" -o "$B/cal"; "$B/cal"
+echo "== bed mesh";    $CXX -I"$ROOT/Marlin" "$T/mesh_test.cpp" "$ROOT/Marlin/mesh.cpp" -o "$B/mesh"; "$B/mesh"
 echo "== one button";  $CXX -I"$ROOT/Marlin" "$T/onebutton_test.cpp" -o "$B/ob"; "$B/ob"
 
 echo "== probe and G33 on a simulated delta"
 Q="$B/probe"; mkdir "$Q"
-for f in probe.cpp probe.h ui.h delta_calibration.cpp delta_calibration.h Configuration.h Configuration_adv.h boards.h Default_Version.h thermistortables.h pins.h; do cp "$ROOT/Marlin/$f" "$Q/"; done
+for f in probe.cpp probe.h ui.h mesh.cpp mesh.h delta_calibration.cpp delta_calibration.h Configuration.h Configuration_adv.h boards.h Default_Version.h thermistortables.h pins.h; do cp "$ROOT/Marlin/$f" "$Q/"; done
 cp "$T"/probe_shim/*.h "$Q/"; cp "$T/probe_test.cpp" "$B/"
 ZH=$(awk '/#define Z_HOME_POS/{print $3}' "$ROOT/Marlin/Configuration.h")
-(cd "$Q" && $CXX -DZ_HOME_POS=$ZH -I. -I"$B" probe.cpp delta_calibration.cpp "$B/probe_test.cpp" -o probe_test); "$Q/probe_test"
+(cd "$Q" && $CXX -DZ_HOME_POS=$ZH -I. -I"$B" probe.cpp mesh.cpp delta_calibration.cpp "$B/probe_test.cpp" -o probe_test); "$Q/probe_test"
 
 echo "== planner speed"
 P="$B/planner"; mkdir "$P"

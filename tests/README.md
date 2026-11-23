@@ -8,6 +8,7 @@
 | `arc_test` | G2/G3 arcs on a delta, `delta_reachable()` against NaN, arcs stopping at the edge of the reach |
 | `planner_speed_test` | the nozzle speed equals the feed rate (and shows the error without the Cartesian length) |
 | `calibration_test` | the G33 solver recovers the geometry of a simulated machine (3, 4 and 6 factors, 7 and 10 points) |
+| `mesh_test` | the bed mesh: passes through its points, smooth between them, fade, machine Z and back |
 | `onebutton_test` | the button decoder: click, long press, boot hold, contact bounce, `millis()` wrap |
 | `probe_test` | the real `probe.cpp` runs G30/G33 on a simulated delta with a wrong geometry and an FSR that fires at the bed: finds radius, angles and endstops, flat bed afterwards, noisy probe, no bed in reach, result out of range |
 | `sdfat_test` | the FAT16/FAT32 code on real disk images created with `mkfs.fat` and `mtools` (and `fsck.fat` on the result) |

@@ -38,6 +38,7 @@
 #include "ConfigurationStore.h"
 #include "language.h"
 #include "probe.h"
+#include "mesh.h"
 #include "ui.h"
 #include "pins_arduino.h"
 #include "math.h"
@@ -661,6 +662,8 @@ static void homeaxis(int axis) {
 void home_all_axes()
 {
   ui_busy(true);
+  bool mesh_was_active = mesh_active;
+  mesh_active = false;   // the position is not known, and the carriages end up where the endstops are
 
   saved_feedrate = feedrate;
   saved_feedmultiply = feedmultiply;
@@ -711,6 +714,8 @@ void home_all_axes()
   feedmultiply = saved_feedmultiply;
   previous_millis_cmd = millis();
   endstops_hit_on_purpose();
+  mesh_active = mesh_was_active;   // the nozzle is where it is: only its Z in the corrected frame changes
+  if (mesh_active) mesh_logical_z(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[Z_AXIS]);
   ui_busy(false);
 }
 
@@ -793,6 +798,10 @@ void process_commands()
       home_all_axes();
       break;
 
+    case 29: // G29 [S0] - probe the bed mesh
+      if(Stopped == false) probe_g29(!(code_seen('S') && code_value() == 0));
+      break;
+
     case 30: // G30 - probe the bed at the current X and Y with the FSR
       if(Stopped == false) probe_g30();
       break;
@@ -820,17 +829,10 @@ void process_commands()
     case 92: // G92
       if(!code_seen(axis_codes[E_AXIS]))
         st_synchronize();
-      for(int8_t i=0; i < NUM_AXIS; i++) {
-        if(code_seen(axis_codes[i])) {
-           if(i == E_AXIS) {
-             current_position[i] = code_value();
-             plan_set_e_position(current_position[E_AXIS]);
-           }
-           else {
-		current_position[i] = code_value()+add_homing[i];
-            plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-           }
-        }
+      // Only E can be set: a delta has no coordinate offsets, X, Y and Z are always the machine's
+      if(code_seen(axis_codes[E_AXIS])) {
+        current_position[E_AXIS] = code_value();
+        plan_set_e_position(current_position[E_AXIS]);
       }
       break;
     default: // G29 and the other bed leveling codes are not implemented
@@ -1402,6 +1404,26 @@ void process_commands()
         if(code_seen(axis_codes[i])) { endstop_adj[i] = code_value(); delta_calibrated = false; }
       }
       break;
+    case 420: // M420 [S0|S1] [Z<fade height>] - bed mesh on/off, height where its correction has faded out
+      if(code_seen('Z')) {
+        float fade = code_value();
+        if(fade >= 0 && fade <= 100) {
+          bool was = mesh_active;
+          mesh_set_active(false);
+          mesh_fade_height = fade;
+          mesh_set_active(was);
+        }
+      }
+      if(code_seen('S')) {
+        if(code_value() != 0 && !mesh_have) { SERIAL_ERROR_START; SERIAL_ERRORLNPGM("M420: there is no mesh, run G29"); }
+        else mesh_set_active(code_value() != 0);
+      }
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPAIR("Bed mesh: ", (unsigned long)mesh_active);
+      SERIAL_ECHOPAIR(" (have one: ", (unsigned long)mesh_have);
+      SERIAL_ECHOPAIR("), fade height ", mesh_fade_height);
+      SERIAL_ECHOLN("");
+      break;
     case 851: // M851 Z<mm> - how high above the bed the nozzle is when the probe fires
       if(code_seen('Z')) {
         float z = code_value();
@@ -1793,18 +1815,20 @@ bool delta_reachable(const float cartesian[3])
 
 void calculate_delta(float cartesian[3])
 {
+  float z = cartesian[Z_AXIS];
+  if (mesh_active) z = mesh_machine_z(cartesian[X_AXIS], cartesian[Y_AXIS], z);   // follow the bed
   delta[X_AXIS] = sqrt(delta_diagonal_rod_2
                        - sq(delta_tower1_x-cartesian[X_AXIS])
                        - sq(delta_tower1_y-cartesian[Y_AXIS])
-                       ) + cartesian[Z_AXIS];
+                       ) + z;
   delta[Y_AXIS] = sqrt(delta_diagonal_rod_2
                        - sq(delta_tower2_x-cartesian[X_AXIS])
                        - sq(delta_tower2_y-cartesian[Y_AXIS])
-                       ) + cartesian[Z_AXIS];
+                       ) + z;
   delta[Z_AXIS] = sqrt(delta_diagonal_rod_2
                        - sq(delta_tower3_x-cartesian[X_AXIS])
                        - sq(delta_tower3_y-cartesian[Y_AXIS])
-                       ) + cartesian[Z_AXIS];
+                       ) + z;
   /*
   SERIAL_ECHOPGM("cartesian x="); SERIAL_ECHO(cartesian[X_AXIS]);
   SERIAL_ECHOPGM(" y="); SERIAL_ECHO(cartesian[Y_AXIS]);

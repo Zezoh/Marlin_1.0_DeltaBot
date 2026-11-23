@@ -3,6 +3,7 @@
 #include "temperature.h"
 #include "ConfigurationStore.h"
 #include "probe.h"
+#include "mesh.h"
 
 void _EEPROM_writeData(int &pos, uint8_t* value, uint8_t size)
 {
@@ -38,7 +39,7 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
 // wrong data being written to the variables.
 // ALSO:  always make sure the variables in the Store and retrieve sections are in the same order.
 
-#define EEPROM_VERSION "V19"
+#define EEPROM_VERSION "V20"
 
 void Config_StoreSettings() 
 {
@@ -64,6 +65,10 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i,probe_z_offset);
   EEPROM_WRITE_VAR(i,fsr_sensitivity);
   EEPROM_WRITE_VAR(i,delta_calibrated);
+  EEPROM_WRITE_VAR(i,mesh_z);
+  EEPROM_WRITE_VAR(i,mesh_have);
+  EEPROM_WRITE_VAR(i,mesh_active);
+  EEPROM_WRITE_VAR(i,mesh_fade_height);
   #ifdef PIDTEMP
     EEPROM_WRITE_VAR(i,Kp);
     EEPROM_WRITE_VAR(i,Ki);
@@ -164,6 +169,12 @@ void Config_PrintSettings()
 	SERIAL_ECHOPAIR("  M851 Z",probe_z_offset );
 	SERIAL_ECHOPAIR("  M974 S",(unsigned long)fsr_sensitivity );
 	SERIAL_ECHOLN("");
+	SERIAL_ECHO_START;
+	SERIAL_ECHOLNPGM("Bed mesh (G29): M420 S=on/off, Z=fade height");
+	SERIAL_ECHO_START;
+	SERIAL_ECHOPAIR("  M420 S",(unsigned long)mesh_active );
+	SERIAL_ECHOPAIR(" Z",mesh_fade_height );
+	SERIAL_ECHOLN("");
 #ifdef PIDTEMP
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM("PID settings:");
@@ -208,6 +219,12 @@ void Config_RetrieveSettings()
 		EEPROM_READ_VAR(i,probe_z_offset);
 		EEPROM_READ_VAR(i,fsr_sensitivity);
 		EEPROM_READ_VAR(i,delta_calibrated);
+		EEPROM_READ_VAR(i,mesh_z);
+		EEPROM_READ_VAR(i,mesh_have);
+		EEPROM_READ_VAR(i,mesh_active);
+		EEPROM_READ_VAR(i,mesh_fade_height);
+		mesh_changed();
+		if (!mesh_have) mesh_active = false;
 		recalc_delta_settings(delta_radius, delta_diagonal_rod);  // tower positions follow the loaded radius and rod length
         #ifndef PIDTEMP
         float Kp,Ki,Kd;
@@ -266,6 +283,10 @@ void Config_ResetDefault()
 	probe_z_offset = 0;
 	fsr_sensitivity = FSR_SENSITIVITY;
 	delta_calibrated = false;
+	for (short m = 0; m < MESH_POINTS; m++) mesh_z[m] = 0;
+	mesh_have = mesh_active = false;
+	mesh_fade_height = 0;
+	mesh_changed();
 	recalc_delta_settings(delta_radius, delta_diagonal_rod);
 #ifdef PIDTEMP
     Kp = DEFAULT_Kp;

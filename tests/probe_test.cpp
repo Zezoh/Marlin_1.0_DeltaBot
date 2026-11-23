@@ -17,7 +17,9 @@ int g_verbose = 0, g_stores = 0;
 // ---- the simulated machine ----
 static DeltaGeometry truth;          // real tower radius, rod, angles (off[] unused)
 static float switch_h[3];            // real carriage height at which each endstop switch fires
-static float bed_z = 0;              // real height of the bed in the true frame
+static float bed_z = 0;
+static float warp_amp = 0;           // the bed is not flat: a dish with a tilt, this high at its worst
+static float warp(float x, float y) { return warp_amp * ((x * x + y * y) / 6400.0f - 0.5f + 0.3f * x / 80.0f + 0.2f * y * y / 6400.0f); }   // a dish with a tilt              // real height of the bed in the true frame
 static float believed[3];            // tower heights the firmware believes (what the stepper counts say)
 static float off[3];                 // real carriage height minus believed one, fixed at the last homing
 static bool armed = false, hit = false;
@@ -77,7 +79,7 @@ void st_synchronize() {
     float z = true_z(q);
     bool bump = armed && k <= 10 && ((transient_fast && feed_now > 20) || (transient_slow_once && feed_now < 20 && !slow_used));
     if (bump && feed_now < 20) slow_used = true;
-    if (bump || (armed && z <= bed_z + contact_noise * frand())) {
+    if (bump || (armed && z <= bed_z + warp(current_position[0], current_position[1]) + contact_noise * frand())) {
       for (int a = 0; a < 3; a++) believed[a] = q[a];
       hit = true; strokes++;
       return;
@@ -123,7 +125,7 @@ static double flatness(double radius, double &mean) {
     if (x * x + y * y > radius * radius) continue;
     float c[3] = {x, y, 0}; calculate_delta(c);
     float t[3] = {delta[0], delta[1], delta[2]};
-    double z = true_z(t) - bed_z; mean += z; n++;
+    double z = true_z(t) - bed_z - warp(x, y); mean += z; n++;
     if (fabs(z) > worst) worst = fabs(z);
   }
   mean /= n; return worst;
@@ -199,6 +201,23 @@ int main(int argc, char **argv) {
     probe_g33(6, 10, false); double m, w = flatness(70, m);
     printf("11. rod 2 mm longer: bed error %.3f mm\n", w);
     CHECK(w < 0.1, "a wrong rod length is absorbed (%.3f)", w); }
+  // 12. a machine that is right but a bed that is not flat: G29 follows it
+  { firmware_defaults(); machine(90, 210, 0, 0, 0, 0, 0, 0); warp_amp = 0.4; mesh_have = mesh_active = false; mesh_fade_height = 0; home_all_axes();
+    double m, w33 = flatness(70, m);
+    probe_g29(false);
+    double w29 = 0; for (float x = -70; x <= 70; x += 10) for (float y = -70; y <= 70; y += 10) {
+      if (x * x + y * y > 70 * 70) continue;
+      float c[3] = {x, y, 0.2f}; calculate_delta(c); float t[3] = {delta[0], delta[1], delta[2]};
+      double e = true_z(t) - warp(x, y) - 0.2; if (g_verbose && fabs(e) > 0.1) printf("  bad spot X%.0f Y%.0f: %.3f (mesh offset %.3f)\n", x, y, e, mesh_offset(x, y)); if (fabs(e) > w29) w29 = fabs(e); }
+    float c0[3] = {current_position[0], current_position[1], current_position[2]}; calculate_delta(c0);
+    double drift = 0; for (int a = 0; a < 3; a++) drift = fmax(drift, fabs(delta[a] - believed[a]));
+    printf("12. warped bed (0.4 mm): without a mesh the bed is %.3f mm off, after G29 a nozzle commanded 0.2 mm above it is %.3f mm off; mesh %d active %d; position drift on switching on %.4f mm\n", w33, w29, mesh_have, mesh_active, drift);
+    CHECK(mesh_have && mesh_active && w29 < 0.1 && w29 < 0.6 * w33 && drift < 0.02, "G29 follows the bed (%.3f, drift %.4f)", w29, drift);
+    // G30 with the mesh on measures the bed, not the corrected bed, and leaves the mesh on
+    move_to(30, 20, 30, 100); st_synchronize(); probe_g30(); CHECK(mesh_active, "G30 leaves the mesh on");
+    // a G29 that fails keeps the old mesh
+    float keep = mesh_z[3]; bed_z = -60; probe_g29(false); bed_z = 0; CHECK(mesh_have && mesh_z[3] == keep, "a failed G29 keeps the mesh");
+    warp_amp = 0; mesh_have = mesh_active = false; }
   printf(fails ? "probe: %d FAILED\n" : "probe: all ok\n", fails);
   return fails ? 1 : 0;
 }

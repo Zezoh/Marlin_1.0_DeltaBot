@@ -25,6 +25,7 @@ common = '''#include <math.h>
 #define DELTA_SEGMENTS_PER_SECOND 200
 #define DELTA_DIAGONAL_ROD 210.0
 #define DELTA_RADIUS 90.0
+#include "mesh.h"
 ''' + vars_ + rd + dr + cd
 open(out + '/kin_src.h', 'w').write(common)
 mc = open(root + '/Marlin/motion_control.cpp').read()

@@ -141,6 +141,7 @@
 #define CALIB_PLATEAU_RATIO 0.7        // "stops improving": a pass is not below this fraction of the previous one
 #define CALIB_MAX_PASSES 6             // probe, solve, re-home, verify: at most this many probe passes
 #define CALIB_FIRST_PASS_DEPTH_MM 10.0 // how far below the expected bed the first pass looks for it
+#define MESH_MAX_MM 5.0                // G29 refuses a bed that is further than this from Z = 0: run G33 first
 #define CALIB_PASS_DEPTH_MM 5.0
 #define CALIB_POINT_DEPTH_MM 6.0       // after the first point of a pass, how far below the previous point's height to look
 #define CALIB_PROBE_RADIUS_MM 75.0     // the outer ring of probe points (the inner ring is half of it): inside the bed edge

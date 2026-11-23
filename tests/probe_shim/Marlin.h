@@ -20,6 +20,8 @@ extern int g_verbose;
 #define SERIAL_ECHOPGM(x) SAY("%s", x)
 #define SERIAL_ECHOLNPGM(x) SAY("%s\n", x)
 #define SERIAL_ERRORLNPGM(x) SAY("%s\n", x)
+#define SERIAL_ERRORPGM(x) SAY("%s", x)
+#define SERIAL_ERROR(x) SAY("%d", (int)(x))
 #define SERIAL_ECHOLN(x) SAY("%s\n", x)
 #define SERIAL_ECHOPAIR(name, value) SAY("%s%g", name, (double)(value))
 #define SERIAL_PROTOCOLPGM(x) SAY("%s", x)
