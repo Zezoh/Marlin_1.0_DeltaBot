@@ -19,7 +19,7 @@
 */
 
 #ifndef stepper_h
-#define stepper_h 
+#define stepper_h
 
 #include "planner.h"
 
@@ -44,26 +44,20 @@ long st_get_position(uint8_t axis);
 // to notify the subsystem that it is time to go to work.
 void st_wake_up();
 
-  
-void checkHitEndstops(); //call from somewhere to create an serial error message with the locations the endstops where hit, in case they were triggered
-void endstops_hit_on_purpose(); //avoid creation of the message, i.e. after homing and before a routine call of checkHitEndstops();
+void checkHitEndstops();         // call from somewhere to create an serial error message with the locations the endstops where hit, in case they were triggered
+void endstops_hit_on_purpose();  // avoid creation of the message, i.e. after homing and before a routine call of checkHitEndstops();
 
-void enable_endstops(bool check); // Enable/disable endstop checking
+void enable_endstops(bool check);  // Enable/disable endstop checking
 
-void st_probe_arm(unsigned int threshold); // stop the running move when the FSR deviates by threshold counts
+void st_probe_arm(unsigned int threshold);  // stop the running move when the FSR deviates by threshold counts
 void st_probe_disarm();
 bool st_probe_hit();
 unsigned int st_probe_peak();
-
 
 void finishAndDisableSteppers();
 
 extern block_t *current_block;  // A pointer to the block currently being traced
 
 void quickStop();
-
-
-     
-
 
 #endif

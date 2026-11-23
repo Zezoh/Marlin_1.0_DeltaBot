@@ -6,41 +6,54 @@
 
 #include <stdint.h>
 
-class OneButton {
+class OneButton
+{
 public:
   // SHORT is reported once the double click window has passed without a second press
-  enum Event { NONE, SHORT, DOUBLE, LONG, BOOT_HOLD };
+  enum Event { NONE,
+               SHORT,
+               DOUBLE,
+               LONG,
+               BOOT_HOLD };
 
   OneButton(uint32_t debounce, uint32_t double_click, uint32_t long_press, uint32_t boot_hold)
-    : debounce_(debounce), double_(double_click), long_(long_press), boot_hold_(boot_hold),
-      raw_(false), stable_(false), spent_(false), boot_(false), pending_(false), second_(false), edge_(0), down_(0), released_(0) {}
+      : debounce_(debounce), double_(double_click), long_(long_press), boot_hold_(boot_hold),
+        raw_(false), stable_(false), spent_(false), boot_(false), pending_(false), second_(false), edge_(0), down_(0), released_(0) {}
 
   // pressed: the level at power-on; a button held then is a boot hold
-  void begin(bool pressed, uint32_t now) {
+  void begin(bool pressed, uint32_t now)
+  {
     raw_ = stable_ = boot_ = pressed;
     spent_ = pending_ = second_ = false;
     edge_ = down_ = released_ = now;
   }
 
-  Event update(bool pressed, uint32_t now) {
-    if (pending_ && !stable_ && !raw_ && now - released_ >= double_) {   // the window closed: it was a single click
+  Event update(bool pressed, uint32_t now)
+  {
+    if (pending_ && !stable_ && !raw_ && now - released_ >= double_) {  // the window closed: it was a single click
       pending_ = false;
       return SHORT;
     }
-    if (pressed != raw_) { raw_ = pressed; edge_ = now; }
+    if (pressed != raw_) {
+      raw_ = pressed;
+      edge_ = now;
+    }
     if (raw_ != stable_ && now - edge_ >= debounce_) {
       stable_ = raw_;
-      if (stable_) {                       // pressed
+      if (stable_) {  // pressed
         spent_ = false;
         down_ = now;
-        second_ = pending_;                // pressed again inside the window: a double click if it is released as a click
+        second_ = pending_;  // pressed again inside the window: a double click if it is released as a click
         pending_ = false;
-      } else {                             // released
-        const bool click = !spent_ && !boot_;   // a press that began at power-on is never a click
+      } else {                                 // released
+        const bool click = !spent_ && !boot_;  // a press that began at power-on is never a click
         boot_ = false;
         spent_ = true;
         if (click) {
-          if (second_) { second_ = false; return DOUBLE; }
+          if (second_) {
+            second_ = false;
+            return DOUBLE;
+          }
           pending_ = true;
           released_ = now;
         }
@@ -48,7 +61,7 @@ public:
       }
     }
     if (stable_ && !spent_ && now - down_ >= (boot_ ? boot_hold_ : long_)) {
-      spent_ = true;                       // one event per press
+      spent_ = true;  // one event per press
       pending_ = second_ = false;
       return boot_ ? BOOT_HOLD : LONG;
     }

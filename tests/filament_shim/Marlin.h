@@ -25,7 +25,10 @@ extern "C" void sim_write(int pin, int v);
 #define SET_INPUT(p)
 #define SET_OUTPUT(p)
 extern int g_verbose;
-#define SAY(...) do { if (g_verbose) printf(__VA_ARGS__); } while (0)
+#define SAY(...)                        \
+  do {                                  \
+    if (g_verbose) printf(__VA_ARGS__); \
+  } while (0)
 #define SERIAL_ECHO_START SAY("echo:")
 #define SERIAL_ERROR_START SAY("Error:")
 #define SERIAL_ECHOPGM(x) SAY("%s", x)
@@ -42,10 +45,13 @@ extern int g_verbose;
 #define SERIAL_PROTOCOLLNPGM(x) SAY("%s\n", x)
 inline void serialprintPGM(const char *s) { SAY("%s", s); }
 #define MSG_OK "ok"
-enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
+enum AxisEnum { X_AXIS = 0,
+                Y_AXIS = 1,
+                Z_AXIS = 2,
+                E_AXIS = 3 };
 #ifndef min
-#define min(a,b) ((a)<(b)?(a):(b))
-#define max(a,b) ((a)>(b)?(a):(b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
 #endif
 extern float current_position[4], max_pos[3];
 extern bool axis_known_position[3];

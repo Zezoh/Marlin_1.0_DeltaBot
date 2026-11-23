@@ -3,7 +3,6 @@
 
 #include "Marlin.h"
 
-
 #include "SdFat.h"
 
 #define SD_PATH_LENGTH 64  // longest file name or path that can be remembered
@@ -16,9 +15,9 @@ public:
   void initsd();
   void release();
   void ls();
-  void openFile(char* name, bool read, bool replace_current=true);
-  void openLogFile(char* name);
-  void removeFile(char* name);
+  void openFile(char *name, bool read, bool replace_current = true);
+  void openLogFile(char *name);
+  void removeFile(char *name);
   void closefile();
   void startFileprint();
   void pauseSDPrint();
@@ -34,9 +33,18 @@ public:
   FORCE_INLINE bool eof() { return sdpos >= filesize; }
   FORCE_INLINE bool isFileOpen() { return file.isOpen(); }
   FORCE_INLINE bool isPaused() { return cardOK && !saving && !sdprinting && file.isOpen() && sdpos < filesize; }
-  FORCE_INLINE int16_t get() { sdpos = file.curPosition(); return file.read(); }
-  FORCE_INLINE bool setIndex(long index) { if (!file.seekSet(index)) return false; sdpos = index; return true; }  // false: index beyond the file, sdpos untouched
-  FORCE_INLINE uint32_t position() { return sdpos; }   // byte offset of the next G-code byte to be read
+  FORCE_INLINE int16_t get()
+  {
+    sdpos = file.curPosition();
+    return file.read();
+  }
+  FORCE_INLINE bool setIndex(long index)
+  {
+    if (!file.seekSet(index)) return false;
+    sdpos = index;
+    return true;
+  }                                                   // false: index beyond the file, sdpos untouched
+  FORCE_INLINE uint32_t position() { return sdpos; }  // byte offset of the next G-code byte to be read
 
   bool saving;
   bool logging;
@@ -51,16 +59,16 @@ private:
   uint32_t filesize;
   uint32_t sdpos;
 
-  char openName[SD_PATH_LENGTH];     // name the current file was opened with
-  char parentName[SD_PATH_LENGTH];   // file that called the current one as a procedure
-  uint32_t parentPos;                // position in the parent file
+  char openName[SD_PATH_LENGTH];    // name the current file was opened with
+  char parentName[SD_PATH_LENGTH];  // file that called the current one as a procedure
+  uint32_t parentPos;               // position in the parent file
   bool inProcedure;
 
   unsigned long autostart_atmillis;
   bool autostart_stilltocheck;
-  int8_t autostart_nr;               // number of the next autoN.g file, -1 when done
+  int8_t autostart_nr;  // number of the next autoN.g file, -1 when done
 
-  void lsDive(const char *prepend, SdFile& dir);
+  void lsDive(const char *prepend, SdFile &dir);
 };
 extern CardReader card;
 

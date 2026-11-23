@@ -6,14 +6,14 @@
 
 #include <stdint.h>
 
-#define DCAL_MAX_POINTS 10   // probe points per pass: 7 (quick) or 10
+#define DCAL_MAX_POINTS 10  // probe points per pass: 7 (quick) or 10
 
 // Delta geometry as the calibration sees it. Towers sit at 210, 330 and 90 degrees plus the angle corrections.
 struct DeltaGeometry {
-  float R;        // tower circle radius, mm
-  float L;        // diagonal rod length, mm
-  float ang[3];   // tower angle corrections, degrees
-  float off[3];   // endstop offsets, mm: how far each carriage really sits above where the firmware believes it
+  float R;       // tower circle radius, mm
+  float L;       // diagonal rod length, mm
+  float ang[3];  // tower angle corrections, degrees
+  float off[3];  // endstop offsets, mm: how far each carriage really sits above where the firmware believes it
 };
 
 // XY of probe point i of n (7 or 10): an outer ring of six, an inner ring of three at half the radius, the centre last.

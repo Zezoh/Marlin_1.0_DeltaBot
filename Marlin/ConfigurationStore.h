@@ -8,4 +8,4 @@ void Config_PrintSettings();
 void Config_StoreSettings();
 void Config_RetrieveSettings();
 
-#endif//CONFIG_STORE_H
+#endif  // CONFIG_STORE_H

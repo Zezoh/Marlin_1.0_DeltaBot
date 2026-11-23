@@ -15,23 +15,24 @@ volatile unsigned int fsr_raw = 500;
 int g_verbose = 0, g_stores = 0;
 
 // ---- the simulated machine ----
-static DeltaGeometry truth;          // real tower radius, rod, angles (off[] unused)
-static float switch_h[3];            // real carriage height at which each endstop switch fires
+static DeltaGeometry truth;  // real tower radius, rod, angles (off[] unused)
+static float switch_h[3];    // real carriage height at which each endstop switch fires
 static float bed_z = 0;
-static float warp_amp = 0;           // the bed is not flat: a dish with a tilt, this high at its worst
-static float warp(float x, float y) { return warp_amp * ((x * x + y * y) / 6400.0f - 0.5f + 0.3f * x / 80.0f + 0.2f * y * y / 6400.0f); }   // a dish with a tilt              // real height of the bed in the true frame
-static float believed[3];            // tower heights the firmware believes (what the stepper counts say)
-static float off[3];                 // real carriage height minus believed one, fixed at the last homing
+static float warp_amp = 0;                                                                                                                 // the bed is not flat: a dish with a tilt, this high at its worst
+static float warp(float x, float y) { return warp_amp * ((x * x + y * y) / 6400.0f - 0.5f + 0.3f * x / 80.0f + 0.2f * y * y / 6400.0f); }  // a dish with a tilt              // real height of the bed in the true frame
+static float believed[3];                                                                                                                  // tower heights the firmware believes (what the stepper counts say)
+static float off[3];                                                                                                                       // real carriage height minus believed one, fixed at the last homing
 static bool armed = false, hit = false;
 static unsigned long now_ms = 0;
 static float contact_noise = 0;
 static int strokes = 0, homes = 0;
-static bool transient_fast = false, transient_slow_once = false, slow_used = false;   // the FSR fires at the start of a move (vibration)
+static bool transient_fast = false, transient_slow_once = false, slow_used = false;  // the FSR fires at the start of a move (vibration)
 static float feed_now = 0;
 static int low_travels = 0, drags = 0;
 
 static float frand() { return 2.0f * rand() / RAND_MAX - 1.0f; }
-static float true_z(const float tower[3]) {
+static float true_z(const float tower[3])
+{
   float h[3] = {tower[0] + off[0], tower[1] + off[1], tower[2] + off[2]}, z = -1e9;
   dcal_effector_z(truth, h, z);
   return z;
@@ -45,101 +46,163 @@ void manage_inactivity(bool) { now_ms++; }
 bool IsStopped() { return false; }
 void keep_steppers_on() {}
 
-void home_all_axes() {
+void home_all_axes()
+{
   homes++;
-  current_position[0] = 0; current_position[1] = 0; current_position[2] = Z_HOME_POS + add_homing[Z_AXIS];
+  current_position[0] = 0;
+  current_position[1] = 0;
+  current_position[2] = Z_HOME_POS + add_homing[Z_AXIS];
   calculate_delta(current_position);
   for (int a = 0; a < 3; a++) {
     believed[a] = delta[a];
-    off[a] = switch_h[a] + (endstop_adj[a] < 0 ? endstop_adj[a] : 0) - believed[a];   // Marlin retraces by a negative endstop_adj only
+    off[a] = switch_h[a] + (endstop_adj[a] < 0 ? endstop_adj[a] : 0) - believed[a];  // Marlin retraces by a negative endstop_adj only
     axis_known_position[a] = true;
   }
 }
-void plan_set_position(const float &x, const float &y, const float &z, const float &e) {
-  believed[0] = lround(x * 80) / 80.0f; believed[1] = lround(y * 80) / 80.0f; believed[2] = lround(z * 80) / 80.0f;
+void plan_set_position(const float &x, const float &y, const float &z, const float &e)
+{
+  believed[0] = lround(x * 80) / 80.0f;
+  believed[1] = lround(y * 80) / 80.0f;
+  believed[2] = lround(z * 80) / 80.0f;
 }
 long st_get_position(uint8_t a) { return lround(believed[a] * 80); }
-void st_probe_arm(unsigned int) { armed = true; hit = false; }
+void st_probe_arm(unsigned int)
+{
+  armed = true;
+  hit = false;
+}
 void st_probe_disarm() { armed = false; }
 bool st_probe_hit() { return hit; }
 unsigned int st_probe_peak() { return 0; }
 
-static float target[3]; static bool queued = false;
+static float target[3];
+static bool queued = false;
 float acceleration = 2500, max_xy_jerk = 20, max_z_jerk = 20;
-void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed, const uint8_t &, float) {
-  target[0] = x; target[1] = y; target[2] = z; queued = true; feed_now = feed;
+void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed, const uint8_t &, float)
+{
+  target[0] = x;
+  target[1] = y;
+  target[2] = z;
+  queued = true;
+  feed_now = feed;
 }
-void st_synchronize() {
+void st_synchronize()
+{
   if (!queued) return;
   queued = false;
   float p[3] = {believed[0], believed[1], believed[2]};
-  float len = 0; for (int a = 0; a < 3; a++) len = fmax(len, fabs(target[a] - p[a]));
+  float len = 0;
+  for (int a = 0; a < 3; a++) len = fmax(len, fabs(target[a] - p[a]));
   long n = (long)ceil(len * 80);
   for (long k = 1; k <= n; k++) {
-    float q[3]; for (int a = 0; a < 3; a++) q[a] = lround((p[a] + (target[a] - p[a]) * k / n) * 80) / 80.0f;
+    float q[3];
+    for (int a = 0; a < 3; a++) q[a] = lround((p[a] + (target[a] - p[a]) * k / n) * 80) / 80.0f;
     float z = true_z(q);
     bool bump = armed && k <= 10 && ((transient_fast && feed_now > 20) || (transient_slow_once && feed_now < 20 && !slow_used));
     if (bump && feed_now < 20) slow_used = true;
     if (bump || (armed && z <= bed_z + warp(current_position[0], current_position[1]) + contact_noise * frand())) {
       for (int a = 0; a < 3; a++) believed[a] = q[a];
-      hit = true; strokes++;
+      hit = true;
+      strokes++;
       return;
     }
     assert(armed || z > bed_z - 0.001 || true);
-    if (z < bed_z - 1.0) { printf("CRASH: the nozzle went %.2f mm into the bed\n", bed_z - z); assert(0); }
+    if (z < bed_z - 1.0) {
+      printf("CRASH: the nozzle went %.2f mm into the bed\n", bed_z - z);
+      assert(0);
+    }
   }
   for (int a = 0; a < 3; a++) believed[a] = target[a];
 }
-void move_to(float x, float y, float z, float feed) {
-  slow_used = false;   // moves between probe points: no probing, straight in Cartesian space
-  float c[3] = {x, y, z}; calculate_delta(c);
-  if (hypot(x - current_position[0], y - current_position[1]) > 1.0) {   // a travel move: does the nozzle clear the bed on the way?
+void move_to(float x, float y, float z, float feed)
+{
+  slow_used = false;  // moves between probe points: no probing, straight in Cartesian space
+  float c[3] = {x, y, z};
+  calculate_delta(c);
+  if (hypot(x - current_position[0], y - current_position[1]) > 1.0) {  // a travel move: does the nozzle clear the bed on the way?
     if (z < 15) low_travels++;
     for (int k = 0; k <= 10; k++) {
       float cc[3] = {current_position[0] + (x - current_position[0]) * k / 10, current_position[1] + (y - current_position[1]) * k / 10, z};
-      calculate_delta(cc); float t[3] = {delta[0], delta[1], delta[2]};
+      calculate_delta(cc);
+      float t[3] = {delta[0], delta[1], delta[2]};
       if (true_z(t) < bed_z + 1.0) drags++;
     }
     calculate_delta(c);
   }
   for (int a = 0; a < 3; a++) believed[a] = lround(delta[a] * 80) / 80.0f;
-  current_position[0] = x; current_position[1] = y; current_position[2] = z;
+  current_position[0] = x;
+  current_position[1] = y;
+  current_position[2] = z;
 }
 
 // ---- helpers ----
-static void firmware_defaults() {
-  delta_radius = 90; delta_diagonal_rod = 210; delta_tower_angle[0] = delta_tower_angle[1] = delta_tower_angle[2] = 0;
-  endstop_adj[0] = endstop_adj[1] = endstop_adj[2] = 0; add_homing[2] = 0;
+static void firmware_defaults()
+{
+  delta_radius = 90;
+  delta_diagonal_rod = 210;
+  delta_tower_angle[0] = delta_tower_angle[1] = delta_tower_angle[2] = 0;
+  endstop_adj[0] = endstop_adj[1] = endstop_adj[2] = 0;
+  add_homing[2] = 0;
   recalc_delta_settings(delta_radius, delta_diagonal_rod);
-  delta_calibrated = false; probe_z_offset = 0; for (int a = 0; a < 3; a++) axis_known_position[a] = false;
+  delta_calibrated = false;
+  probe_z_offset = 0;
+  for (int a = 0; a < 3; a++) axis_known_position[a] = false;
 }
-static void machine(float R, float L, float a0, float a1, float a2, float e0, float e1, float e2) {
-  truth.R = R; truth.L = L; truth.ang[0] = a0; truth.ang[1] = a1; truth.ang[2] = a2;
+static void machine(float R, float L, float a0, float a1, float a2, float e0, float e1, float e2)
+{
+  truth.R = R;
+  truth.L = L;
+  truth.ang[0] = a0;
+  truth.ang[1] = a1;
+  truth.ang[2] = a2;
   float H = sqrt(L * L - R * R) + Z_HOME_POS;
-  switch_h[0] = H + e0; switch_h[1] = H + e1; switch_h[2] = H + e2;
+  switch_h[0] = H + e0;
+  switch_h[1] = H + e1;
+  switch_h[2] = H + e2;
   bed_z = 0;
 }
 // worst height error over the bed when the firmware commands z = 0
-static double flatness(double radius, double &mean) {
-  double worst = 0; mean = 0; int n = 0;
-  for (float x = -radius; x <= radius; x += 10) for (float y = -radius; y <= radius; y += 10) {
-    if (x * x + y * y > radius * radius) continue;
-    float c[3] = {x, y, 0}; calculate_delta(c);
-    float t[3] = {delta[0], delta[1], delta[2]};
-    double z = true_z(t) - bed_z - warp(x, y); mean += z; n++;
-    if (fabs(z) > worst) worst = fabs(z);
-  }
-  mean /= n; return worst;
+static double flatness(double radius, double &mean)
+{
+  double worst = 0;
+  mean = 0;
+  int n = 0;
+  for (float x = -radius; x <= radius; x += 10)
+    for (float y = -radius; y <= radius; y += 10) {
+      if (x * x + y * y > radius * radius) continue;
+      float c[3] = {x, y, 0};
+      calculate_delta(c);
+      float t[3] = {delta[0], delta[1], delta[2]};
+      double z = true_z(t) - bed_z - warp(x, y);
+      mean += z;
+      n++;
+      if (fabs(z) > worst) worst = fabs(z);
+    }
+  mean /= n;
+  return worst;
 }
 
 static int fails = 0;
-#define CHECK(c, ...) do { if (!(c)) { printf("FAIL: "); printf(__VA_ARGS__); printf("\n"); fails++; } } while (0)
+#define CHECK(c, ...)      \
+  do {                     \
+    if (!(c)) {            \
+      printf("FAIL: ");    \
+      printf(__VA_ARGS__); \
+      printf("\n");        \
+      fails++;             \
+    }                      \
+  } while (0)
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
   g_verbose = argc > 1;
   srand(3);
   // 1. wrong radius, tower angles and endstop heights: G33 finds them
-  { firmware_defaults(); machine(91.2, 210, 0.15, -0.10, 0.0, 0.8, -0.5, 0.3); homes = 0; strokes = 0;
+  {
+    firmware_defaults();
+    machine(91.2, 210, 0.15, -0.10, 0.0, 0.8, -0.5, 0.3);
+    homes = 0;
+    strokes = 0;
     double m, w0 = (home_all_axes(), flatness(70, m));
     probe_g33(6, 10, true);
     double w = flatness(70, m);
@@ -152,73 +215,164 @@ int main(int argc, char **argv) {
     CHECK(fabs(endstop_adj[0] - endstop_adj[1]) > 0.5, "the tower trims differ (towers were off by different amounts)");
   }
   // 2. only the endstops are off: F3 is enough, and one probing pass plus a verification pass
-  { firmware_defaults(); machine(90, 210, 0, 0, 0, 1.5, 0.0, -0.7); g_stores = 0;
-    home_all_axes(); probe_g33(3, 7, false);
+  {
+    firmware_defaults();
+    machine(90, 210, 0, 0, 0, 1.5, 0.0, -0.7);
+    g_stores = 0;
+    home_all_axes();
+    probe_g33(3, 7, false);
     double m, w = flatness(70, m);
     printf("2. endstops only, quick: bed error %.3f mm, R %.3f, saved %d times\n", w, delta_radius, g_stores);
-    CHECK(delta_calibrated && w < 0.1 && g_stores == 0 && fabs(delta_radius - 90) < 1e-3, "endstops only"); }
+    CHECK(delta_calibrated && w < 0.1 && g_stores == 0 && fabs(delta_radius - 90) < 1e-3, "endstops only");
+  }
   // 3. a machine that is already right: one verification pass, nothing changes
-  { firmware_defaults(); machine(90, 210, 0, 0, 0, 0, 0, 0); homes = 0; home_all_axes(); homes = 0;
+  {
+    firmware_defaults();
+    machine(90, 210, 0, 0, 0, 0, 0, 0);
+    homes = 0;
+    home_all_axes();
+    homes = 0;
     probe_g33(6, 10, false);
     printf("3. already calibrated: %d homings, R %.4f\n", homes, delta_radius);
-    CHECK(delta_calibrated && homes == 0 && fabs(delta_radius - 90) < 1e-3, "no change for a good machine"); }
+    CHECK(delta_calibrated && homes == 0 && fabs(delta_radius - 90) < 1e-3, "no change for a good machine");
+  }
   // 4. the probe is noisy (contact threshold jitter)
-  { firmware_defaults(); machine(90.8, 210, -0.12, 0.2, 0.0, 0.4, 0.9, -0.2); contact_noise = 0.015; home_all_axes();
-    probe_g33(6, 10, false); double m, w = flatness(70, m); contact_noise = 0;
+  {
+    firmware_defaults();
+    machine(90.8, 210, -0.12, 0.2, 0.0, 0.4, 0.9, -0.2);
+    contact_noise = 0.015;
+    home_all_axes();
+    probe_g33(6, 10, false);
+    double m, w = flatness(70, m);
+    contact_noise = 0;
     printf("4. noisy probe (15 um): bed error %.3f mm\n", w);
-    CHECK(delta_calibrated && w < 0.12, "calibration with a noisy probe (%.3f)", w); }
+    CHECK(delta_calibrated && w < 0.12, "calibration with a noisy probe (%.3f)", w);
+  }
   // 5. the bed is out of reach: G33 fails and restores everything
-  { firmware_defaults(); machine(90, 210, 0, 0, 0, 0, 0, 0); bed_z = -60; home_all_axes(); homes = 0;
+  {
+    firmware_defaults();
+    machine(90, 210, 0, 0, 0, 0, 0, 0);
+    bed_z = -60;
+    home_all_axes();
+    homes = 0;
     probe_g33(6, 10, true);
     printf("5. no bed within reach: calibrated %d, R %.3f, re-homed %d times\n", delta_calibrated, delta_radius, homes);
-    CHECK(!delta_calibrated && delta_radius == 90 && endstop_adj[0] == 0 && add_homing[2] == 0, "failure restores the settings"); bed_z = 0; }
+    CHECK(!delta_calibrated && delta_radius == 90 && endstop_adj[0] == 0 && add_homing[2] == 0, "failure restores the settings");
+    bed_z = 0;
+  }
   // 6. a result outside the allowed range is refused and the old settings are restored
-  { firmware_defaults(); machine(112, 210, 0, 0, 0, 0, 0, 0); home_all_axes(); homes = 0; g_stores = 0;
+  {
+    firmware_defaults();
+    machine(112, 210, 0, 0, 0, 0, 0, 0);
+    home_all_axes();
+    homes = 0;
+    g_stores = 0;
     probe_g33(6, 10, true);
     printf("6. radius 22 mm off: calibrated %d, R %.3f (must be restored to 90), stores %d\n", delta_calibrated, delta_radius, g_stores);
-    CHECK(!delta_calibrated && fabs(delta_radius - 90) < 1e-6 && g_stores == 0, "refused"); }
+    CHECK(!delta_calibrated && fabs(delta_radius - 90) < 1e-6 && g_stores == 0, "refused");
+  }
   // 7. G30 reports the height of the bed under the nozzle
-  { firmware_defaults(); machine(90, 210, 0, 0, 0, 0, 0, 0); bed_z = 0.37; home_all_axes(); move_to(20, -10, 30, 100); st_synchronize();
-    g_verbose = 1; printf("7. G30 with the bed 0.37 mm higher than the firmware thinks: "); probe_g30(); g_verbose = argc > 1;
-    CHECK(fabs(current_position[2] - 0.37 - 1.5) < 0.3 || current_position[2] > 0, "left lifted"); }
+  {
+    firmware_defaults();
+    machine(90, 210, 0, 0, 0, 0, 0, 0);
+    bed_z = 0.37;
+    home_all_axes();
+    move_to(20, -10, 30, 100);
+    st_synchronize();
+    g_verbose = 1;
+    printf("7. G30 with the bed 0.37 mm higher than the firmware thinks: ");
+    probe_g30();
+    g_verbose = argc > 1;
+    CHECK(fabs(current_position[2] - 0.37 - 1.5) < 0.3 || current_position[2] > 0, "left lifted");
+  }
   // 8. the FSR fires when the fast move starts and when the slow one starts: no wrong heights
-  { firmware_defaults(); machine(90.9, 210, 0.1, -0.1, 0.0, 0.5, -0.4, 0.2); transient_fast = transient_slow_once = true; home_all_axes();
-    probe_g33(6, 10, false); double m, w = flatness(70, m); transient_fast = transient_slow_once = false;
+  {
+    firmware_defaults();
+    machine(90.9, 210, 0.1, -0.1, 0.0, 0.5, -0.4, 0.2);
+    transient_fast = transient_slow_once = true;
+    home_all_axes();
+    probe_g33(6, 10, false);
+    double m, w = flatness(70, m);
+    transient_fast = transient_slow_once = false;
     printf("8. vibration triggers at the start of moves: bed error %.3f mm\n", w);
-    CHECK(delta_calibrated && w < 0.12, "calibration with start-of-move triggers (%.3f)", w); }
+    CHECK(delta_calibrated && w < 0.12, "calibration with start-of-move triggers (%.3f)", w);
+  }
   // 9. a badly built machine: the bed is several mm off and tilted in the first pass
-  { firmware_defaults(); machine(92.0, 210, 0.3, -0.3, 0.2, 3.0, -2.0, 1.0); home_all_axes(); double m, w0 = flatness(70, m); homes = 0;
-    probe_g33(6, 10, false); double w = flatness(70, m);
+  {
+    firmware_defaults();
+    machine(92.0, 210, 0.3, -0.3, 0.2, 3.0, -2.0, 1.0);
+    home_all_axes();
+    double m, w0 = flatness(70, m);
+    homes = 0;
+    probe_g33(6, 10, false);
+    double w = flatness(70, m);
     printf("9. start %.2f mm off: after G33 %.3f mm, %d homings\n", w0, w, homes);
-    CHECK(delta_calibrated && w < 0.12, "calibration of a badly built machine (%.3f)", w); }
+    CHECK(delta_calibrated && w < 0.12, "calibration of a badly built machine (%.3f)", w);
+  }
   // 10. the bed is 5 mm below where the firmware thinks: pass 2 must not treat the new heights as noise; low travel moves
-  { firmware_defaults(); machine(90.5, 210, 0.1, 0.0, 0.0, 5.2, 4.8, 5.0); fsr_sensitivity = 12; home_all_axes(); low_travels = drags = 0;
-    probe_g33(6, 10, false); double m, w = flatness(70, m);
+  {
+    firmware_defaults();
+    machine(90.5, 210, 0.1, 0.0, 0.0, 5.2, 4.8, 5.0);
+    fsr_sensitivity = 12;
+    home_all_axes();
+    low_travels = drags = 0;
+    probe_g33(6, 10, false);
+    double m, w = flatness(70, m);
     printf("10. bed 5 mm too low at the start: after G33 %.3f mm, FSR sensitivity %u, %d low travel moves, %d moves dragging on the bed\n", w, (unsigned)fsr_sensitivity, low_travels, drags);
     CHECK(delta_calibrated && w < 0.12 && fsr_sensitivity == 12, "second pass after a large correction");
-    CHECK(low_travels >= 8 && drags == 0, "travel moves stay low (%d) and clear the bed (%d)", low_travels, drags); }
+    CHECK(low_travels >= 8 && drags == 0, "travel moves stay low (%d) and clear the bed (%d)", low_travels, drags);
+  }
   // 11. the rod is 2 mm longer than the firmware thinks: the radius absorbs it and the bed is still flat
-  { firmware_defaults(); machine(92.0, 212.0, 0.2, -0.1, 0.0, 1.0, 0.0, -1.0); home_all_axes();
-    probe_g33(6, 10, false); double m, w = flatness(70, m);
+  {
+    firmware_defaults();
+    machine(92.0, 212.0, 0.2, -0.1, 0.0, 1.0, 0.0, -1.0);
+    home_all_axes();
+    probe_g33(6, 10, false);
+    double m, w = flatness(70, m);
     printf("11. rod 2 mm longer: bed error %.3f mm\n", w);
-    CHECK(w < 0.1, "a wrong rod length is absorbed (%.3f)", w); }
+    CHECK(w < 0.1, "a wrong rod length is absorbed (%.3f)", w);
+  }
   // 12. a machine that is right but a bed that is not flat: G29 follows it
-  { firmware_defaults(); machine(90, 210, 0, 0, 0, 0, 0, 0); warp_amp = 0.4; mesh_have = mesh_active = false; mesh_fade_height = 0; home_all_axes();
+  {
+    firmware_defaults();
+    machine(90, 210, 0, 0, 0, 0, 0, 0);
+    warp_amp = 0.4;
+    mesh_have = mesh_active = false;
+    mesh_fade_height = 0;
+    home_all_axes();
     double m, w33 = flatness(70, m);
     probe_g29(false);
-    double w29 = 0; for (float x = -70; x <= 70; x += 10) for (float y = -70; y <= 70; y += 10) {
-      if (x * x + y * y > 70 * 70) continue;
-      float c[3] = {x, y, 0.2f}; calculate_delta(c); float t[3] = {delta[0], delta[1], delta[2]};
-      double e = true_z(t) - warp(x, y) - 0.2; if (g_verbose && fabs(e) > 0.1) printf("  bad spot X%.0f Y%.0f: %.3f (mesh offset %.3f)\n", x, y, e, mesh_offset(x, y)); if (fabs(e) > w29) w29 = fabs(e); }
-    float c0[3] = {current_position[0], current_position[1], current_position[2]}; calculate_delta(c0);
-    double drift = 0; for (int a = 0; a < 3; a++) drift = fmax(drift, fabs(delta[a] - believed[a]));
+    double w29 = 0;
+    for (float x = -70; x <= 70; x += 10)
+      for (float y = -70; y <= 70; y += 10) {
+        if (x * x + y * y > 70 * 70) continue;
+        float c[3] = {x, y, 0.2f};
+        calculate_delta(c);
+        float t[3] = {delta[0], delta[1], delta[2]};
+        double e = true_z(t) - warp(x, y) - 0.2;
+        if (g_verbose && fabs(e) > 0.1) printf("  bad spot X%.0f Y%.0f: %.3f (mesh offset %.3f)\n", x, y, e, mesh_offset(x, y));
+        if (fabs(e) > w29) w29 = fabs(e);
+      }
+    float c0[3] = {current_position[0], current_position[1], current_position[2]};
+    calculate_delta(c0);
+    double drift = 0;
+    for (int a = 0; a < 3; a++) drift = fmax(drift, fabs(delta[a] - believed[a]));
     printf("12. warped bed (0.4 mm): without a mesh the bed is %.3f mm off, after G29 a nozzle commanded 0.2 mm above it is %.3f mm off; mesh %d active %d; position drift on switching on %.4f mm\n", w33, w29, mesh_have, mesh_active, drift);
     CHECK(mesh_have && mesh_active && w29 < 0.1 && w29 < 0.6 * w33 && drift < 0.02, "G29 follows the bed (%.3f, drift %.4f)", w29, drift);
     // G30 with the mesh on measures the bed, not the corrected bed, and leaves the mesh on
-    move_to(30, 20, 30, 100); st_synchronize(); probe_g30(); CHECK(mesh_active, "G30 leaves the mesh on");
+    move_to(30, 20, 30, 100);
+    st_synchronize();
+    probe_g30();
+    CHECK(mesh_active, "G30 leaves the mesh on");
     // a G29 that fails keeps the old mesh
-    float keep = mesh_z[3]; bed_z = -60; probe_g29(false); bed_z = 0; CHECK(mesh_have && mesh_z[3] == keep, "a failed G29 keeps the mesh");
-    warp_amp = 0; mesh_have = mesh_active = false; }
+    float keep = mesh_z[3];
+    bed_z = -60;
+    probe_g29(false);
+    bed_z = 0;
+    CHECK(mesh_have && mesh_z[3] == keep, "a failed G29 keeps the mesh");
+    warp_amp = 0;
+    mesh_have = mesh_active = false;
+  }
   printf(fails ? "probe: %d FAILED\n" : "probe: all ok\n", fails);
   return fails ? 1 : 0;
 }

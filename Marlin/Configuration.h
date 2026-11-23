@@ -7,8 +7,8 @@
 #include "Default_Version.h"
 
 // Build information printed to the host at startup, to confirm that a new build was uploaded.
-#define STRING_VERSION_CONFIG_H __DATE__ " " __TIME__ // build date and time
-#define STRING_CONFIG_H_AUTHOR "(none, default config)" // Who made the changes.
+#define STRING_VERSION_CONFIG_H __DATE__ " " __TIME__    // build date and time
+#define STRING_CONFIG_H_AUTHOR "(none, default config)"  // Who made the changes.
 
 // SERIAL_PORT selects which serial port should be used for communication with the host.
 // This allows the connection of wireless adapters (for instance) to non-default port pins.
@@ -32,19 +32,19 @@
 // This is a trade-off between visible corners (not enough segments)
 // and processor overload (too many expensive sqrt calls).
 #define DELTA_SEGMENTS_PER_SECOND 200
-#define DELTA_MIN_SEGMENT_MM 1.0     // never cut a move into pieces shorter than this
+#define DELTA_MIN_SEGMENT_MM 1.0  // never cut a move into pieces shorter than this
 
 // NOTE NB all values for DELTA_* values MUST be floating point, so always have a decimal point in them
 
 // Center-to-center distance of the holes in the diagonal push rods.
-#define DELTA_DIAGONAL_ROD 210.0 // mm
+#define DELTA_DIAGONAL_ROD 210.0  // mm
 
 // Effective horizontal distance bridged by the diagonal push rods: tower circle radius minus the
 // effector and carriage joint offsets. G33 refines it.
-#define DELTA_RADIUS 90.0 // mm
+#define DELTA_RADIUS 90.0  // mm
 
 // Radius of the circular printable area around the centre. Moves outside it are clamped.
-#define DELTA_PRINTABLE_RADIUS 85.0 // mm
+#define DELTA_PRINTABLE_RADIUS 85.0  // mm
 
 //===========================================================================
 //=============================Thermal Settings  ============================
@@ -57,7 +57,7 @@
 // Actual temperature must be close to target for this long before M109 returns success
 #define TEMP_RESIDENCY_TIME 10  // (seconds)
 #define TEMP_HYSTERESIS 3       // (degC) range of +/- temperatures considered "close" to the target one
-#define TEMP_WINDOW     1       // (degC) Window around target to start the residency timer x degC early.
+#define TEMP_WINDOW 1           // (degC) Window around target to start the residency timer x degC early.
 
 // Below MINTEMP the heater is switched off and the printer stops: a broken wire or an unplugged thermistor reads cold.
 // Above MAXTEMP too: this is the limit for the hotend, not a protection against a shorted thermistor.
@@ -65,27 +65,26 @@
 #define HEATER_0_MAXTEMP 285
 
 // PID of the hotend: the heater is full on further than PID_FUNCTIONAL_RANGE below the target, off further above it
-#define PID_MAX 255 // the most the PID may give the heater (255 = full power)
+#define PID_MAX 255  // the most the PID may give the heater (255 = full power)
 #define PID_FUNCTIONAL_RANGE 10
-#define PID_INTEGRAL_DRIVE_MAX 255  //limit for the integral term
-#define K1 0.95 //smoothing factor within the PID
-#define PID_dT ((OVERSAMPLENR * 10.0)/(F_CPU / 64.0 / 256.0)) //sampling period of the temperature routine
+#define PID_INTEGRAL_DRIVE_MAX 255                               // limit for the integral term
+#define K1 0.95                                                  // smoothing factor within the PID
+#define PID_dT ((OVERSAMPLENR * 10.0) / (F_CPU / 64.0 / 256.0))  // sampling period of the temperature routine
 
 // Default PID constants of the hotend (run M303 to tune your own)
-#define  DEFAULT_Kp 32.48
-#define  DEFAULT_Ki 6.4
-#define  DEFAULT_Kd 41.25
+#define DEFAULT_Kp 32.48
+#define DEFAULT_Ki 6.4
+#define DEFAULT_Kd 41.25
 
 // No extrusion below this temperature, and none of more than this length in one move
 #define EXTRUDE_MINTEMP 170
-#define EXTRUDE_MAXLENGTH (X_MAX_LENGTH+Y_MAX_LENGTH)
+#define EXTRUDE_MAXLENGTH (X_MAX_LENGTH + Y_MAX_LENGTH)
 
 // Thermal runaway protection: after the target was reached once, the printer stops if the temperature stays more than
 // HYSTERESIS below it for PERIOD seconds (a thermistor that came off reads cold, the heater would burn forever).
-#define THERMAL_RUNAWAY_PROTECTION_PERIOD 40 //in seconds
-#define THERMAL_RUNAWAY_PROTECTION_HYSTERESIS 4 // in degree Celsius
+#define THERMAL_RUNAWAY_PROTECTION_PERIOD 40     // in seconds
+#define THERMAL_RUNAWAY_PROTECTION_HYSTERESIS 4  // in degree Celsius
 //===========================================================================
-
 
 //===========================================================================
 //=============================Mechanical Settings===========================
@@ -105,15 +104,15 @@ const bool Z_MAX_ENDSTOP_INVERTING = true;
 #define X_ENABLE_ON 0
 #define Y_ENABLE_ON 0
 #define Z_ENABLE_ON 0
-#define E_ENABLE_ON 0 // For all extruders
+#define E_ENABLE_ON 0  // For all extruders
 
-#define INVERT_X_DIR true // DELTA does not invert
+#define INVERT_X_DIR true  // DELTA does not invert
 #define INVERT_Y_DIR true
 #define INVERT_Z_DIR true
 
-#define INVERT_E0_DIR false   // for direct drive extruder v9 set to true, for geared extruder set to false
+#define INVERT_E0_DIR false  // for direct drive extruder v9 set to true, for geared extruder set to false
 
-#define min_software_endstops true // If true, axis won't move to coordinates less than HOME_POS.
+#define min_software_endstops true  // If true, axis won't move to coordinates less than HOME_POS.
 #define max_software_endstops true  // If true, axis won't move to coordinates greater than the defined lengths below.
 
 // Travel limits after homing
@@ -128,27 +127,38 @@ const bool Z_MAX_ENDSTOP_INVERTING = true;
 #define Y_MAX_LENGTH (Y_MAX_POS - Y_MIN_POS)
 #define Z_MAX_LENGTH (Z_MAX_POS - Z_MIN_POS)
 
-
 // Position of the nozzle after homing: top and center of the print volume
 #define X_HOME_POS 0
 #define Y_HOME_POS 0
-#define Z_HOME_POS 225 // Distance between nozzle and print surface after homing.
+#define Z_HOME_POS 225  // Distance between nozzle and print surface after homing.
 
 //// MOVEMENT SETTINGS
-#define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
+#define NUM_AXIS 4  // The axis order in all axis related arrays is X, Y, Z, E
 
 // delta homing speeds must be the same on xyz
-#define HOMING_FEEDRATE {120*60, 120*60, 120*60, 0}  // fast seek towards the endstops (mm/min)
-#define HOMING_SLOW_FEEDRATE (8*60) // precision re-approach of each endstop (mm/min): accuracy critical, do not raise
+#define HOMING_FEEDRATE             \
+  {                                 \
+    120 * 60, 120 * 60, 120 * 60, 0 \
+  }                                    // fast seek towards the endstops (mm/min)
+#define HOMING_SLOW_FEEDRATE (8 * 60)  // precision re-approach of each endstop (mm/min): accuracy critical, do not raise
 
 // default settings
 // delta speeds must be the same on xyz
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {80, 80, 80, 98}  // towers: 200 steps * 16 / (GT2 2 mm * 20 teeth); extruder 98
-#define DEFAULT_MAX_FEEDRATE          {180, 180, 180, 30}    // (mm/sec)
-#define DEFAULT_MAX_ACCELERATION      {8000,8000,8000,1000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
+#define DEFAULT_AXIS_STEPS_PER_UNIT \
+  {                                 \
+    80, 80, 80, 98                  \
+  }  // towers: 200 steps * 16 / (GT2 2 mm * 20 teeth); extruder 98
+#define DEFAULT_MAX_FEEDRATE \
+  {                          \
+    180, 180, 180, 30        \
+  }  // (mm/sec)
+#define DEFAULT_MAX_ACCELERATION \
+  {                              \
+    8000, 8000, 8000, 1000       \
+  }  // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
 
-#define DEFAULT_ACCELERATION          2500    // X, Y, Z and E max acceleration in mm/s^2 for printing moves
-#define DEFAULT_RETRACT_ACCELERATION  2500   // X, Y, Z and E max acceleration in mm/s^2 for retracts
+#define DEFAULT_ACCELERATION 2500          // X, Y, Z and E max acceleration in mm/s^2 for printing moves
+#define DEFAULT_RETRACT_ACCELERATION 2500  // X, Y, Z and E max acceleration in mm/s^2 for retracts
 
 // Offset of the extruders (uncomment if using more than one and relying on firmware to position when changing).
 // The offset has to be X=0, Y=0 for the extruder 0 hotend (default extruder).
@@ -157,16 +167,16 @@ const bool Z_MAX_ENDSTOP_INVERTING = true;
 // #define EXTRUDER_OFFSET_Y {0.0, 5.00}  // (in mm) for each extruder, offset of the hotend on the Y axis
 
 // The speed change that does not require acceleration (i.e. the software might assume it can be done instantaneously)
-#define DEFAULT_XYJERK                20.0    // (mm/sec)
-#define DEFAULT_ZJERK                 20.0    // (mm/sec) Must be same as XY for delta
-#define DEFAULT_EJERK                 5.0    // (mm/sec)
+#define DEFAULT_XYJERK 20.0  // (mm/sec)
+#define DEFAULT_ZJERK 20.0   // (mm/sec) Must be same as XY for delta
+#define DEFAULT_EJERK 5.0    // (mm/sec)
 
 //===========================================================================
 //=============================Additional Features===========================
 //===========================================================================
 
-//SD support
-#define SDSUPPORT // Enable SD Card Support in Hardware Console
+// SD support
+#define SDSUPPORT  // Enable SD Card Support in Hardware Console
 //#define SDSLOW // Use slower SD transfer mode (not normally needed - uncomment if you're getting volume init error)
 //#define SD_CHECK_AND_RETRY // Use CRC checks and retries on the SD communication
 
@@ -187,4 +197,4 @@ const bool Z_MAX_ENDSTOP_INVERTING = true;
 #include "Configuration_adv.h"
 #include "thermistortables.h"
 
-#endif //__CONFIGURATION_H
+#endif  //__CONFIGURATION_H

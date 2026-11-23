@@ -4,62 +4,170 @@
 #include <vector>
 #include <algorithm>
 // independent forward kinematics: intersection of three spheres (centre = rod top (tower xy, carriage height), radius = rod length)
-static bool fk(const float c[3], double out[3]) {
-  double p[3][3]={{delta_tower1_x,delta_tower1_y,c[0]},{delta_tower2_x,delta_tower2_y,c[1]},{delta_tower3_x,delta_tower3_y,c[2]}};
-  double L=delta_diagonal_rod;
+static bool fk(const float c[3], double out[3])
+{
+  double p[3][3] = {{delta_tower1_x, delta_tower1_y, c[0]}, {delta_tower2_x, delta_tower2_y, c[1]}, {delta_tower3_x, delta_tower3_y, c[2]}};
+  double L = delta_diagonal_rod;
   // standard trilateration
-  double ex[3],ey[3],ez[3]; double d=0,i=0,j=0;
-  for(int k=0;k<3;k++) ex[k]=p[1][k]-p[0][k]; d=sqrt(ex[0]*ex[0]+ex[1]*ex[1]+ex[2]*ex[2]); for(int k=0;k<3;k++) ex[k]/=d;
-  double t[3]; for(int k=0;k<3;k++) t[k]=p[2][k]-p[0][k]; i=ex[0]*t[0]+ex[1]*t[1]+ex[2]*t[2];
-  for(int k=0;k<3;k++) ey[k]=t[k]-i*ex[k]; double n=sqrt(ey[0]*ey[0]+ey[1]*ey[1]+ey[2]*ey[2]); for(int k=0;k<3;k++) ey[k]/=n;
-  j=ey[0]*t[0]+ey[1]*t[1]+ey[2]*t[2];
-  ez[0]=ex[1]*ey[2]-ex[2]*ey[1]; ez[1]=ex[2]*ey[0]-ex[0]*ey[2]; ez[2]=ex[0]*ey[1]-ex[1]*ey[0];
-  double x=d/2, y=(i*i+j*j-2*i*d/2)/(2*j)+0; // radii equal
-  y=(i*i+j*j)/(2*j)-(i/j)*x; double zz=L*L-x*x-y*y; if(zz<0) return false; double z=-sqrt(zz); // effector is below the rod tops
-  for(int k=0;k<3;k++) out[k]=p[0][k]+x*ex[k]+y*ey[k]+z*ez[k];
+  double ex[3], ey[3], ez[3];
+  double d = 0, i = 0, j = 0;
+  for (int k = 0; k < 3; k++) ex[k] = p[1][k] - p[0][k];
+  d = sqrt(ex[0] * ex[0] + ex[1] * ex[1] + ex[2] * ex[2]);
+  for (int k = 0; k < 3; k++) ex[k] /= d;
+  double t[3];
+  for (int k = 0; k < 3; k++) t[k] = p[2][k] - p[0][k];
+  i = ex[0] * t[0] + ex[1] * t[1] + ex[2] * t[2];
+  for (int k = 0; k < 3; k++) ey[k] = t[k] - i * ex[k];
+  double n = sqrt(ey[0] * ey[0] + ey[1] * ey[1] + ey[2] * ey[2]);
+  for (int k = 0; k < 3; k++) ey[k] /= n;
+  j = ey[0] * t[0] + ey[1] * t[1] + ey[2] * t[2];
+  ez[0] = ex[1] * ey[2] - ex[2] * ey[1];
+  ez[1] = ex[2] * ey[0] - ex[0] * ey[2];
+  ez[2] = ex[0] * ey[1] - ex[1] * ey[0];
+  double x = d / 2, y = (i * i + j * j - 2 * i * d / 2) / (2 * j) + 0;  // radii equal
+  y = (i * i + j * j) / (2 * j) - (i / j) * x;
+  double zz = L * L - x * x - y * y;
+  if (zz < 0) return false;
+  double z = -sqrt(zz);  // effector is below the rod tops
+  for (int k = 0; k < 3; k++) out[k] = p[0][k] + x * ex[k] + y * ey[k] + z * ez[k];
   return true;
 }
-int main(){
+int main()
+{
   recalc_delta_settings(delta_radius, delta_diagonal_rod);
-  printf("towers: (%.3f,%.3f) (%.3f,%.3f) (%.3f,%.3f)  rod %.1f\n",delta_tower1_x,delta_tower1_y,delta_tower2_x,delta_tower2_y,delta_tower3_x,delta_tower3_y,delta_diagonal_rod);
-  const double PR=85.0, ZH=225.0;   // printable radius and home height of Configuration.h
+  printf("towers: (%.3f,%.3f) (%.3f,%.3f) (%.3f,%.3f)  rod %.1f\n", delta_tower1_x, delta_tower1_y, delta_tower2_x, delta_tower2_y, delta_tower3_x, delta_tower3_y, delta_diagonal_rod);
+  const double PR = 85.0, ZH = 225.0;  // printable radius and home height of Configuration.h
   // the default tower positions: 210, 330 and 90 degrees
-  assert(fabs(delta_tower1_x+0.8660254*delta_radius)<1e-3 && fabs(delta_tower1_y+0.5*delta_radius)<1e-3 && fabs(delta_tower2_x-0.8660254*delta_radius)<1e-3 && fabs(delta_tower3_y-delta_radius)<1e-3 && fabs(delta_tower3_x)<1e-3);
+  assert(fabs(delta_tower1_x + 0.8660254 * delta_radius) < 1e-3 && fabs(delta_tower1_y + 0.5 * delta_radius) < 1e-3 && fabs(delta_tower2_x - 0.8660254 * delta_radius) < 1e-3 && fabs(delta_tower3_y - delta_radius) < 1e-3 && fabs(delta_tower3_x) < 1e-3);
   // A: round trip over the printable volume (circle of 85 mm, Z 0..225)
-  double maxerr=0; int n=0, nan=0, fkfail=0;
-  for(float x=-90;x<=90.1;x+=10) for(float y=-90;y<=90.1;y+=10) for(float z=0;z<=ZH+0.1;z+=25){
-    if(x*x+y*y>PR*PR) continue;
-    float c[3]={x,y,z}; calculate_delta(c); n++;
-    if(isnan(delta[0])||isnan(delta[1])||isnan(delta[2])){nan++;continue;}
-    double o[3]; if(!fk(delta,o)){fkfail++;continue;}
-    double e=sqrt(sq(o[0]-x)+sq(o[1]-y)+sq(o[2]-z)); if(e>maxerr) maxerr=e; }
-  printf("A round trip: %d points, NaN %d, FK failures %d, max error %.6f mm\n",n,nan,fkfail,maxerr);
-  assert(nan==0 && fkfail==0 && maxerr<0.001);
+  double maxerr = 0;
+  int n = 0, nan = 0, fkfail = 0;
+  for (float x = -90; x <= 90.1; x += 10)
+    for (float y = -90; y <= 90.1; y += 10)
+      for (float z = 0; z <= ZH + 0.1; z += 25) {
+        if (x * x + y * y > PR * PR) continue;
+        float c[3] = {x, y, z};
+        calculate_delta(c);
+        n++;
+        if (isnan(delta[0]) || isnan(delta[1]) || isnan(delta[2])) {
+          nan++;
+          continue;
+        }
+        double o[3];
+        if (!fk(delta, o)) {
+          fkfail++;
+          continue;
+        }
+        double e = sqrt(sq(o[0] - x) + sq(o[1] - y) + sq(o[2] - z));
+        if (e > maxerr) maxerr = e;
+      }
+  printf("A round trip: %d points, NaN %d, FK failures %d, max error %.6f mm\n", n, nan, fkfail, maxerr);
+  assert(nan == 0 && fkfail == 0 && maxerr < 0.001);
   // B: reach: smallest radicand inside the printable circle and the horizontal reach at z=0
-  double minrad=1e9; for(float x=-90;x<=90.1;x+=5) for(float y=-90;y<=90.1;y+=5){ if(x*x+y*y>PR*PR) continue; for(int k=0;k<3;k++){ double tx=(k==0?delta_tower1_x:k==1?delta_tower2_x:delta_tower3_x), ty=(k==0?delta_tower1_y:k==1?delta_tower2_y:delta_tower3_y); double r=delta_diagonal_rod_2-sq(tx-x)-sq(ty-y); if(r<minrad) minrad=r; } }
-  assert(minrad>0);
-  printf("B smallest rod radicand in the printable circle: %.1f (must be > 0), tower travel needed: min %.2f max(at home) %.2f\n",minrad,0.0,0.0);
-  double reach=0; for(double r=0;r<400;r+=0.01){ bool ok=true; for(int a=0;a<360;a+=1){ float c[3]={(float)(r*cos(a*M_PI/180)),(float)(r*sin(a*M_PI/180)),0}; calculate_delta(c); if(isnan(delta[0])||isnan(delta[1])||isnan(delta[2])){ok=false;break;} } if(!ok) break; reach=r; }
-  printf("   maximum circular reach of the nozzle at any angle: %.2f mm radius (printable radius is %.1f)\n",reach,PR); assert(reach>PR+5);
+  double minrad = 1e9;
+  for (float x = -90; x <= 90.1; x += 5)
+    for (float y = -90; y <= 90.1; y += 5) {
+      if (x * x + y * y > PR * PR) continue;
+      for (int k = 0; k < 3; k++) {
+        double tx = (k == 0 ? delta_tower1_x : k == 1 ? delta_tower2_x
+                                                      : delta_tower3_x),
+               ty = (k == 0 ? delta_tower1_y : k == 1 ? delta_tower2_y
+                                                      : delta_tower3_y);
+        double r = delta_diagonal_rod_2 - sq(tx - x) - sq(ty - y);
+        if (r < minrad) minrad = r;
+      }
+    }
+  assert(minrad > 0);
+  printf("B smallest rod radicand in the printable circle: %.1f (must be > 0), tower travel needed: min %.2f max(at home) %.2f\n", minrad, 0.0, 0.0);
+  double reach = 0;
+  for (double r = 0; r < 400; r += 0.01) {
+    bool ok = true;
+    for (int a = 0; a < 360; a += 1) {
+      float c[3] = {(float)(r * cos(a * M_PI / 180)), (float)(r * sin(a * M_PI / 180)), 0};
+      calculate_delta(c);
+      if (isnan(delta[0]) || isnan(delta[1]) || isnan(delta[2])) {
+        ok = false;
+        break;
+      }
+    }
+    if (!ok) break;
+    reach = r;
+  }
+  printf("   maximum circular reach of the nozzle at any angle: %.2f mm radius (printable radius is %.1f)\n", reach, PR);
+  assert(reach > PR + 5);
   // C: home position
-  float home[3]={0,0,(float)ZH}; calculate_delta(home); assert(fabs(delta[0]-delta[1])<1e-4 && fabs(delta[1]-delta[2])<1e-4); printf("C after G28 carriage position of every tower at (0,0,225): %.3f %.3f %.3f\n",delta[0],delta[1],delta[2]);
-  { float low[3]={0,0,0}; calculate_delta(low); float bottom=delta[0]; calculate_delta(home); float top=delta[0];
-    assert(fabs((top-bottom)-ZH)<0.01); printf("   at (0,0,0): %.3f   -> total tower travel from home to bed: %.1f mm (= Z_HOME_POS)\n",bottom,top-bottom); }
+  float home[3] = {0, 0, (float)ZH};
+  calculate_delta(home);
+  assert(fabs(delta[0] - delta[1]) < 1e-4 && fabs(delta[1] - delta[2]) < 1e-4);
+  printf("C after G28 carriage position of every tower at (0,0,225): %.3f %.3f %.3f\n", delta[0], delta[1], delta[2]);
+  {
+    float low[3] = {0, 0, 0};
+    calculate_delta(low);
+    float bottom = delta[0];
+    calculate_delta(home);
+    float top = delta[0];
+    assert(fabs((top - bottom) - ZH) < 0.01);
+    printf("   at (0,0,0): %.3f   -> total tower travel from home to bed: %.1f mm (= Z_HOME_POS)\n", bottom, top - bottom);
+  }
   // D: nozzle speed vs commanded speed (the planner measures the move in tower space)
-  double mn=1e9,mx=0,sum=0; int cnt=0; double vert=0,horzC=0;
-  for(float x=-60;x<=60.1;x+=20) for(float y=-60;y<=60.1;y+=20) for(float z=10;z<=ZH-10;z+=50) for(int a=0;a<360;a+=15){
-    for(int e=0;e<3;e++){
-      float p0[3]={x,y,z}; float dir[3]; if(e==0){dir[0]=cos(a*M_PI/180);dir[1]=sin(a*M_PI/180);dir[2]=0;} else if(e==1){dir[0]=0;dir[1]=0;dir[2]=1;} else {dir[0]=cos(a*M_PI/180)*0.7071;dir[1]=sin(a*M_PI/180)*0.7071;dir[2]=0.7071;}
-      if(e==1 && a!=0) continue;
-      float p1[3]={p0[0]+dir[0],p0[1]+dir[1],p0[2]+dir[2]};
-      calculate_delta(p0); float d0[3]={delta[0],delta[1],delta[2]}; calculate_delta(p1);
-      double carr=sqrt(sq(delta[0]-d0[0])+sq(delta[1]-d0[1])+sq(delta[2]-d0[2])); double ratio=1.0/carr; // cartesian length 1 mm
-      if(e==1) vert=ratio; if(e==0){ if(ratio<mn)mn=ratio; if(ratio>mx)mx=ratio; sum+=ratio; cnt++; }
-    }}
-  printf("D nozzle speed / commanded speed:  vertical move = %.3f ;  horizontal moves: min %.3f max %.3f mean %.3f\n",vert,mn,mx,sum/cnt);
+  double mn = 1e9, mx = 0, sum = 0;
+  int cnt = 0;
+  double vert = 0, horzC = 0;
+  for (float x = -60; x <= 60.1; x += 20)
+    for (float y = -60; y <= 60.1; y += 20)
+      for (float z = 10; z <= ZH - 10; z += 50)
+        for (int a = 0; a < 360; a += 15) {
+          for (int e = 0; e < 3; e++) {
+            float p0[3] = {x, y, z};
+            float dir[3];
+            if (e == 0) {
+              dir[0] = cos(a * M_PI / 180);
+              dir[1] = sin(a * M_PI / 180);
+              dir[2] = 0;
+            } else if (e == 1) {
+              dir[0] = 0;
+              dir[1] = 0;
+              dir[2] = 1;
+            } else {
+              dir[0] = cos(a * M_PI / 180) * 0.7071;
+              dir[1] = sin(a * M_PI / 180) * 0.7071;
+              dir[2] = 0.7071;
+            }
+            if (e == 1 && a != 0) continue;
+            float p1[3] = {p0[0] + dir[0], p0[1] + dir[1], p0[2] + dir[2]};
+            calculate_delta(p0);
+            float d0[3] = {delta[0], delta[1], delta[2]};
+            calculate_delta(p1);
+            double carr = sqrt(sq(delta[0] - d0[0]) + sq(delta[1] - d0[1]) + sq(delta[2] - d0[2]));
+            double ratio = 1.0 / carr;  // cartesian length 1 mm
+            if (e == 1) vert = ratio;
+            if (e == 0) {
+              if (ratio < mn) mn = ratio;
+              if (ratio > mx) mx = ratio;
+              sum += ratio;
+              cnt++;
+            }
+          }
+        }
+  printf("D nozzle speed / commanded speed:  vertical move = %.3f ;  horizontal moves: min %.3f max %.3f mean %.3f\n", vert, mn, mx, sum / cnt);
   // E: tower angle corrections move the towers and the kinematics still invert
-  delta_tower_angle[0]=0.7; delta_tower_angle[1]=-0.4; delta_tower_angle[2]=0.2; recalc_delta_settings(delta_radius, delta_diagonal_rod);
-  assert(fabs(delta_tower1_x-delta_radius*cos(210.7*M_PI/180))<1e-3 && fabs(delta_tower2_y-delta_radius*sin(329.6*M_PI/180))<1e-3 && fabs(delta_tower3_x-delta_radius*cos(90.2*M_PI/180))<1e-3);
-  maxerr=0; for(float x=-80;x<=80.1;x+=20) for(float y=-80;y<=80.1;y+=20) { float c[3]={x,y,20}; calculate_delta(c); double o[3]; assert(fk(delta,o)); double e=sqrt(sq(o[0]-x)+sq(o[1]-y)+sq(o[2]-20)); if(e>maxerr) maxerr=e; }
-  printf("E tower angle corrections: round trip max error %.6f mm\n",maxerr); assert(maxerr<0.001);
-  puts("kinematics OK"); return 0; }
+  delta_tower_angle[0] = 0.7;
+  delta_tower_angle[1] = -0.4;
+  delta_tower_angle[2] = 0.2;
+  recalc_delta_settings(delta_radius, delta_diagonal_rod);
+  assert(fabs(delta_tower1_x - delta_radius * cos(210.7 * M_PI / 180)) < 1e-3 && fabs(delta_tower2_y - delta_radius * sin(329.6 * M_PI / 180)) < 1e-3 && fabs(delta_tower3_x - delta_radius * cos(90.2 * M_PI / 180)) < 1e-3);
+  maxerr = 0;
+  for (float x = -80; x <= 80.1; x += 20)
+    for (float y = -80; y <= 80.1; y += 20) {
+      float c[3] = {x, y, 20};
+      calculate_delta(c);
+      double o[3];
+      assert(fk(delta, o));
+      double e = sqrt(sq(o[0] - x) + sq(o[1] - y) + sq(o[2] - 20));
+      if (e > maxerr) maxerr = e;
+    }
+  printf("E tower angle corrections: round trip max error %.6f mm\n", maxerr);
+  assert(maxerr < 0.001);
+  puts("kinematics OK");
+  return 0;
+}

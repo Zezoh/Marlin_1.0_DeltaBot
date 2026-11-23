@@ -4,7 +4,6 @@
 #include "temperature.h"
 #include "language.h"
 
-
 CardReader::CardReader()
 {
   filesize = 0;
@@ -31,27 +30,21 @@ void CardReader::initsd()
   cardOK = false;
   if (root.isOpen()) root.close();
 
-  #ifdef SDSLOW   // Configuration.h: slower SPI for a card that fails to init at full speed
-    if (!card.init(SPI_HALF_SPEED, SDSS))
-  #else
-    if (!card.init(SPI_FULL_SPEED, SDSS))
-  #endif
+#ifdef SDSLOW  // Configuration.h: slower SPI for a card that fails to init at full speed
+  if (!card.init(SPI_HALF_SPEED, SDSS))
+#else
+  if (!card.init(SPI_FULL_SPEED, SDSS))
+#endif
   {
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
-  }
-  else if (!volume.init(&card))
-  {
+  } else if (!volume.init(&card)) {
     SERIAL_ERROR_START;
     SERIAL_ERRORLNPGM(MSG_SD_VOL_INIT_FAIL);
-  }
-  else if (!root.openRoot(&volume))
-  {
+  } else if (!root.openRoot(&volume)) {
     SERIAL_ERROR_START;
     SERIAL_ERRORLNPGM(MSG_SD_OPENROOT_FAIL);
-  }
-  else
-  {
+  } else {
     cardOK = true;
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM(MSG_SD_CARD_OK);
@@ -77,18 +70,16 @@ void CardReader::pauseSDPrint()
 //------------------------------------------------------------------------------
 // Listing: prints all G-code files (*.G*) and, recursively, those in subdirectories.
 
-void CardReader::lsDive(const char *prepend, SdFile& dir)
+void CardReader::lsDive(const char *prepend, SdFile &dir)
 {
   dir_t p;
   char name[13];
 
-  while (dir.readDir(&p) > 0)
-  {
+  while (dir.readDir(&p) > 0) {
     if (p.name[0] == '_') continue;  // hidden files of other operating systems
     SdFile::dirName(p, name);
 
-    if (DIR_IS_SUBDIR(&p))
-    {
+    if (DIR_IS_SUBDIR(&p)) {
       char path[SD_PATH_LENGTH];
       if (strlen(prepend) + strlen(name) + 3 > sizeof(path)) continue;  // path too long
       // paths start with '/', a leading one is only added at the top level
@@ -97,18 +88,14 @@ void CardReader::lsDive(const char *prepend, SdFile& dir)
       strcat(path, "/");
 
       SdFile sub;
-      if (sub.open(&dir, name, O_READ))
-      {
+      if (sub.open(&dir, name, O_READ)) {
         lsDive(path, sub);
-      }
-      else
-      {
+      } else {
         SERIAL_ECHO_START;
         SERIAL_ECHOLN(MSG_SD_CANT_OPEN_SUBDIR);
         SERIAL_ECHOLN(name);
       }
-    }
-    else if (p.name[8] == 'G' && p.name[9] != '~')  // only .G* files, no safety copies
+    } else if (p.name[8] == 'G' && p.name[9] != '~')  // only .G* files, no safety copies
     {
       SERIAL_PROTOCOL(prepend);
       SERIAL_PROTOCOLLN(name);
@@ -125,16 +112,14 @@ void CardReader::ls()
 //------------------------------------------------------------------------------
 // Files
 
-void CardReader::openFile(char* name, bool read, bool replace_current/*=true*/)
+void CardReader::openFile(char *name, bool read, bool replace_current /*=true*/)
 {
   if (!cardOK) return;
 
   if (file.isOpen())  // replacing the current file by a new file, or a procedure call
   {
-    if (!replace_current)
-    {
-      if (inProcedure)
-      {
+    if (!replace_current) {
+      if (inProcedure) {
         SERIAL_ERROR_START;
         SERIAL_ERRORPGM("trying to call sub-gcode files with too many levels. MAX level is:");
         SERIAL_ERRORLN(1);
@@ -152,16 +137,13 @@ void CardReader::openFile(char* name, bool read, bool replace_current/*=true*/)
       strcpy(parentName, openName);
       parentPos = sdpos;
       inProcedure = true;
-    }
-    else
-    {
+    } else {
       SERIAL_ECHO_START;
       SERIAL_ECHOPGM("Now doing file: ");
       SERIAL_ECHOLN(name);
     }
     file.close();
-  }
-  else  // opening a fresh file
+  } else  // opening a fresh file
   {
     inProcedure = false;  // in case the user cancelled a print while in a procedure
     SERIAL_ECHO_START;
@@ -171,10 +153,8 @@ void CardReader::openFile(char* name, bool read, bool replace_current/*=true*/)
   sdprinting = false;
 
   // the path is relative to the root directory; subdirectories are separated by '/'
-  if (read)
-  {
-    if (file.open(&root, name, O_READ))
-    {
+  if (read) {
+    if (file.open(&root, name, O_READ)) {
       filesize = file.fileSize();
       sdpos = 0;
       strncpy(openName, name, sizeof(openName) - 1);
@@ -186,9 +166,7 @@ void CardReader::openFile(char* name, bool read, bool replace_current/*=true*/)
       SERIAL_PROTOCOLLNPGM(MSG_SD_FILE_SELECTED);
       return;
     }
-  }
-  else if (file.open(&root, name, O_CREAT | O_APPEND | O_WRITE | O_TRUNC))
-  {
+  } else if (file.open(&root, name, O_CREAT | O_APPEND | O_WRITE | O_TRUNC)) {
     saving = true;
     SERIAL_PROTOCOLPGM(MSG_SD_WRITE_TO_FILE);
     SERIAL_PROTOCOLLN(name);
@@ -199,26 +177,23 @@ void CardReader::openFile(char* name, bool read, bool replace_current/*=true*/)
   SERIAL_PROTOCOLLNPGM(".");
 }
 
-void CardReader::openLogFile(char* name)
+void CardReader::openLogFile(char *name)
 {
   logging = true;
   openFile(name, false);
 }
 
-void CardReader::removeFile(char* name)
+void CardReader::removeFile(char *name)
 {
   if (!cardOK) return;
   file.close();
   sdprinting = false;
 
-  if (SdFile::remove(&root, name))
-  {
+  if (SdFile::remove(&root, name)) {
     SERIAL_PROTOCOLPGM("File deleted:");
     SERIAL_PROTOCOLLN(name);
     sdpos = 0;
-  }
-  else
-  {
+  } else {
     SERIAL_PROTOCOLPGM("Deletion failed, File: ");
     SERIAL_PROTOCOL(name);
     SERIAL_PROTOCOLLNPGM(".");
@@ -234,15 +209,12 @@ void CardReader::closefile()
 
 void CardReader::getStatus()
 {
-  if (cardOK)
-  {
+  if (cardOK) {
     SERIAL_PROTOCOLPGM(MSG_SD_PRINTING_BYTE);
     SERIAL_PROTOCOL(sdpos);
     SERIAL_PROTOCOLPGM("/");
     SERIAL_PROTOCOLLN(filesize);
-  }
-  else
-  {
+  } else {
     SERIAL_PROTOCOLLNPGM(MSG_SD_NOT_PRINTING);
   }
 }
@@ -251,16 +223,14 @@ void CardReader::getStatus()
 // ("N123 command *45") are stripped.
 void CardReader::write_command(char *buf)
 {
-  char* begin = buf;
-  char* end = buf + strlen(buf) - 1;
+  char *begin = buf;
+  char *end = buf + strlen(buf) - 1;
 
-  char* npos = strchr(buf, 'N');
-  if (npos)
-  {
-    char* space = strchr(npos, ' ');
-    char* star = strchr(npos, '*');
-    if (space && star)
-    {
+  char *npos = strchr(buf, 'N');
+  if (npos) {
+    char *space = strchr(npos, ' ');
+    char *star = strchr(npos, '*');
+    if (space && star) {
       begin = space + 1;
       end = star - 1;
     }
@@ -269,8 +239,7 @@ void CardReader::write_command(char *buf)
   file.writeError = false;
   if (end >= begin) file.write(begin, end - begin + 1);
   file.write("\r\n", 2);
-  if (file.writeError)
-  {
+  if (file.writeError) {
     SERIAL_ERROR_START;
     SERIAL_ERRORLNPGM(MSG_SD_ERR_WRITE_TO_FILE);
   }
@@ -281,28 +250,24 @@ void CardReader::write_command(char *buf)
 
 void CardReader::checkautostart(bool force)
 {
-  if (!force)
-  {
+  if (!force) {
     if (!autostart_stilltocheck) return;
     if (autostart_atmillis < millis()) return;
   }
   autostart_stilltocheck = false;
   if (autostart_nr < 0) return;
 
-  if (!cardOK)
-  {
+  if (!cardOK) {
     initsd();
     if (!cardOK) return;
   }
 
   dir_t p;
   root.rewind();
-  while (root.readDir(&p) > 0)
-  {
+  while (root.readDir(&p) > 0) {
     // "AUTOn   G  " but not safety copies like "AUTOn   G~ "
     if (memcmp(p.name, "AUTO", 4) == 0 && p.name[4] == '0' + autostart_nr &&
-        p.name[5] == ' ' && p.name[8] == 'G' && p.name[9] == ' ')
-    {
+        p.name[5] == ' ' && p.name[8] == 'G' && p.name[9] == ' ') {
       char cmd[12];
       sprintf_P(cmd, PSTR("M23 auto%d.g"), autostart_nr);
       enquecommand(cmd);
@@ -316,8 +281,7 @@ void CardReader::checkautostart(bool force)
 
 bool CardReader::startNewest()
 {
-  if (!cardOK)
-  {
+  if (!cardOK) {
     initsd();
     if (!cardOK) return false;
   }
@@ -326,12 +290,10 @@ bool CardReader::startNewest()
   uint32_t best_stamp = 0;
   bool found = false;
   root.rewind();
-  while (root.readDir(&p) > 0)
-  {
+  while (root.readDir(&p) > 0) {
     if (p.name[0] == '_' || DIR_IS_SUBDIR(&p) || p.name[8] != 'G' || p.name[9] == '~') continue;
     uint32_t stamp = ((uint32_t)p.lastWriteDate << 16) | p.lastWriteTime;
-    if (!found || stamp >= best_stamp)
-    {
+    if (!found || stamp >= best_stamp) {
       found = true;
       best_stamp = stamp;
       SdFile::dirName(p, best);
@@ -357,16 +319,12 @@ void CardReader::printingHasFinished()
     openFile(parentName, true, true);
     setIndex(parentPos);
     startFileprint();
-  }
-  else
-  {
+  } else {
     quickStop();
     sdprinting = false;
-    fan_start_cooldown();   // the print is over: cool the hotend at full fan, forget the M106 of the print
-    if (SD_FINISHED_STEPPERRELEASE)
-    {
+    fan_start_cooldown();  // the print is over: cool the hotend at full fan, forget the M106 of the print
+    if (SD_FINISHED_STEPPERRELEASE) {
       enquecommand_P(PSTR(SD_FINISHED_RELEASECOMMAND));
     }
   }
 }
-

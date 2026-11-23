@@ -6,7 +6,6 @@
  */
 #include "Sd2Card.h"
 
-
 // make sure SPCR rate is in expected bits
 #if (SPR0 != 0 || SPR1 != 1)
 #error unexpected SPCR bits
@@ -16,25 +15,29 @@
 // Hardware SPI helpers
 
 /** Set SCK rate to F_CPU/pow(2, 1 + spiRate) for spiRate [0,6] */
-static void spiInit(uint8_t spiRate) {
+static void spiInit(uint8_t spiRate)
+{
   SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1);
   SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
 }
 
-static inline void spiWait() {
-  while (!(SPSR & (1 << SPIF))) { /* wait for transfer complete */ }
+static inline void spiWait()
+{
+  while (!(SPSR & (1 << SPIF))) { /* wait for transfer complete */
+  }
 }
 
 /** SPI receive a byte */
-static uint8_t spiRec() {
+static uint8_t spiRec()
+{
   SPDR = 0XFF;
   spiWait();
   return SPDR;
 }
 
 /** SPI read data - only one call so force inline */
-static inline __attribute__((always_inline))
-void spiRead(uint8_t* buf, uint16_t nbyte) {
+static inline __attribute__((always_inline)) void spiRead(uint8_t *buf, uint16_t nbyte)
+{
   if (nbyte-- == 0) return;
   SPDR = 0XFF;
   for (uint16_t i = 0; i < nbyte; i++) {
@@ -47,14 +50,15 @@ void spiRead(uint8_t* buf, uint16_t nbyte) {
 }
 
 /** SPI send a byte */
-static void spiSend(uint8_t b) {
+static void spiSend(uint8_t b)
+{
   SPDR = b;
   spiWait();
 }
 
 /** SPI send block - only one call so force inline */
-static inline __attribute__((always_inline))
-void spiSendBlock(uint8_t token, const uint8_t* buf) {
+static inline __attribute__((always_inline)) void spiSendBlock(uint8_t token, const uint8_t *buf)
+{
   SPDR = token;
   for (uint16_t i = 0; i < 512; i += 2) {
     spiWait();
@@ -69,17 +73,20 @@ void spiSendBlock(uint8_t token, const uint8_t* buf) {
 // Optional CRC checking of read data (enable SD_CHECK_AND_RETRY in Configuration.h)
 
 //------------------------------------------------------------------------------
-void Sd2Card::chipSelectHigh() {
+void Sd2Card::chipSelectHigh()
+{
   digitalWrite(chipSelectPin_, HIGH);
 }
 
-void Sd2Card::chipSelectLow() {
+void Sd2Card::chipSelectLow()
+{
   spiInit(spiRate_);
   digitalWrite(chipSelectPin_, LOW);
 }
 
 // wait for card to go not busy
-bool Sd2Card::waitNotBusy(uint16_t timeoutMillis) {
+bool Sd2Card::waitNotBusy(uint16_t timeoutMillis)
+{
   uint16_t t0 = millis();
   while (spiRec() != 0XFF) {
     if (((uint16_t)millis() - t0) >= timeoutMillis) return false;
@@ -88,7 +95,8 @@ bool Sd2Card::waitNotBusy(uint16_t timeoutMillis) {
 }
 
 // send command and return the R1 response byte (zero for OK)
-uint8_t Sd2Card::cardCommand(uint8_t cmd, uint32_t arg) {
+uint8_t Sd2Card::cardCommand(uint8_t cmd, uint32_t arg)
+{
   chipSelectLow();
   // wait up to 300 ms if busy
   waitNotBusy(300);
@@ -102,7 +110,8 @@ uint8_t Sd2Card::cardCommand(uint8_t cmd, uint32_t arg) {
   // skip stuff byte for stop read
   if (cmd == CMD12) spiRec();
   // wait for response
-  for (uint8_t i = 0; ((status_ = spiRec()) & 0X80) && i != 0XFF; i++) { /* wait */ }
+  for (uint8_t i = 0; ((status_ = spiRec()) & 0X80) && i != 0XFF; i++) { /* wait */
+  }
   return status_;
 }
 
@@ -114,7 +123,8 @@ uint8_t Sd2Card::cardCommand(uint8_t cmd, uint32_t arg) {
  * \param[in] chipSelectPin SD chip select pin number.
  * \return true for success or false for failure.
  */
-bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
+bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin)
+{
   type_ = 0;
   chipSelectPin_ = chipSelectPin;
   // 16-bit init start time allows over a minute
@@ -178,7 +188,7 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
   chipSelectHigh();
   return setSckRate(sckRateID);
 
- fail:
+fail:
   chipSelectHigh();
   return false;
 }
@@ -187,7 +197,8 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
  * Set the SPI clock rate to F_CPU/pow(2, 1 + sckRateID), sckRateID in [0, 6].
  * \return true for success, false for an invalid value of sckRateID.
  */
-bool Sd2Card::setSckRate(uint8_t sckRateID) {
+bool Sd2Card::setSckRate(uint8_t sckRateID)
+{
   if (sckRateID > 6) {
     return false;
   }
@@ -197,7 +208,8 @@ bool Sd2Card::setSckRate(uint8_t sckRateID) {
 
 //------------------------------------------------------------------------------
 // read the data part of a block (after a read command was accepted)
-bool Sd2Card::readData(uint8_t* dst, uint16_t count) {
+bool Sd2Card::readData(uint8_t *dst, uint16_t count)
+{
   // wait for start block token
   uint16_t t0 = millis();
   while ((status_ = spiRec()) == 0XFF) {
@@ -217,7 +229,7 @@ bool Sd2Card::readData(uint8_t* dst, uint16_t count) {
   chipSelectHigh();
   return true;
 
- fail:
+fail:
   chipSelectHigh();
   return false;
 }
@@ -229,7 +241,8 @@ bool Sd2Card::readData(uint8_t* dst, uint16_t count) {
  * \param[out] dst Pointer to the location that will receive the data.
  * \return true for success or false for failure.
  */
-bool Sd2Card::readBlock(uint32_t blockNumber, uint8_t* dst) {
+bool Sd2Card::readBlock(uint32_t blockNumber, uint8_t *dst)
+{
   // use byte address if not SDHC card
   if (type_ != SD_CARD_TYPE_SDHC) blockNumber <<= 9;
 
@@ -242,7 +255,8 @@ bool Sd2Card::readBlock(uint32_t blockNumber, uint8_t* dst) {
 
 //------------------------------------------------------------------------------
 // send one block of data for a write block command
-bool Sd2Card::writeData(uint8_t token, const uint8_t* src) {
+bool Sd2Card::writeData(uint8_t token, const uint8_t *src)
+{
   spiSendBlock(token, src);
   spiSend(0xff);  // dummy crc
   spiSend(0xff);  // dummy crc
@@ -261,7 +275,8 @@ bool Sd2Card::writeData(uint8_t token, const uint8_t* src) {
  * \param[in] src Pointer to the location of the data to be written.
  * \return true for success or false for failure.
  */
-bool Sd2Card::writeBlock(uint32_t blockNumber, const uint8_t* src) {
+bool Sd2Card::writeBlock(uint32_t blockNumber, const uint8_t *src)
+{
   // use byte address if not SDHC card
   if (type_ != SD_CARD_TYPE_SDHC) blockNumber <<= 9;
   if (cardCommand(CMD24, blockNumber)) {
@@ -280,8 +295,7 @@ bool Sd2Card::writeBlock(uint32_t blockNumber, const uint8_t* src) {
   chipSelectHigh();
   return true;
 
- fail:
+fail:
   chipSelectHigh();
   return false;
 }
-

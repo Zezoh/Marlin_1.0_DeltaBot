@@ -6,12 +6,21 @@
 #include "delta_calibration.h"
 
 static int fails = 0;
-#define CHECK(c, ...) do { if (!(c)) { printf("FAIL: "); printf(__VA_ARGS__); printf("\n"); fails++; } } while (0)
+#define CHECK(c, ...)      \
+  do {                     \
+    if (!(c)) {            \
+      printf("FAIL: ");    \
+      printf(__VA_ARGS__); \
+      printf("\n");        \
+      fails++;             \
+    }                      \
+  } while (0)
 
 static float frand(float a) { return a * (2.0f * rand() / RAND_MAX - 1.0f); }
 
 // What the probe sees: nozzle height above the bed (true machine, flat bed at 0) when the firmware thinks it is at z = 0.
-static void simulate(const DeltaGeometry &belief, const DeltaGeometry &truth, uint8_t n, float pr, float err[]) {
+static void simulate(const DeltaGeometry &belief, const DeltaGeometry &truth, uint8_t n, float pr, float err[])
+{
   for (uint8_t i = 0; i < n; i++) {
     float xy[2], c[3], h[3], z;
     dcal_point_xy(i, n, pr, xy);
@@ -22,7 +31,8 @@ static void simulate(const DeltaGeometry &belief, const DeltaGeometry &truth, ui
   }
 }
 
-int main() {
+int main()
+{
   srand(7);
   // forward kinematics inverts carriage heights
   DeltaGeometry g = {90, 210, {0, 0, 0}, {0, 0, 0}};
@@ -39,7 +49,10 @@ int main() {
         DeltaGeometry truth = belief;
         for (int a = 0; a < 3; a++) truth.off[a] = frand(2.0f);
         if (factors >= 4) truth.R += frand(1.5f);
-        if (factors >= 6) { truth.ang[0] += frand(0.4f); truth.ang[1] += frand(0.4f); }
+        if (factors >= 6) {
+          truth.ang[0] += frand(0.4f);
+          truth.ang[1] += frand(0.4f);
+        }
         float err[DCAL_MAX_POINTS], before, after;
         simulate(belief, truth, n, 85, err);
         DeltaGeometry out;
@@ -52,21 +65,28 @@ int main() {
         for (int a = 0; a < 3; a++)
           CHECK(fabsf(out.off[a] - truth.off[a]) < 0.05f, "F%d P%d trial %d: off[%d] %.3f vs %.3f", factors, n, trial, a, out.off[a], truth.off[a]);
         if (factors >= 4) CHECK(fabsf(out.R - truth.R) < 0.1f, "F%d P%d: R %.3f vs %.3f", factors, n, out.R, truth.R);
-        if (factors >= 6) for (int a = 0; a < 2; a++)
-          CHECK(fabsf(out.ang[a] - truth.ang[a]) < 0.03f, "F%d P%d: ang[%d] %.3f vs %.3f", factors, n, a, out.ang[a], truth.ang[a]);
+        if (factors >= 6)
+          for (int a = 0; a < 2; a++)
+            CHECK(fabsf(out.ang[a] - truth.ang[a]) < 0.03f, "F%d P%d: ang[%d] %.3f vs %.3f", factors, n, a, out.ang[a], truth.ang[a]);
       }
     }
   }
 
   // a flat, correct machine needs no correction
-  { DeltaGeometry b = {90, 210, {0, 0, 0}, {0, 0, 0}}, out; float err[10], bf, af;
+  {
+    DeltaGeometry b = {90, 210, {0, 0, 0}, {0, 0, 0}}, out;
+    float err[10], bf, af;
     simulate(b, b, 10, 85, err);
-    CHECK(dcal_solve(b, 10, 85, err, 6, out, &bf, &af) && bf < 0.001f && fabsf(out.R - 90) < 0.01f, "identity"); }
+    CHECK(dcal_solve(b, 10, 85, err, 6, out, &bf, &af) && bf < 0.001f && fabsf(out.R - 90) < 0.01f, "identity");
+  }
 
   // bad input is refused
-  { DeltaGeometry b = {90, 210, {0, 0, 0}, {0, 0, 0}}, out; float err[10] = {0};
+  {
+    DeltaGeometry b = {90, 210, {0, 0, 0}, {0, 0, 0}}, out;
+    float err[10] = {0};
     CHECK(!dcal_solve(b, 8, 85, err, 6, out, 0, 0), "8 points refused");
-    CHECK(!dcal_solve(b, 10, 85, err, 5, out, 0, 0), "5 factors refused"); }
+    CHECK(!dcal_solve(b, 10, 85, err, 5, out, 0, 0), "5 factors refused");
+  }
 
   printf(fails ? "calibration: %d FAILED\n" : "calibration: all ok\n", fails);
   return fails ? 1 : 0;

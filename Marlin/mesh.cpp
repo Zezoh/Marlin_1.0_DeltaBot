@@ -17,13 +17,30 @@ float mesh_fade_height = 0.0f;
 
 // Triangles over the points: the inner ring around the centre (18), then the outer ring around the inner ring.
 static const uint8_t MESH_TRI[MESH_TRIANGLES][3] MESH_PROGMEM = {
-  {18,12,13}, {18,13,14}, {18,14,15}, {18,15,16}, {18,16,17}, {18,17,12},
-  {12, 0, 1}, {12, 1, 2}, {12, 2,13},
-  {13, 2, 3}, {13, 3, 4}, {13, 4,14},
-  {14, 4, 5}, {14, 5, 6}, {14, 6,15},
-  {15, 6, 7}, {15, 7, 8}, {15, 8,16},
-  {16, 8, 9}, {16, 9,10}, {16,10,17},
-  {17,10,11}, {17,11, 0}, {17, 0,12},
+    {18, 12, 13},
+    {18, 13, 14},
+    {18, 14, 15},
+    {18, 15, 16},
+    {18, 16, 17},
+    {18, 17, 12},
+    {12, 0, 1},
+    {12, 1, 2},
+    {12, 2, 13},
+    {13, 2, 3},
+    {13, 3, 4},
+    {13, 4, 14},
+    {14, 4, 5},
+    {14, 5, 6},
+    {14, 6, 15},
+    {15, 6, 7},
+    {15, 7, 8},
+    {15, 8, 16},
+    {16, 8, 9},
+    {16, 9, 10},
+    {16, 10, 17},
+    {17, 10, 11},
+    {17, 11, 0},
+    {17, 0, 12},
 };
 
 // the triangle the last lookup was in: consecutive moves stay in it
@@ -56,12 +73,20 @@ static bool load_triangle(uint8_t t)
 {
   uint8_t i0 = mesh_tri(t, 0), i1 = mesh_tri(t, 1), i2 = mesh_tri(t, 2);
   float p0[2], p1[2], p2[2];
-  mesh_point_xy(i0, p0); mesh_point_xy(i1, p1); mesh_point_xy(i2, p2);
+  mesh_point_xy(i0, p0);
+  mesh_point_xy(i1, p1);
+  mesh_point_xy(i2, p2);
   float denom = (p1[1] - p2[1]) * (p0[0] - p2[0]) + (p2[0] - p1[0]) * (p0[1] - p2[1]);
   if (fabsf(denom) < 1.0e-6f) return false;
-  cx0 = p0[0]; cy0 = p0[1]; cz0 = mesh_z[i0];
-  cx1 = p1[0]; cy1 = p1[1]; cz1 = mesh_z[i1];
-  cx2 = p2[0]; cy2 = p2[1]; cz2 = mesh_z[i2];
+  cx0 = p0[0];
+  cy0 = p0[1];
+  cz0 = mesh_z[i0];
+  cx1 = p1[0];
+  cy1 = p1[1];
+  cz1 = mesh_z[i1];
+  cx2 = p2[0];
+  cy2 = p2[1];
+  cz2 = mesh_z[i2];
   cinv = 1.0f / denom;
   cache_tri = t;
   return true;
@@ -89,7 +114,8 @@ float mesh_offset(float x, float y)
   for (uint8_t edge = 0; edge < 12; edge++) {
     uint8_t next = (edge + 1) % 12;
     float a[2], b[2];
-    mesh_point_xy(edge, a); mesh_point_xy(next, b);
+    mesh_point_xy(edge, a);
+    mesh_point_xy(next, b);
     float ex = b[0] - a[0], ey = b[1] - a[1];
     float denom = x * ey - y * ex;
     if (fabsf(denom) < 1.0e-6f) continue;

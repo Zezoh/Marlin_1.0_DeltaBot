@@ -18,7 +18,7 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// This module is to be considered a sub-module of stepper.c. Please don't include 
+// This module is to be considered a sub-module of stepper.c. Please don't include
 // this file from any other module.
 
 #ifndef planner_h
@@ -26,7 +26,7 @@
 
 #include "Marlin.h"
 
-// This struct is used when buffering the setup for each linear movement "nominal" values are as specified in 
+// This struct is used when buffering the setup for each linear movement "nominal" values are as specified in
 // the source g-code and may never actually be reached if acceleration management is active.
 typedef struct {
   // Fields used by the bresenham algorithm for tracing the line
@@ -38,27 +38,27 @@ typedef struct {
   unsigned char direction_bits;             // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
   unsigned char active_extruder;            // Selects the active extruder
   // Fields used by the motion planner to manage acceleration
-  float nominal_speed;                               // The nominal speed for this block in mm/sec 
-  float entry_speed;                                 // Entry speed at previous-current junction in mm/sec
-  float max_entry_speed;                             // Maximum allowable junction entry speed in mm/sec
-  float millimeters;                                 // The total travel of this block in mm
-  float acceleration;                                // acceleration mm/sec^2
-  unsigned char recalculate_flag;                    // Planner flag to recalculate trapezoids on entry junction
-  unsigned char nominal_length_flag;                 // Planner flag for nominal speed always reached
+  float nominal_speed;                // The nominal speed for this block in mm/sec
+  float entry_speed;                  // Entry speed at previous-current junction in mm/sec
+  float max_entry_speed;              // Maximum allowable junction entry speed in mm/sec
+  float millimeters;                  // The total travel of this block in mm
+  float acceleration;                 // acceleration mm/sec^2
+  unsigned char recalculate_flag;     // Planner flag to recalculate trapezoids on entry junction
+  unsigned char nominal_length_flag;  // Planner flag for nominal speed always reached
 
   // Settings for the trapezoid generator
-  unsigned long nominal_rate;                        // The nominal step rate for this block in step_events/sec 
-  unsigned long initial_rate;                        // The jerk-adjusted step rate at start of block  
-  unsigned long final_rate;                          // The minimal rate at exit
-  unsigned long acceleration_st;                     // acceleration steps/sec^2
-  unsigned char fan_speed;                           // Fan speed while this block is executed
+  unsigned long nominal_rate;     // The nominal step rate for this block in step_events/sec
+  unsigned long initial_rate;     // The jerk-adjusted step rate at start of block
+  unsigned long final_rate;       // The minimal rate at exit
+  unsigned long acceleration_st;  // acceleration steps/sec^2
+  unsigned char fan_speed;        // Fan speed while this block is executed
   volatile char busy;
 } block_t;
 
-// Initialize the motion plan subsystem      
+// Initialize the motion plan subsystem
 void plan_init();
 
-// Add a new linear movement to the buffer. x, y and z is the signed, absolute target position in 
+// Add a new linear movement to the buffer. x, y and z is the signed, absolute target position in
 // millimaters. Feed rate specifies the speed of the motion.
 
 // cartesian_mm is the length of the move of the nozzle. If it is given the feed rate applies to the nozzle:
@@ -70,55 +70,49 @@ void plan_set_position(const float &x, const float &y, const float &z, const flo
 
 void plan_set_e_position(const float &e);
 
-
-
 unsigned char requested_fan_speed();
-uint8_t movesplanned(); //return the nr of buffered moves
+uint8_t movesplanned();  // return the nr of buffered moves
 
-extern float max_feedrate[NUM_AXIS]; // set the max speeds
+extern float max_feedrate[NUM_AXIS];  // set the max speeds
 extern float axis_steps_per_unit[NUM_AXIS];
-extern unsigned long max_acceleration_units_per_sq_second[NUM_AXIS]; // Use M201 to override by software
+extern unsigned long max_acceleration_units_per_sq_second[NUM_AXIS];  // Use M201 to override by software
 extern float minimumfeedrate;
-extern float acceleration;         // Normal acceleration mm/s^2  THIS IS THE DEFAULT ACCELERATION for all moves. M204 SXXXX
-extern float retract_acceleration; //  mm/s^2   filament pull-pack and push-forward  while standing still in the other axis M204 TXXXX
-extern float max_xy_jerk; //speed than can be stopped at once, if i understand correctly.
+extern float acceleration;          // Normal acceleration mm/s^2  THIS IS THE DEFAULT ACCELERATION for all moves. M204 SXXXX
+extern float retract_acceleration;  //  mm/s^2   filament pull-pack and push-forward  while standing still in the other axis M204 TXXXX
+extern float max_xy_jerk;           // speed than can be stopped at once, if i understand correctly.
 extern float max_z_jerk;
 extern float max_e_jerk;
 extern float mintravelfeedrate;
 extern unsigned long axis_steps_per_sqr_second[NUM_AXIS];
 
-
-    
-
-
-extern block_t block_buffer[BLOCK_BUFFER_SIZE];            // A ring buffer for motion instfructions
-extern volatile unsigned char block_buffer_head;           // Index of the next block to be pushed
-extern volatile unsigned char block_buffer_tail; 
+extern block_t block_buffer[BLOCK_BUFFER_SIZE];   // A ring buffer for motion instfructions
+extern volatile unsigned char block_buffer_head;  // Index of the next block to be pushed
+extern volatile unsigned char block_buffer_tail;
 // Called when the current block is no longer needed. Discards the block and makes the memory
-// availible for new blocks.    
-FORCE_INLINE void plan_discard_current_block()  
+// availible for new blocks.
+FORCE_INLINE void plan_discard_current_block()
 {
   if (block_buffer_head != block_buffer_tail) {
-    block_buffer_tail = (block_buffer_tail + 1) & (BLOCK_BUFFER_SIZE - 1);  
+    block_buffer_tail = (block_buffer_tail + 1) & (BLOCK_BUFFER_SIZE - 1);
   }
 }
 
 // Gets the current block. Returns NULL if buffer empty
-FORCE_INLINE block_t *plan_get_current_block() 
+FORCE_INLINE block_t *plan_get_current_block()
 {
-  if (block_buffer_head == block_buffer_tail) { 
-    return(NULL); 
+  if (block_buffer_head == block_buffer_tail) {
+    return (NULL);
   }
   block_t *block = &block_buffer[block_buffer_tail];
   block->busy = true;
-  return(block);
+  return (block);
 }
 
 // Returns true if the buffer has a queued block, false otherwise
 FORCE_INLINE bool blocks_queued() { return (block_buffer_head != block_buffer_tail); }
 
 void set_extrude_min_temp(float temp);
-extern float extrude_min_temp;   // no extrusion below this temperature (M302)
+extern float extrude_min_temp;  // no extrusion below this temperature (M302)
 
 void reset_acceleration_rates();
 #endif

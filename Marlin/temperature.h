@@ -9,14 +9,14 @@
 #include "Marlin.h"
 #include "planner.h"
 
-void tp_init();          // initialize the heating
-void manage_heater();    // it is critical that this is called periodically
+void tp_init();        // initialize the heating
+void manage_heater();  // it is critical that this is called periodically
 void disable_heater();
 void updatePID();
 void PID_autotune(float temp, int ncycles);
 int getHeaterPower(int heater);
 
-extern volatile unsigned int fsr_raw;   // latest FSR (Z probe) ADC reading, 0..1023
+extern volatile unsigned int fsr_raw;  // latest FSR (Z probe) ADC reading, 0..1023
 extern int target_temperature[EXTRUDERS];
 extern float current_temperature[EXTRUDERS];
 extern float Kp, Ki, Kd;

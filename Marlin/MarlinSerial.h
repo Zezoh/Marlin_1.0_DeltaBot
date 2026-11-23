@@ -25,33 +25,32 @@
 #include "Marlin.h"
 
 #if !defined(SERIAL_PORT)
-  #define SERIAL_PORT 0
+#define SERIAL_PORT 0
 #endif
 
 // Names of the registers of the selected UART of the ATmega1280/2560
-#define SERIAL_REGNAME(registerbase,number,suffix) SERIAL_REGNAME_INTERNAL(registerbase,number,suffix)
-#define SERIAL_REGNAME_INTERNAL(registerbase,number,suffix) registerbase##number##suffix
+#define SERIAL_REGNAME(registerbase, number, suffix) SERIAL_REGNAME_INTERNAL(registerbase, number, suffix)
+#define SERIAL_REGNAME_INTERNAL(registerbase, number, suffix) registerbase##number##suffix
 
-#define M_UCSRxA SERIAL_REGNAME(UCSR,SERIAL_PORT,A)
-#define M_UCSRxB SERIAL_REGNAME(UCSR,SERIAL_PORT,B)
-#define M_RXENx SERIAL_REGNAME(RXEN,SERIAL_PORT,)
-#define M_TXENx SERIAL_REGNAME(TXEN,SERIAL_PORT,)
-#define M_RXCIEx SERIAL_REGNAME(RXCIE,SERIAL_PORT,)
-#define M_UDREx SERIAL_REGNAME(UDRE,SERIAL_PORT,)
-#define M_UDRx SERIAL_REGNAME(UDR,SERIAL_PORT,)
-#define M_UBRRxH SERIAL_REGNAME(UBRR,SERIAL_PORT,H)
-#define M_UBRRxL SERIAL_REGNAME(UBRR,SERIAL_PORT,L)
-#define M_RXCx SERIAL_REGNAME(RXC,SERIAL_PORT,)
-#define M_USARTx_RX_vect SERIAL_REGNAME(USART,SERIAL_PORT,_RX_vect)
-#define M_U2Xx SERIAL_REGNAME(U2X,SERIAL_PORT,)
+#define M_UCSRxA SERIAL_REGNAME(UCSR, SERIAL_PORT, A)
+#define M_UCSRxB SERIAL_REGNAME(UCSR, SERIAL_PORT, B)
+#define M_RXENx SERIAL_REGNAME(RXEN, SERIAL_PORT, )
+#define M_TXENx SERIAL_REGNAME(TXEN, SERIAL_PORT, )
+#define M_RXCIEx SERIAL_REGNAME(RXCIE, SERIAL_PORT, )
+#define M_UDREx SERIAL_REGNAME(UDRE, SERIAL_PORT, )
+#define M_UDRx SERIAL_REGNAME(UDR, SERIAL_PORT, )
+#define M_UBRRxH SERIAL_REGNAME(UBRR, SERIAL_PORT, H)
+#define M_UBRRxL SERIAL_REGNAME(UBRR, SERIAL_PORT, L)
+#define M_RXCx SERIAL_REGNAME(RXC, SERIAL_PORT, )
+#define M_USARTx_RX_vect SERIAL_REGNAME(USART, SERIAL_PORT, _RX_vect)
+#define M_U2Xx SERIAL_REGNAME(U2X, SERIAL_PORT, )
 
 // Ring buffer for the received characters: rx_buffer.head is the index where the next received
 // character is written, rx_buffer.tail the index of the next character to read.
 // The size must be a power of 2 below 256: the indexes are 8 bit (atomic and fast) and wrap with a mask.
 #define RX_BUFFER_SIZE 128
 
-struct ring_buffer
-{
+struct ring_buffer {
   unsigned char buffer[RX_BUFFER_SIZE];
   volatile uint8_t head;
   volatile uint8_t tail;
@@ -71,51 +70,50 @@ FORCE_INLINE void store_char(unsigned char c)
 
 class MarlinSerial
 {
-  public:
-    void begin(long baud);
-    int read(void);
-    void flush(void);  // discards the received characters
+public:
+  void begin(long baud);
+  int read(void);
+  void flush(void);  // discards the received characters
 
-    FORCE_INLINE int available(void)
-    {
-      return (uint8_t)(rx_buffer.head - rx_buffer.tail) & (RX_BUFFER_SIZE - 1);
+  FORCE_INLINE int available(void)
+  {
+    return (uint8_t)(rx_buffer.head - rx_buffer.tail) & (RX_BUFFER_SIZE - 1);
+  }
+
+  // Transmit is polled: wait for the data register to be empty, then send
+  FORCE_INLINE void write(uint8_t c)
+  {
+    while (!((M_UCSRxA) & (1 << M_UDREx)));
+    M_UDRx = c;
+  }
+
+  // Move a received character to the buffer without waiting for the interrupt.
+  // Called from the stepper interrupt, which blocks the serial interrupt.
+  FORCE_INLINE void checkRx(void)
+  {
+    if ((M_UCSRxA & (1 << M_RXCx)) != 0) {
+      store_char(M_UDRx);
     }
+  }
 
-    // Transmit is polled: wait for the data register to be empty, then send
-    FORCE_INLINE void write(uint8_t c)
-    {
-      while (!((M_UCSRxA) & (1 << M_UDREx)))
-        ;
-      M_UDRx = c;
-    }
+  FORCE_INLINE void write(const char *str)
+  {
+    while (*str)
+      write(*str++);
+  }
 
-    // Move a received character to the buffer without waiting for the interrupt.
-    // Called from the stepper interrupt, which blocks the serial interrupt.
-    FORCE_INLINE void checkRx(void)
-    {
-      if ((M_UCSRxA & (1<<M_RXCx)) != 0) {
-        store_char(M_UDRx);
-      }
-    }
+  FORCE_INLINE void print(const char *str) { write(str); }
+  void print(char, int = 0);
+  void print(unsigned char, int = 0);
+  void print(int, int = 10);
+  void print(unsigned int, int = 10);
+  void print(long, int = 10);
+  void print(unsigned long, int = 10);
+  void print(double, int = 2);
 
-    FORCE_INLINE void write(const char *str)
-    {
-      while (*str)
-        write(*str++);
-    }
-
-    FORCE_INLINE void print(const char *str) { write(str); }
-    void print(char, int = 0);
-    void print(unsigned char, int = 0);
-    void print(int, int = 10);
-    void print(unsigned int, int = 10);
-    void print(long, int = 10);
-    void print(unsigned long, int = 10);
-    void print(double, int = 2);
-
-  private:
-    void printNumber(unsigned long, uint8_t);
-    void printFloat(double, uint8_t);
+private:
+  void printNumber(unsigned long, uint8_t);
+  void printFloat(double, uint8_t);
 };
 
 extern MarlinSerial MSerial;

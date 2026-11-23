@@ -20,9 +20,9 @@
 #include "cardreader.h"
 #include "fan.h"
 
-static bool hot_latched = false;     // the hotend is at the safety temperature (with hysteresis)
+static bool hot_latched = false;  // the hotend is at the safety temperature (with hysteresis)
 static bool cooldown = false;
-static bool was_stopped = true;      // the fan was off: it starts with a kick
+static bool was_stopped = true;  // the fan was off: it starts with a kick
 static unsigned long kick_until = 0;
 static unsigned long last_activity = 0;
 static unsigned char output = 0;
@@ -49,8 +49,14 @@ static volatile unsigned char pwm_phase = 0;
 ISR(TIMER2_OVF_vect)
 {
   unsigned char steps = pwm_steps;
-  if (steps == 0) { WRITE(FAN_PIN, LOW); return; }
-  if (steps >= FAN_PWM_STEPS) { WRITE(FAN_PIN, HIGH); return; }
+  if (steps == 0) {
+    WRITE(FAN_PIN, LOW);
+    return;
+  }
+  if (steps >= FAN_PWM_STEPS) {
+    WRITE(FAN_PIN, HIGH);
+    return;
+  }
   unsigned char phase = pwm_phase + 1;
   if (phase >= FAN_PWM_STEPS) phase = 0;
   pwm_phase = phase;
@@ -66,7 +72,7 @@ static void apply(unsigned char duty)
   pwm_steps = fan_pwm_steps(duty);
   pwm_phase = 0;
   CRITICAL_SECTION_END;
-  WRITE(FAN_PIN, duty ? HIGH : LOW);   // from here the interrupt takes over
+  WRITE(FAN_PIN, duty ? HIGH : LOW);  // from here the interrupt takes over
 }
 
 // A duty with the kick start
@@ -101,17 +107,17 @@ void fan_init()
 {
   SET_OUTPUT(FAN_PIN);
   WRITE(FAN_PIN, LOW);
-  #ifdef __AVR__
-    TCCR2A &= ~(_BV(COM2B1) | _BV(COM2B0));                    // the pin is not driven by the timer
-    TCCR2A &= ~(_BV(COM2A1) | _BV(COM2A0));                    // OC2A is the heater pin (PB4/D10): keep the timer off it
-    TCCR2A |= _BV(WGM20) | _BV(WGM21);                         // fast PWM mode: it counts 0..255 and overflows
-    TCCR2B = (TCCR2B & ~(_BV(WGM22) | _BV(CS22) | _BV(CS21) | _BV(CS20))) | _BV(CS22);   // prescaler 64
-    TIMSK2 |= _BV(TOIE2);
-  #endif
-  #if FAN_DUAL
-    SET_OUTPUT(FAN_SAFETY_PIN);
-    WRITE(FAN_SAFETY_PIN, LOW);
-  #endif
+#ifdef __AVR__
+  TCCR2A &= ~(_BV(COM2B1) | _BV(COM2B0));                                             // the pin is not driven by the timer
+  TCCR2A &= ~(_BV(COM2A1) | _BV(COM2A0));                                             // OC2A is the heater pin (PB4/D10): keep the timer off it
+  TCCR2A |= _BV(WGM20) | _BV(WGM21);                                                  // fast PWM mode: it counts 0..255 and overflows
+  TCCR2B = (TCCR2B & ~(_BV(WGM22) | _BV(CS22) | _BV(CS21) | _BV(CS20))) | _BV(CS22);  // prescaler 64
+  TIMSK2 |= _BV(TOIE2);
+#endif
+#if FAN_DUAL
+  SET_OUTPUT(FAN_SAFETY_PIN);
+  WRITE(FAN_SAFETY_PIN, LOW);
+#endif
 }
 
 void fan_start_cooldown()
@@ -127,7 +133,7 @@ void fan_service()
   bool printing = card.sdprinting || card.isPaused() || (now - last_activity) < FAN_PRINTING_HOLD_MS;
 
   unsigned char request = requested_fan_speed();
-  if (forget_request) {          // a cooldown after a print: the M106 of the print is over
+  if (forget_request) {  // a cooldown after a print: the M106 of the print is over
     fanSpeed = 0;
     request = 0;
     if (!blocks_queued()) forget_request = false;
@@ -138,22 +144,22 @@ void fan_service()
   bool fault = unknown || IsStopped();
   bool cool_now = !unknown && actual <= FAN_SAFETY_OFF_C && target <= FAN_SAFETY_OFF_C;
 
-  if (cooldown && (cool_now || target >= FAN_SAFETY_ON_C)) cooldown = false;   // cooled, or heating up for the next print
-  if (unknown) hot_latched = true;                                       // nothing is known: assume it is hot
+  if (cooldown && (cool_now || target >= FAN_SAFETY_ON_C)) cooldown = false;  // cooled, or heating up for the next print
+  if (unknown) hot_latched = true;                                            // nothing is known: assume it is hot
   else if (actual >= FAN_SAFETY_ON_C || target >= FAN_SAFETY_ON_C) hot_latched = true;
   else if (cool_now) hot_latched = false;
 
-  #if FAN_DUAL
-    WRITE(FAN_SAFETY_PIN, (hot_latched || fault) ? HIGH : LOW);
-    if (cooldown || fault) apply_full();
-    else apply_with_kick(request);
-  #else
-    if (fault || cooldown) apply_full();
-    else if (hot_latched) {
-      if (printing) apply_with_kick(request < FAN_MIN_PWM ? FAN_MIN_PWM : request);
-      else apply_full();
-    } else {
-      apply_with_kick(request);
-    }
-  #endif
+#if FAN_DUAL
+  WRITE(FAN_SAFETY_PIN, (hot_latched || fault) ? HIGH : LOW);
+  if (cooldown || fault) apply_full();
+  else apply_with_kick(request);
+#else
+  if (fault || cooldown) apply_full();
+  else if (hot_latched) {
+    if (printing) apply_with_kick(request < FAN_MIN_PWM ? FAN_MIN_PWM : request);
+    else apply_full();
+  } else {
+    apply_with_kick(request);
+  }
+#endif
 }

@@ -22,7 +22,7 @@ bool delta_calibrated = false;
 static uint8_t false_triggers = 0;   // spurious contacts in a row
 static float deepest_contact = 0.0;  // lowest accepted contact height since the session began
 static bool have_deepest = false;
-static float bed_top = 0.0;          // highest contact found in the pass: the moves between points clear it
+static float bed_top = 0.0;  // highest contact found in the pass: the moves between points clear it
 static bool have_top = false;
 
 bool probe_set_sensitivity(unsigned int counts)
@@ -35,7 +35,10 @@ bool probe_set_sensitivity(unsigned int counts)
 static void wait_ms(unsigned long ms)
 {
   unsigned long t = millis();
-  while (millis() - t < ms) { manage_heater(); manage_inactivity(); }
+  while (millis() - t < ms) {
+    manage_heater();
+    manage_inactivity();
+  }
 }
 
 // One vertical move of the nozzle at (x, y). With probing on, the move ends as soon as the probe fires.
@@ -43,7 +46,7 @@ static void wait_ms(unsigned long ms)
 static bool stroke(float x, float y, float z_from, float z_to, float feed, bool probing, float &z_end)
 {
   long p0[3];
-  float cart[3] = { x, y, z_from };
+  float cart[3] = {x, y, z_from};
   for (int a = 0; a < 3; a++) p0[a] = st_get_position(a);
   cart[Z_AXIS] = z_to;
   calculate_delta(cart);
@@ -61,7 +64,9 @@ static bool stroke(float x, float y, float z_from, float z_to, float feed, bool 
     z_end = z_to;
   }
   cart[Z_AXIS] = z_end;
-  current_position[X_AXIS] = x; current_position[Y_AXIS] = y; current_position[Z_AXIS] = z_end;
+  current_position[X_AXIS] = x;
+  current_position[Y_AXIS] = y;
+  current_position[Z_AXIS] = z_end;
   calculate_delta(cart);
   plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);
   return hit;
@@ -74,11 +79,12 @@ static void adapt_to_noise()
   unsigned long t = millis();
   while (millis() - t < 150) {
     CRITICAL_SECTION_START;
-    unsigned int v = fsr_raw;   // 16 bit: read it with interrupts off
+    unsigned int v = fsr_raw;  // 16 bit: read it with interrupts off
     CRITICAL_SECTION_END;
     if (v < lo) lo = v;
     if (v > hi) hi = v;
-    manage_heater(); manage_inactivity();
+    manage_heater();
+    manage_inactivity();
   }
   unsigned int noise = hi - lo, cap = 8 * FSR_SENSITIVITY;
   if (cap < fsr_sensitivity) cap = fsr_sensitivity;
@@ -112,7 +118,9 @@ static void begin_session()
   new_pass();
   if (!gentle) {
     gentle = true;
-    saved_acceleration = acceleration; saved_xy_jerk = max_xy_jerk; saved_z_jerk = max_z_jerk;
+    saved_acceleration = acceleration;
+    saved_xy_jerk = max_xy_jerk;
+    saved_z_jerk = max_z_jerk;
     acceleration = PROBE_ACCELERATION_MM_S2;
     max_xy_jerk = max_z_jerk = PROBE_JERK_MM_S;
   }
@@ -123,7 +131,9 @@ static void end_session()
 {
   if (!gentle) return;
   gentle = false;
-  acceleration = saved_acceleration; max_xy_jerk = saved_xy_jerk; max_z_jerk = saved_z_jerk;
+  acceleration = saved_acceleration;
+  max_xy_jerk = saved_xy_jerk;
+  max_z_jerk = saved_z_jerk;
 }
 
 // Two spurious contacts in a row: the threshold is too low for this sensor.
@@ -158,7 +168,7 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
   if (z < travel) { stroke(current_position[X_AXIS], current_position[Y_AXIS], z, travel, PROBE_TRAVEL_Z_FEED_MM_S, false, zz); }
   move_to(x, y, travel, PROBE_TRAVEL_FEED_MM_S);
   st_synchronize();
-  if (current_position[Z_AXIS] > start + PROBE_FAST_MIN_MM) {   // a short way down is done by the slow approach itself
+  if (current_position[Z_AXIS] > start + PROBE_FAST_MIN_MM) {  // a short way down is done by the slow approach itself
     wait_ms(PROBE_SETTLE_MS);
     if (stroke(x, y, current_position[Z_AXIS], start, PROBE_FEED_FAST_MM_S, true, zz)) {
       // Contact before the slow approach: a bump of the fast move, or a bed higher than expected. Either way, lift
@@ -175,7 +185,7 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
     float from = current_position[Z_AXIS];
     if (stroke(x, y, from, bed_guess - depth, PROBE_FEED_MM_S, true, zz)) {
       if ((from - zz < PROBE_MIN_STROKE_MM) || (have_deepest && zz > deepest_contact + PROBE_FALSE_TRIGGER_MM)) {
-        note_false_trigger();            // right at the start of the move, or in mid-air: vibration or noise, not the bed
+        note_false_trigger();  // right at the start of the move, or in mid-air: vibration or noise, not the bed
         SERIAL_ECHO_START;
         SERIAL_ECHOPAIR("ignored a contact at Z", zz);
         SERIAL_ECHOPAIR(", ", from - zz);
@@ -184,15 +194,21 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
         continue;
       } else {
         false_triggers = 0;
-        if (!have_deepest || zz < deepest_contact) { deepest_contact = zz; have_deepest = true; }
+        if (!have_deepest || zz < deepest_contact) {
+          deepest_contact = zz;
+          have_deepest = true;
+        }
         samples[n++] = zz;
         if (n >= PROBE_AVERAGE_SAMPLES) {  // the last strokes agree?
           float lo = samples[n - 1], hi = lo;
-          for (uint8_t i = n - PROBE_AVERAGE_SAMPLES; i < n; i++) { if (samples[i] < lo) lo = samples[i]; if (samples[i] > hi) hi = samples[i]; }
+          for (uint8_t i = n - PROBE_AVERAGE_SAMPLES; i < n; i++) {
+            if (samples[i] < lo) lo = samples[i];
+            if (samples[i] > hi) hi = samples[i];
+          }
           if (hi - lo <= PROBE_AVERAGE_TOLERANCE_MM) break;
         }
       }
-      stroke(x, y, zz, zz + PROBE_LIFT_MM, PROBE_RETRACT_FEED_MM_S, false, zz);   // lift a little, probe again
+      stroke(x, y, zz, zz + PROBE_LIFT_MM, PROBE_RETRACT_FEED_MM_S, false, zz);  // lift a little, probe again
     } else {
       // no contact within the depth limit
       SERIAL_ERROR_START;
@@ -210,12 +226,21 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
   float sum = 0;
   for (uint8_t i = n - used; i < n; i++) sum += samples[i];
   result = sum / used;
-  if (!have_top || result > bed_top) { bed_top = result; have_top = true; }   // the moves to the next points clear this
+  if (!have_top || result > bed_top) {
+    bed_top = result;
+    have_top = true;
+  }  // the moves to the next points clear this
   if (n > used) {
     SERIAL_ECHO_START;
-    if (n >= PROBE_AVERAGE_MAX_STROKES) { SERIAL_ECHOPGM("probe strokes did not agree, using the last ones:"); }
-    else { SERIAL_ECHOPGM("probe strokes before the last ones were off:"); }
-    for (uint8_t i = 0; i < n; i++) { SERIAL_ECHOPGM(" "); SERIAL_PROTOCOL_F(samples[i], 2); }
+    if (n >= PROBE_AVERAGE_MAX_STROKES) {
+      SERIAL_ECHOPGM("probe strokes did not agree, using the last ones:");
+    } else {
+      SERIAL_ECHOPGM("probe strokes before the last ones were off:");
+    }
+    for (uint8_t i = 0; i < n; i++) {
+      SERIAL_ECHOPGM(" ");
+      SERIAL_PROTOCOL_F(samples[i], 2);
+    }
     SERIAL_ECHOLN("");
   }
   return true;
@@ -252,13 +277,16 @@ void probe_g30()
   if (!ready_to_probe()) return;
   ui_busy(true);
   bool mesh_was = mesh_active;
-  mesh_set_active(false);   // probing measures the bed itself
+  mesh_set_active(false);  // probing measures the bed itself
   begin_session();
   float x = current_position[X_AXIS], y = current_position[Y_AXIS], z;
   if (probe_point(x, y, 0.0, CALIB_FIRST_PASS_DEPTH_MM, z)) {
-    SERIAL_PROTOCOLPGM("Bed X: "); SERIAL_PROTOCOL_F(x, 3);
-    SERIAL_PROTOCOLPGM(" Y: "); SERIAL_PROTOCOL_F(y, 3);
-    SERIAL_PROTOCOLPGM(" Z: "); SERIAL_PROTOCOL_F(z - probe_z_offset, 3);
+    SERIAL_PROTOCOLPGM("Bed X: ");
+    SERIAL_PROTOCOL_F(x, 3);
+    SERIAL_PROTOCOLPGM(" Y: ");
+    SERIAL_PROTOCOL_F(y, 3);
+    SERIAL_PROTOCOLPGM(" Z: ");
+    SERIAL_PROTOCOL_F(z - probe_z_offset, 3);
     SERIAL_PROTOCOLLN("");
   } else {
     SERIAL_ERROR_START;
@@ -294,7 +322,9 @@ void probe_g29(bool save)
       if (stage[i] > hi) hi = stage[i];
       SERIAL_ECHO_START;
       SERIAL_ECHOPAIR("G29 point ", (unsigned long)i);
-      SERIAL_ECHOPAIR(" X", xy[0]); SERIAL_ECHOPAIR(" Y", xy[1]); SERIAL_ECHOPAIR(" Z", stage[i]);
+      SERIAL_ECHOPAIR(" X", xy[0]);
+      SERIAL_ECHOPAIR(" Y", xy[1]);
+      SERIAL_ECHOPAIR(" Z", stage[i]);
       SERIAL_ECHOLN("");
     }
   }
@@ -311,7 +341,7 @@ void probe_g29(bool save)
     memcpy(mesh_z, stage, sizeof(mesh_z));
     mesh_have = true;
     mesh_changed();
-    mesh_was = true;   // a new mesh is switched on
+    mesh_was = true;  // a new mesh is switched on
     committed = true;
     SERIAL_ECHO_START;
     SERIAL_ECHOPAIR("G29 OK, the bed is between ", lo);
@@ -320,7 +350,7 @@ void probe_g29(bool save)
   }
   mesh_set_active(mesh_was);
   end_session();
-  if (committed && save) Config_StoreSettings();   // after the mesh is on: what is stored includes that
+  if (committed && save) Config_StoreSettings();  // after the mesh is on: what is stored includes that
   ui_busy(false);
 }
 
@@ -332,15 +362,23 @@ struct Geometry3 {
 
 static void save_geometry(Geometry3 &g)
 {
-  g.R = delta_radius; g.L = delta_diagonal_rod;
-  for (int a = 0; a < 3; a++) { g.ang[a] = delta_tower_angle[a]; g.adj[a] = endstop_adj[a]; }
+  g.R = delta_radius;
+  g.L = delta_diagonal_rod;
+  for (int a = 0; a < 3; a++) {
+    g.ang[a] = delta_tower_angle[a];
+    g.adj[a] = endstop_adj[a];
+  }
   g.home_z = add_homing[Z_AXIS];
 }
 
 static void restore_geometry(const Geometry3 &g)
 {
-  delta_radius = g.R; delta_diagonal_rod = g.L;
-  for (int a = 0; a < 3; a++) { delta_tower_angle[a] = g.ang[a]; endstop_adj[a] = g.adj[a]; }
+  delta_radius = g.R;
+  delta_diagonal_rod = g.L;
+  for (int a = 0; a < 3; a++) {
+    delta_tower_angle[a] = g.ang[a];
+    endstop_adj[a] = g.adj[a];
+  }
   add_homing[Z_AXIS] = g.home_z;
   recalc_delta_settings(delta_radius, delta_diagonal_rod);
 }
@@ -367,7 +405,10 @@ static bool apply_solution(const DeltaGeometry &out, const Geometry3 &start)
   float v[3], m = -1e9, adj[3];
   float H0 = sqrt(sq(delta_diagonal_rod) - sq(delta_radius));
   float H1 = sqrt(sq(out.L) - sq(out.R));
-  for (int a = 0; a < 3; a++) { v[a] = out.off[a]; if (endstop_adj[a] - v[a] > m) m = endstop_adj[a] - v[a]; }
+  for (int a = 0; a < 3; a++) {
+    v[a] = out.off[a];
+    if (endstop_adj[a] - v[a] > m) m = endstop_adj[a] - v[a];
+  }
   for (int a = 0; a < 3; a++) adj[a] = endstop_adj[a] - v[a] - m;
   float home_z = add_homing[Z_AXIS] - m + (H0 - H1);
 
@@ -376,8 +417,12 @@ static bool apply_solution(const DeltaGeometry &out, const Geometry3 &start)
   for (int a = 0; a < 3; a++) ok = ok && adj[a] >= -CALIB_MAX_TRIM_MM && fabs(out.ang[a]) <= CALIB_MAX_ANGLE_DEG;
   if (!ok) return false;
 
-  delta_radius = out.R; delta_diagonal_rod = out.L;
-  for (int a = 0; a < 3; a++) { delta_tower_angle[a] = out.ang[a]; endstop_adj[a] = adj[a]; }
+  delta_radius = out.R;
+  delta_diagonal_rod = out.L;
+  for (int a = 0; a < 3; a++) {
+    delta_tower_angle[a] = out.ang[a];
+    endstop_adj[a] = adj[a];
+  }
   add_homing[Z_AXIS] = home_z;
   recalc_delta_settings(delta_radius, delta_diagonal_rod);
   return true;
@@ -392,7 +437,9 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
   begin_session();
   Geometry3 start;
   save_geometry(start);
-  SERIAL_ECHO_START; SERIAL_ECHOPGM("G33 start: "); SERIAL_ECHOLN("");
+  SERIAL_ECHO_START;
+  SERIAL_ECHOPGM("G33 start: ");
+  SERIAL_ECHOLN("");
   report_geometry();
 
   const float probe_radius = CALIB_PROBE_RADIUS_MM;
@@ -404,12 +451,16 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
     float err[DCAL_MAX_POINTS], rms_after;
     new_pass();
     DeltaGeometry g0;
-    g0.R = delta_radius; g0.L = delta_diagonal_rod;
-    for (int a = 0; a < 3; a++) { g0.ang[a] = delta_tower_angle[a]; g0.off[a] = 0; }
+    g0.R = delta_radius;
+    g0.L = delta_diagonal_rod;
+    for (int a = 0; a < 3; a++) {
+      g0.ang[a] = delta_tower_angle[a];
+      g0.off[a] = 0;
+    }
 
     bool probed = true;
     uint8_t failed_point = 0;
-    float last_z = 0;   // the next point is expected at the height of the previous one
+    float last_z = 0;  // the next point is expected at the height of the previous one
     for (uint8_t i = 0; i < points && probed; i++) {
       float xy[2], z;
       dcal_point_xy(i, points, probe_radius, xy);
@@ -422,7 +473,9 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
         SERIAL_ECHO_START;
         SERIAL_ECHOPAIR("G33 pass ", (unsigned long)pass);
         SERIAL_ECHOPAIR(" point ", (unsigned long)i);
-        SERIAL_ECHOPAIR(" X", xy[0]); SERIAL_ECHOPAIR(" Y", xy[1]); SERIAL_ECHOPAIR(" Z", z - probe_z_offset);
+        SERIAL_ECHOPAIR(" X", xy[0]);
+        SERIAL_ECHOPAIR(" Y", xy[1]);
+        SERIAL_ECHOPAIR(" Z", z - probe_z_offset);
         SERIAL_ECHOLN("");
       }
     }
@@ -436,28 +489,40 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
     }
 
     DeltaGeometry out;
-    if (!dcal_solve(g0, points, probe_radius, err, factors, out, &rms, &rms_after)) { verdict = 4; break; }
+    if (!dcal_solve(g0, points, probe_radius, err, factors, out, &rms, &rms_after)) {
+      verdict = 4;
+      break;
+    }
     SERIAL_ECHO_START;
     SERIAL_ECHOPAIR("G33 pass ", (unsigned long)pass);
     SERIAL_ECHOPAIR(" rms ", rms);
     SERIAL_ECHOLNPGM(" mm");
 
-    if (rms <= CALIB_VERIFY_RMS_MM) { verdict = 1; break; }
+    if (rms <= CALIB_VERIFY_RMS_MM) {
+      verdict = 1;
+      break;
+    }
     if ((pass > 1 && rms >= CALIB_PLATEAU_RATIO * prev_rms) || pass == CALIB_MAX_PASSES) {
       verdict = rms <= CALIB_ACCEPT_RMS_MM ? 2 : 3;
       break;
     }
-    if (!apply_solution(out, start)) { verdict = 4; break; }
+    if (!apply_solution(out, start)) {
+      verdict = 4;
+      break;
+    }
     changed = true;
     prev_rms = rms;
     home_all_axes();
-    if (!(axis_known_position[X_AXIS] && axis_known_position[Y_AXIS] && axis_known_position[Z_AXIS])) { verdict = 4; break; }
+    if (!(axis_known_position[X_AXIS] && axis_known_position[Y_AXIS] && axis_known_position[Z_AXIS])) {
+      verdict = 4;
+      break;
+    }
   }
 
   if (verdict >= 4) {
     if (changed) {
       restore_geometry(start);
-      home_all_axes();   // the carriages were homed with the geometry that is now gone
+      home_all_axes();  // the carriages were homed with the geometry that is now gone
     }
     SERIAL_ERROR_START;
     if (verdict == 5) SERIAL_ERRORLNPGM("G33 cancelled, the previous calibration is kept");
@@ -470,13 +535,16 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
       SERIAL_ECHOLNPGM(" mm: not saved, run G33 again or M502 to go back");
     } else {
       delta_calibrated = true;
-      if (verdict == 1) { SERIAL_ECHOPAIR("G33 OK calibrated rms ", rms); }
-      else { SERIAL_ECHOPAIR("G33 OK (noise limited) rms ", rms); }
+      if (verdict == 1) {
+        SERIAL_ECHOPAIR("G33 OK calibrated rms ", rms);
+      } else {
+        SERIAL_ECHOPAIR("G33 OK (noise limited) rms ", rms);
+      }
       SERIAL_ECHOLNPGM(" mm");
       store = save;
     }
     if (changed && verdict == 3) delta_calibrated = false;
-    if (changed && mesh_have) {   // a mesh belongs to the geometry it was probed with
+    if (changed && mesh_have) {  // a mesh belongs to the geometry it was probed with
       mesh_have = false;
       mesh_was = false;
       SERIAL_ECHO_START;
@@ -486,6 +554,6 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
   lift_to_travel();
   mesh_set_active(mesh_was);
   end_session();
-  if (store) Config_StoreSettings();   // after the mesh is back: what is stored includes whether it is on
+  if (store) Config_StoreSettings();  // after the mesh is back: what is stored includes whether it is on
   ui_busy(false);
 }

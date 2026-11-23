@@ -57,5 +57,4 @@
 #define TEMP_0_PIN         13  // ANALOG NUMBERING
 #define TEMP_BED_PIN       -1  // A14 is the FSR input
 
-
 #endif //__PINS_H

@@ -11,10 +11,16 @@
 #define CRITICAL_SECTION_END
 #define PROGMEM
 #include "Configuration.h"
-#define sq(x) ((x)*(x))
-enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
+#define sq(x) ((x) * (x))
+enum AxisEnum { X_AXIS = 0,
+                Y_AXIS = 1,
+                Z_AXIS = 2,
+                E_AXIS = 3 };
 extern int g_verbose;
-#define SAY(...) do { if (g_verbose) printf(__VA_ARGS__); } while (0)
+#define SAY(...)                        \
+  do {                                  \
+    if (g_verbose) printf(__VA_ARGS__); \
+  } while (0)
 #define SERIAL_ECHO_START SAY("echo:")
 #define SERIAL_ERROR_START SAY("Error:")
 #define SERIAL_ECHOPGM(x) SAY("%s", x)

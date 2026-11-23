@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 
-#define MESH_POINTS 19      // 12 on the outer ring (every 30 degrees), 6 on the inner ring (every 60 degrees), the centre
+#define MESH_POINTS 19  // 12 on the outer ring (every 30 degrees), 6 on the inner ring (every 60 degrees), the centre
 #define MESH_TRIANGLES 24
 
 #ifndef MESH_OUTER_RADIUS_MM
@@ -21,10 +21,10 @@ extern bool mesh_have;             // mesh_z holds a probed mesh
 extern bool mesh_active;           // Z is corrected by it
 extern float mesh_fade_height;     // the correction fades out linearly up to this height, 0 = never
 
-void mesh_point_xy(uint8_t index, float xy[2]);   // where point `index` is probed
-void mesh_changed();                              // call after mesh_z was written
-float mesh_offset(float x, float y);              // interpolated bed height at x, y
-float mesh_machine_z(float x, float y, float z);  // commanded Z -> Z the nozzle goes to (mesh active)
-bool mesh_logical_z(float x, float y, float machine_z, float &z);   // the inverse
+void mesh_point_xy(uint8_t index, float xy[2]);                    // where point `index` is probed
+void mesh_changed();                                               // call after mesh_z was written
+float mesh_offset(float x, float y);                               // interpolated bed height at x, y
+float mesh_machine_z(float x, float y, float z);                   // commanded Z -> Z the nozzle goes to (mesh active)
+bool mesh_logical_z(float x, float y, float machine_z, float &z);  // the inverse
 
 #endif

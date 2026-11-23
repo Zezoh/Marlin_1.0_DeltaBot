@@ -15,14 +15,14 @@
 #include "Configuration_adv.h"
 #define pgm_read_word(x) (*(x))
 #define pgm_read_byte(x) (*(x))
-#define PGM_P const char*
+#define PGM_P const char *
 #define SERIAL_ECHO_START
 #define SERIAL_ECHOLNPGM(x)
 #define SERIAL_ECHOPGM(x)
 #define SERIAL_ECHOLN(x)
 #define SERIAL_PROTOCOLLNPGM(x)
 #define millis() 0UL
-#define analogWrite(a,b)
+#define analogWrite(a, b)
 #define FAN_PIN -1
 #define NUM_AXIS_DUMMY 0
 #define X_AXIS 0
@@ -30,10 +30,10 @@
 #define Z_AXIS 2
 #define E_AXIS 3
 #ifndef min
-#define min(a,b) ((a)<(b)?(a):(b))
-#define max(a,b) ((a)>(b)?(a):(b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
 #endif
-#define square(x) ((x)*(x))
+#define square(x) ((x) * (x))
 #define lround(x) ::lround(x)
 #define enable_x()
 #define enable_y()
@@ -51,10 +51,10 @@ extern int extrudemultiply;
 extern float volumetric_multiplier[1];
 extern int fanSpeed;
 extern uint8_t active_extruder;
-void manage_inactivity(bool ignore_stepper_queue=false);
+void manage_inactivity(bool ignore_stepper_queue = false);
 float degHotend(uint8_t);
 float degTargetHotend(uint8_t);
 void setTargetHotend0(float);
 void st_wake_up();
-void st_set_position(const long&,const long&,const long&,const long&);
-void st_set_e_position(const long&);
+void st_set_position(const long &, const long &, const long &, const long &);
+void st_set_e_position(const long &);

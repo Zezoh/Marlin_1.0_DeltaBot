@@ -23,7 +23,7 @@
 #include "Marlin.h"
 #include "MarlinSerial.h"
 
-ring_buffer rx_buffer = { { 0 }, 0, 0 };
+ring_buffer rx_buffer = {{0}, 0, 0};
 
 SIGNAL(M_USARTx_RX_vect)
 {
@@ -84,22 +84,22 @@ void MarlinSerial::flush()
 
 void MarlinSerial::print(char c, int base)
 {
-  print((long) c, base);
+  print((long)c, base);
 }
 
 void MarlinSerial::print(unsigned char b, int base)
 {
-  print((unsigned long) b, base);
+  print((unsigned long)b, base);
 }
 
 void MarlinSerial::print(int n, int base)
 {
-  print((long) n, base);
+  print((long)n, base);
 }
 
 void MarlinSerial::print(unsigned int n, int base)
 {
-  print((unsigned long) n, base);
+  print((unsigned long)n, base);
 }
 
 void MarlinSerial::print(long n, int base)
@@ -145,18 +145,23 @@ void MarlinSerial::printNumber(unsigned long n, uint8_t base)
   }
 
   for (; i > 0; i--)
-    write((char) (buf[i - 1] < 10 ? '0' + buf[i - 1] : 'A' + buf[i - 1] - 10));
+    write((char)(buf[i - 1] < 10 ? '0' + buf[i - 1] : 'A' + buf[i - 1] - 10));
 }
 
 void MarlinSerial::printFloat(double number, uint8_t digits)
 {
   // Not a number or infinite: the integer conversion below would be undefined
-  if (isnan(number)) { write("nan"); return; }
-  if (isinf(number)) { write(number < 0 ? "-inf" : "inf"); return; }
+  if (isnan(number)) {
+    write("nan");
+    return;
+  }
+  if (isinf(number)) {
+    write(number < 0 ? "-inf" : "inf");
+    return;
+  }
 
   // Handle negative numbers
-  if (number < 0.0)
-  {
+  if (number < 0.0) {
     write('-');
     number = -number;
   }
@@ -178,8 +183,7 @@ void MarlinSerial::printFloat(double number, uint8_t digits)
     write('.');
 
   // Extract digits from the remainder one at a time
-  while (digits-- > 0)
-  {
+  while (digits-- > 0) {
     remainder *= 10.0;
     int toPrint = int(remainder);
     write('0' + toPrint);

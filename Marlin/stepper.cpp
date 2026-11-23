@@ -40,9 +40,9 @@ block_t *current_block;  // A pointer to the block currently being traced
 // Variables used by the stepper driver interrupt
 static unsigned char out_bits;  // The direction bits of the current block
 static long counter_x,          // Counter variables for the bresenham line tracer
-            counter_y,
-            counter_z,
-            counter_e;
+    counter_y,
+    counter_z,
+    counter_e;
 volatile static unsigned long step_events_completed;  // The number of step events executed in the current block
 static long acceleration_time, deceleration_time;
 static unsigned short acc_step_rate;  // needed for deceleration start point
@@ -68,8 +68,8 @@ static volatile unsigned int probe_reference = 0;
 static volatile unsigned int probe_threshold = 0;
 static volatile unsigned int probe_peak = 0;
 
-volatile long count_position[NUM_AXIS] = { 0, 0, 0, 0 };
-volatile signed char count_direction[NUM_AXIS] = { 1, 1, 1, 1 };
+volatile long count_position[NUM_AXIS] = {0, 0, 0, 0};
+volatile signed char count_direction[NUM_AXIS] = {1, 1, 1, 1};
 
 //===========================================================================
 //============================= functions ===================================
@@ -80,74 +80,65 @@ volatile signed char count_direction[NUM_AXIS] = { 1, 1, 1, 1 };
 // r26 to store 0
 // r27 to store the byte 1 of the 24 bit result
 #define MultiU16X8toH16(intRes, charIn1, intIn2) \
-asm volatile ( \
-"clr r26 \n\t" \
-"mul %A1, %B2 \n\t" \
-"movw %A0, r0 \n\t" \
-"mul %A1, %A2 \n\t" \
-"add %A0, r1 \n\t" \
-"adc %B0, r26 \n\t" \
-"lsr r0 \n\t" \
-"adc %A0, r26 \n\t" \
-"adc %B0, r26 \n\t" \
-"clr r1 \n\t" \
-: \
-"=&r" (intRes) \
-: \
-"d" (charIn1), \
-"d" (intIn2) \
-: \
-"r26" \
-)
+  asm volatile(                                  \
+      "clr r26 \n\t"                             \
+      "mul %A1, %B2 \n\t"                        \
+      "movw %A0, r0 \n\t"                        \
+      "mul %A1, %A2 \n\t"                        \
+      "add %A0, r1 \n\t"                         \
+      "adc %B0, r26 \n\t"                        \
+      "lsr r0 \n\t"                              \
+      "adc %A0, r26 \n\t"                        \
+      "adc %B0, r26 \n\t"                        \
+      "clr r1 \n\t"                              \
+      : "=&r"(intRes)                            \
+      : "d"(charIn1),                            \
+        "d"(intIn2)                              \
+      : "r26")
 
 // intRes = longIn1 * longIn2 >> 24
 // uses:
 // r26 to store 0
 // r27 to store the byte 1 of the 48bit result
 #define MultiU24X24toH16(intRes, longIn1, longIn2) \
-asm volatile ( \
-"clr r26 \n\t" \
-"mul %A1, %B2 \n\t" \
-"mov r27, r1 \n\t" \
-"mul %B1, %C2 \n\t" \
-"movw %A0, r0 \n\t" \
-"mul %C1, %C2 \n\t" \
-"add %B0, r0 \n\t" \
-"mul %C1, %B2 \n\t" \
-"add %A0, r0 \n\t" \
-"adc %B0, r1 \n\t" \
-"mul %A1, %C2 \n\t" \
-"add r27, r0 \n\t" \
-"adc %A0, r1 \n\t" \
-"adc %B0, r26 \n\t" \
-"mul %B1, %B2 \n\t" \
-"add r27, r0 \n\t" \
-"adc %A0, r1 \n\t" \
-"adc %B0, r26 \n\t" \
-"mul %C1, %A2 \n\t" \
-"add r27, r0 \n\t" \
-"adc %A0, r1 \n\t" \
-"adc %B0, r26 \n\t" \
-"mul %B1, %A2 \n\t" \
-"add r27, r1 \n\t" \
-"adc %A0, r26 \n\t" \
-"adc %B0, r26 \n\t" \
-"lsr r27 \n\t" \
-"adc %A0, r26 \n\t" \
-"adc %B0, r26 \n\t" \
-"clr r1 \n\t" \
-: \
-"=&r" (intRes) \
-: \
-"d" (longIn1), \
-"d" (longIn2) \
-: \
-"r26" , "r27" \
-)
+  asm volatile(                                    \
+      "clr r26 \n\t"                               \
+      "mul %A1, %B2 \n\t"                          \
+      "mov r27, r1 \n\t"                           \
+      "mul %B1, %C2 \n\t"                          \
+      "movw %A0, r0 \n\t"                          \
+      "mul %C1, %C2 \n\t"                          \
+      "add %B0, r0 \n\t"                           \
+      "mul %C1, %B2 \n\t"                          \
+      "add %A0, r0 \n\t"                           \
+      "adc %B0, r1 \n\t"                           \
+      "mul %A1, %C2 \n\t"                          \
+      "add r27, r0 \n\t"                           \
+      "adc %A0, r1 \n\t"                           \
+      "adc %B0, r26 \n\t"                          \
+      "mul %B1, %B2 \n\t"                          \
+      "add r27, r0 \n\t"                           \
+      "adc %A0, r1 \n\t"                           \
+      "adc %B0, r26 \n\t"                          \
+      "mul %C1, %A2 \n\t"                          \
+      "add r27, r0 \n\t"                           \
+      "adc %A0, r1 \n\t"                           \
+      "adc %B0, r26 \n\t"                          \
+      "mul %B1, %A2 \n\t"                          \
+      "add r27, r1 \n\t"                           \
+      "adc %A0, r26 \n\t"                          \
+      "adc %B0, r26 \n\t"                          \
+      "lsr r27 \n\t"                               \
+      "adc %A0, r26 \n\t"                          \
+      "adc %B0, r26 \n\t"                          \
+      "clr r1 \n\t"                                \
+      : "=&r"(intRes)                              \
+      : "d"(longIn1),                              \
+        "d"(longIn2)                               \
+      : "r26", "r27")
 
-
-#define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
-#define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
+#define ENABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 |= (1 << OCIE1A)
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1 << OCIE1A)
 
 void checkHitEndstops()
 {
@@ -155,13 +146,13 @@ void checkHitEndstops()
     SERIAL_ECHO_START;
     SERIAL_ECHOPGM(MSG_ENDSTOPS_HIT);
     if (endstop_x_hit) {
-      SERIAL_ECHOPAIR(" X:", (float)endstops_trigsteps[X_AXIS]/axis_steps_per_unit[X_AXIS]);
+      SERIAL_ECHOPAIR(" X:", (float)endstops_trigsteps[X_AXIS] / axis_steps_per_unit[X_AXIS]);
     }
     if (endstop_y_hit) {
-      SERIAL_ECHOPAIR(" Y:", (float)endstops_trigsteps[Y_AXIS]/axis_steps_per_unit[Y_AXIS]);
+      SERIAL_ECHOPAIR(" Y:", (float)endstops_trigsteps[Y_AXIS] / axis_steps_per_unit[Y_AXIS]);
     }
     if (endstop_z_hit) {
-      SERIAL_ECHOPAIR(" Z:", (float)endstops_trigsteps[Z_AXIS]/axis_steps_per_unit[Z_AXIS]);
+      SERIAL_ECHOPAIR(" Z:", (float)endstops_trigsteps[Z_AXIS] / axis_steps_per_unit[Z_AXIS]);
     }
     SERIAL_ECHOLN("");
     endstops_hit_on_purpose();
@@ -232,31 +223,28 @@ FORCE_INLINE unsigned short calc_timer(unsigned short step_rate)
   if (step_rate > 20000) {  // If steprate > 20kHz >> step 4 times
     step_rate = (step_rate >> 2) & 0x3fff;
     step_loops = 4;
-  }
-  else if (step_rate > 10000) {  // If steprate > 10kHz >> step 2 times
+  } else if (step_rate > 10000) {  // If steprate > 10kHz >> step 2 times
     step_rate = (step_rate >> 1) & 0x7fff;
     step_loops = 2;
-  }
-  else {
+  } else {
     step_loops = 1;
   }
 
-  if (step_rate < (F_CPU/500000)) step_rate = (F_CPU/500000);
-  step_rate -= (F_CPU/500000);  // Correct for minimal speed
-  if (step_rate >= (8*256)) {  // higher step rate. The fast table covers rows 8..39: lookups always arrive
-                               // here with step_rate in 2048..10000 (see the halving above), so (step_rate>>8)
-                               // minus SPEED_FAST_TABLE_ROW_OFFSET never leaves the 32-row table.
-    unsigned short table_address = (unsigned short)&speed_lookuptable_fast[(unsigned char)((step_rate>>8) - SPEED_FAST_TABLE_ROW_OFFSET)][0];
+  if (step_rate < (F_CPU / 500000)) step_rate = (F_CPU / 500000);
+  step_rate -= (F_CPU / 500000);  // Correct for minimal speed
+  if (step_rate >= (8 * 256)) {   // higher step rate. The fast table covers rows 8..39: lookups always arrive
+                                  // here with step_rate in 2048..10000 (see the halving above), so (step_rate>>8)
+                                  // minus SPEED_FAST_TABLE_ROW_OFFSET never leaves the 32-row table.
+    unsigned short table_address = (unsigned short)&speed_lookuptable_fast[(unsigned char)((step_rate >> 8) - SPEED_FAST_TABLE_ROW_OFFSET)][0];
     unsigned char tmp_step_rate = (step_rate & 0x00ff);
-    unsigned short gain = (unsigned short)pgm_read_word_near(table_address+2);
+    unsigned short gain = (unsigned short)pgm_read_word_near(table_address + 2);
     MultiU16X8toH16(timer, tmp_step_rate, gain);
     timer = (unsigned short)pgm_read_word_near(table_address) - timer;
-  }
-  else {  // lower step rates
+  } else {  // lower step rates
     unsigned short table_address = (unsigned short)&speed_lookuptable_slow[0][0];
-    table_address += ((step_rate)>>1) & 0xfffc;
+    table_address += ((step_rate) >> 1) & 0xfffc;
     timer = (unsigned short)pgm_read_word_near(table_address);
-    timer -= (((unsigned short)pgm_read_word_near(table_address+2) * (unsigned char)(step_rate & 0x0007))>>3);
+    timer -= (((unsigned short)pgm_read_word_near(table_address + 2) * (unsigned char)(step_rate & 0x0007)) >> 3);
   }
   if (timer < 100) timer = 100;  // (20kHz: this should never happen) never print here: this runs in the interrupt
   return timer;
@@ -280,40 +268,60 @@ FORCE_INLINE void set_directions()
 {
   out_bits = current_block->direction_bits;
 
-  if (out_bits & (1<<X_AXIS)) { WRITE(X_DIR_PIN, INVERT_X_DIR); count_direction[X_AXIS] = -1; }
-  else                        { WRITE(X_DIR_PIN, !INVERT_X_DIR); count_direction[X_AXIS] = 1; }
+  if (out_bits & (1 << X_AXIS)) {
+    WRITE(X_DIR_PIN, INVERT_X_DIR);
+    count_direction[X_AXIS] = -1;
+  } else {
+    WRITE(X_DIR_PIN, !INVERT_X_DIR);
+    count_direction[X_AXIS] = 1;
+  }
 
-  if (out_bits & (1<<Y_AXIS)) { WRITE(Y_DIR_PIN, INVERT_Y_DIR); count_direction[Y_AXIS] = -1; }
-  else                        { WRITE(Y_DIR_PIN, !INVERT_Y_DIR); count_direction[Y_AXIS] = 1; }
+  if (out_bits & (1 << Y_AXIS)) {
+    WRITE(Y_DIR_PIN, INVERT_Y_DIR);
+    count_direction[Y_AXIS] = -1;
+  } else {
+    WRITE(Y_DIR_PIN, !INVERT_Y_DIR);
+    count_direction[Y_AXIS] = 1;
+  }
 
-  if (out_bits & (1<<Z_AXIS)) { WRITE(Z_DIR_PIN, INVERT_Z_DIR); count_direction[Z_AXIS] = -1; }
-  else                        { WRITE(Z_DIR_PIN, !INVERT_Z_DIR); count_direction[Z_AXIS] = 1; }
+  if (out_bits & (1 << Z_AXIS)) {
+    WRITE(Z_DIR_PIN, INVERT_Z_DIR);
+    count_direction[Z_AXIS] = -1;
+  } else {
+    WRITE(Z_DIR_PIN, !INVERT_Z_DIR);
+    count_direction[Z_AXIS] = 1;
+  }
 
-  if (out_bits & (1<<E_AXIS)) { REV_E_DIR(); count_direction[E_AXIS] = -1; }
-  else                        { NORM_E_DIR(); count_direction[E_AXIS] = 1; }
+  if (out_bits & (1 << E_AXIS)) {
+    REV_E_DIR();
+    count_direction[E_AXIS] = -1;
+  } else {
+    NORM_E_DIR();
+    count_direction[E_AXIS] = 1;
+  }
 }
 
 // Check an endstop. The endstop has to be hit in two interrupts in a row (debounce)
 // and the block has to move that axis. Stops the block when hit.
-#define CHECK_ENDSTOP(AXIS, axis, MM, mm) \
-  if (check_endstops) { \
-    bool endstop = (READ(AXIS##_##MM##_PIN) != AXIS##_##MM##_ENDSTOP_INVERTING); \
+#define CHECK_ENDSTOP(AXIS, axis, MM, mm)                                              \
+  if (check_endstops) {                                                                \
+    bool endstop = (READ(AXIS##_##MM##_PIN) != AXIS##_##MM##_ENDSTOP_INVERTING);       \
     if (endstop && old_##axis##_##mm##_endstop && (current_block->steps_##axis > 0)) { \
-      endstops_trigsteps[AXIS##_AXIS] = count_position[AXIS##_AXIS]; \
-      endstop_##axis##_hit = true; \
-      step_events_completed = current_block->step_event_count; \
-    } \
-    old_##axis##_##mm##_endstop = endstop; \
+      endstops_trigsteps[AXIS##_AXIS] = count_position[AXIS##_AXIS];                   \
+      endstop_##axis##_hit = true;                                                     \
+      step_events_completed = current_block->step_event_count;                         \
+    }                                                                                  \
+    old_##axis##_##mm##_endstop = endstop;                                             \
   }
 
 // Do a step of a motor if its bresenham counter overflows
-#define STEP_AXIS(AXIS, axis) \
-  counter_##axis += current_block->steps_##axis; \
-  if (counter_##axis > 0) { \
-    WRITE(AXIS##_STEP_PIN, !INVERT_##AXIS##_STEP_PIN); \
-    counter_##axis -= current_block->step_event_count; \
+#define STEP_AXIS(AXIS, axis)                                    \
+  counter_##axis += current_block->steps_##axis;                 \
+  if (counter_##axis > 0) {                                      \
+    WRITE(AXIS##_STEP_PIN, !INVERT_##AXIS##_STEP_PIN);           \
+    counter_##axis -= current_block->step_event_count;           \
     count_position[AXIS##_AXIS] += count_direction[AXIS##_AXIS]; \
-    WRITE(AXIS##_STEP_PIN, INVERT_##AXIS##_STEP_PIN); \
+    WRITE(AXIS##_STEP_PIN, INVERT_##AXIS##_STEP_PIN);            \
   }
 
 // "The Stepper Driver Interrupt" - This timer interrupt is the workhorse.
@@ -331,17 +339,16 @@ ISR(TIMER1_COMPA_vect)
       counter_e = counter_x;
       step_events_completed = 0;
       set_directions();
-    }
-    else {
+    } else {
       OCR1A = 2000;  // 1kHz.
       return;
     }
   }
 
   // Check the max endstops while a tower moves up (a delta only has max endstops)
-  if (!(out_bits & (1<<X_AXIS))) CHECK_ENDSTOP(X, x, MAX, max)
-  if (!(out_bits & (1<<Y_AXIS))) CHECK_ENDSTOP(Y, y, MAX, max)
-  if (!(out_bits & (1<<Z_AXIS))) CHECK_ENDSTOP(Z, z, MAX, max)
+  if (!(out_bits & (1 << X_AXIS))) CHECK_ENDSTOP(X, x, MAX, max)
+  if (!(out_bits & (1 << Y_AXIS))) CHECK_ENDSTOP(Y, y, MAX, max)
+  if (!(out_bits & (1 << Z_AXIS))) CHECK_ENDSTOP(Z, z, MAX, max)
 
   if (probe_armed) {
     unsigned int raw = fsr_raw;
@@ -354,7 +361,7 @@ ISR(TIMER1_COMPA_vect)
   }
 
   for (int8_t i = 0; i < step_loops; i++) {  // Take multiple steps per interrupt (for high speed moves)
-    MSerial.checkRx();  // Check for serial chars.
+    MSerial.checkRx();                       // Check for serial chars.
 
     STEP_AXIS(X, x)
     STEP_AXIS(Y, y)
@@ -387,14 +394,12 @@ ISR(TIMER1_COMPA_vect)
     timer = calc_timer(acc_step_rate);
     OCR1A = timer;
     acceleration_time += timer;
-  }
-  else if (step_events_completed > (unsigned long int)current_block->decelerate_after) {
+  } else if (step_events_completed > (unsigned long int)current_block->decelerate_after) {
     MultiU24X24toH16(step_rate, deceleration_time, current_block->acceleration_rate);
 
     if (step_rate > acc_step_rate) {  // Check step_rate stays positive
       step_rate = current_block->final_rate;
-    }
-    else {
+    } else {
       step_rate = acc_step_rate - step_rate;  // Decelerate from acceleration end point.
     }
 
@@ -406,8 +411,7 @@ ISR(TIMER1_COMPA_vect)
     timer = calc_timer(step_rate);
     OCR1A = timer;
     deceleration_time += timer;
-  }
-  else {
+  } else {
     OCR1A = OCR1A_nominal;
     // ensure we're running at the correct step rate, even if we just came off an acceleration
     step_loops = step_loops_nominal;
@@ -419,7 +423,6 @@ ISR(TIMER1_COMPA_vect)
     plan_discard_current_block();
   }
 }
-
 
 void st_init()
 {
@@ -441,11 +444,11 @@ void st_init()
 
   // Endstops and pullups
   SET_INPUT(X_MAX_PIN);
-    WRITE(X_MAX_PIN, HIGH);
+  WRITE(X_MAX_PIN, HIGH);
   SET_INPUT(Y_MAX_PIN);
-    WRITE(Y_MAX_PIN, HIGH);
+  WRITE(Y_MAX_PIN, HIGH);
   SET_INPUT(Z_MAX_PIN);
-    WRITE(Z_MAX_PIN, HIGH);
+  WRITE(Z_MAX_PIN, HIGH);
 
   // Step pins
   SET_OUTPUT(X_STEP_PIN);
@@ -462,20 +465,20 @@ void st_init()
   disable_e0();
 
   // waveform generation = 0100 = CTC
-  TCCR1B &= ~(1<<WGM13);
-  TCCR1B |=  (1<<WGM12);
-  TCCR1A &= ~(1<<WGM11);
-  TCCR1A &= ~(1<<WGM10);
+  TCCR1B &= ~(1 << WGM13);
+  TCCR1B |= (1 << WGM12);
+  TCCR1A &= ~(1 << WGM11);
+  TCCR1A &= ~(1 << WGM10);
 
   // output mode = 00 (disconnected)
-  TCCR1A &= ~(3<<COM1A0);
-  TCCR1A &= ~(3<<COM1B0);
+  TCCR1A &= ~(3 << COM1A0);
+  TCCR1A &= ~(3 << COM1B0);
 
   // Set the timer pre-scaler
   // Generally we use a divider of 8, resulting in a 2MHz timer
   // frequency on a 16MHz MCU. If you are going to change this, be
   // sure to regenerate speed_lookuptable.h with create_speed_lookuptable.py
-  TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (2<<CS10);
+  TCCR1B = (TCCR1B & ~(0x07 << CS10)) | (2 << CS10);
 
   OCR1A = 0x4000;
   TCNT1 = 0;
@@ -527,7 +530,6 @@ void finishAndDisableSteppers()
   disable_y();
   disable_z();
   disable_e0();
-
 }
 
 void quickStop()

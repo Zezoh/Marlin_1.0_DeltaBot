@@ -28,7 +28,7 @@
 // Common serial messages
 #define MSG_MARLIN "Marlin"
 
-// Serial Console Messages 
+// Serial Console Messages
 
 #define MSG_Enqueing                        "enqueing \""
 #define MSG_POWERUP                         "PowerUp"
@@ -80,7 +80,6 @@
 #define MSG_ENDSTOPS_HIT                    "endstops hit: "
 #define MSG_ERR_COLD_EXTRUDE_STOP           " cold extrusion prevented"
 #define MSG_ERR_LONG_EXTRUDE_STOP           " too long extrusion prevented"
-
 
 #define WELCOME_MSG                         MACHINE_NAME " ready."
 

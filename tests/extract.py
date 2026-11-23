@@ -10,7 +10,7 @@ def grab(pattern):
 rd = grab(r'void recalc_delta_settings\(float radius, float diagonal_rod\)\n\{.*?\n\}\n')
 cd = grab(r'void calculate_delta\(float cartesian\[3\]\)\n\{.*?\n\}\n')
 dr = grab(r'bool delta_reachable\(const float cartesian\[3\]\)\n\{.*?\n\}\n')
-vars_ = grab(r'  float delta\[3\] = .*?float delta_segments_per_second= DELTA_SEGMENTS_PER_SECOND;\n')
+vars_ = grab(r'float delta\[3\] = .*?float delta_segments_per_second ?= DELTA_SEGMENTS_PER_SECOND;\n')
 common = '''#include <math.h>
 #include <stdio.h>
 #include <stdint.h>
