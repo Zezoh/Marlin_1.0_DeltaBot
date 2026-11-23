@@ -97,7 +97,8 @@ The sensor goes to D14 (the RAMPS Y-MIN socket, input with pullup, HIGH = no fil
 
 A **long press** (or `M108`) cancels: heater off, an SD print is cancelled and the printer homes. If nobody comes within
 2 minutes the heater goes off by itself; the nozzle is heated again before the filament moves.
-`M412 S0|1` turns the sensor off and on (until the next reset). The runout starts a change only while an SD print or a
+`M412 S0|1` turns the sensor off and on (until the next reset); `M412` alone prints what it sees. The sensor only counts after it has shown
+filament once since power-on, so an unplugged sensor (an open input reads "no filament") never stops a print. The runout starts a change only while an SD print or a
 host print is running and something was extruded.
 M600 needs a homed machine; with nothing printing the double click homes first, goes to the centre (Z 30), and loads only
 if the sensor sees no filament.

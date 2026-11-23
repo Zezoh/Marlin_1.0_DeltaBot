@@ -19,7 +19,8 @@ static bool enabled = RUNOUT_ENABLED;
 static bool raw_absent = false, stable_absent = false, valid = false;
 static unsigned long changed_ms = 0;
 static bool armed = false;            // an extrusion happened: runout is worth acting on
-static bool seen_absent = false;      // the old filament was out of the sensor at some time since the change began
+static bool seen_absent = false;
+static bool seen_present = false;     // the sensor has shown filament since power-on: it is connected and works      // the old filament was out of the sensor at some time since the change began
 
 static bool read_absent() { return READ(RUNOUT_PIN) == (RUNOUT_ACTIVE_HIGH ? HIGH : LOW); }
 
@@ -32,6 +33,7 @@ void filament_sensor_init()
   raw_absent = read_absent();
   stable_absent = raw_absent;
   valid = false;
+  seen_present = false;
   changed_ms = millis();
 }
 
@@ -43,6 +45,7 @@ void filament_sensor_poll()
   // running out must be noticed soon, an insertion has to be steady
   if (now - changed_ms >= (raw ? RUNOUT_DEBOUNCE_MS : FILAMENT_INSERT_DEBOUNCE_MS)) { stable_absent = raw; valid = true; }
   if (stable_absent && valid) seen_absent = true;
+  if (!stable_absent && valid) seen_present = true;
 }
 
 bool filament_sensor_enabled() { return enabled; }
@@ -272,7 +275,8 @@ void filament_service()
   if (changing) return;
   bool printing = card.sdprinting;
   if (!printing && !blocks_queued() && machine_idle()) { armed = false; return; }   // nothing is printing any more
-  if (!enabled || !armed || !filament_absent() || IsStopped()) return;
+  // a sensor that never showed filament is not plugged in (an open input reads "no filament"): it must not stop a print
+  if (!enabled || !armed || !seen_present || !filament_absent() || IsStopped()) return;
   if (!(axis_known_position[X_AXIS] && axis_known_position[Y_AXIS] && axis_known_position[Z_AXIS])) return;
   armed = false;
   SERIAL_ECHO_START;

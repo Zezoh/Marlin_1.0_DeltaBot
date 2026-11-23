@@ -184,6 +184,12 @@ int main(int argc, char **argv) {
   reset(); temp = 215; target = 215; card.sdprinting = true; pin_level = 1; for (int i = 0; i < 2000; i++) { advance(1); filament_sensor_poll(); }
   filament_note_extrusion(); filament_sensor_enable(false); filament_service(); CHECK(e_moves.empty(), "sensor off (M412 S0): no change");
 
+  // 7c. a sensor that never saw filament (nothing plugged in) does not stop the print
+  reset(); temp = 215; target = 215; card.sdprinting = true; pin_level = 1; filament_sensor_init();
+  for (int i = 0; i < 3000; i++) { advance(1); filament_sensor_poll(); }
+  CHECK(filament_absent(), "the open input reads absent");
+  filament_note_extrusion(); filament_service(); CHECK(e_moves.empty(), "never present: no automatic change");
+
   // 8. M701 / M24 / M108 are only answered while a change waits
   reset(); CHECK(!filament_hotkey("M701") && !filament_hotkey("M24"), "no hotkey outside a change");
 
