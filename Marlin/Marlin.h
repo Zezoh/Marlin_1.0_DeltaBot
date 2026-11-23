@@ -27,6 +27,14 @@
 
 #include "MarlinSerial.h"
 
+// Newer Arduino cores no longer define min() and max() (they use std::min), older ones do: always have the macros
+#ifndef min
+#define min(a,b) ((a)<(b)?(a):(b))
+#endif
+#ifndef max
+#define max(a,b) ((a)>(b)?(a):(b))
+#endif
+
 #ifndef cbi
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #endif

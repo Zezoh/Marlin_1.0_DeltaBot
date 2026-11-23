@@ -71,7 +71,7 @@
 #define INVERT_E_STEP_PIN false
 
 //default stepper release if idle
-#define DEFAULT_STEPPER_DEACTIVE_TIME 60
+#define DEFAULT_STEPPER_DEACTIVE_TIME 0 // 0 = never: released carriages would drop the nozzle onto the bed (M84 S<seconds> sets it)
 
 #define DEFAULT_MINIMUMFEEDRATE       0.0     // minimum feedrate
 #define DEFAULT_MINTRAVELFEEDRATE     0.0
@@ -85,7 +85,7 @@
 //=============================Additional Features===========================
 //===========================================================================
 
-#define SD_FINISHED_STEPPERRELEASE true  //if sd support and the file is finished: disable steppers?
+#define SD_FINISHED_STEPPERRELEASE false // a delta must keep its carriages held: released they drop the nozzle onto the bed
 #define SD_FINISHED_RELEASECOMMAND "M84 X Y Z E" // You might want to keep the z enabled so your bed stays in place.
 
 // The hardware watchdog should reset the Microcontroller disabling all outputs, in case the firmware gets stuck and doesn't do temperature regulation.
@@ -137,7 +137,7 @@
 #define CALIB_ACCEPT_RMS_MM 0.25       // a run that stops improving is accepted if its last pass is this flat
 #define CALIB_PLATEAU_RATIO 0.7        // "stops improving": a pass is not below this fraction of the previous one
 #define CALIB_MAX_PASSES 6             // probe, solve, re-home, verify: at most this many probe passes
-#define CALIB_FIRST_PASS_DEPTH_MM 20.0 // how far below the expected bed the first pass looks for it
+#define CALIB_FIRST_PASS_DEPTH_MM 10.0 // how far below the expected bed the first pass looks for it
 #define CALIB_PASS_DEPTH_MM 5.0
 #define CALIB_MAX_RADIUS_DELTA_MM 15.0 // the solution may move the delta radius by this much from where G33 started,
 #define CALIB_MAX_HEIGHT_DELTA_MM 20.0 // the home height by this much,

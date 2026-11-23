@@ -70,7 +70,9 @@ static void adapt_to_noise()
   unsigned int lo = 1023, hi = 0;
   unsigned long t = millis();
   while (millis() - t < 150) {
-    unsigned int v = fsr_raw;
+    CRITICAL_SECTION_START;
+    unsigned int v = fsr_raw;   // 16 bit: read it with interrupts off
+    CRITICAL_SECTION_END;
     if (v < lo) lo = v;
     if (v > hi) hi = v;
     manage_heater(); manage_inactivity();
