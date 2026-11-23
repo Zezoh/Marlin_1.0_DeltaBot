@@ -88,7 +88,7 @@ The sensor goes to D14 (the RAMPS Y-MIN socket, input with pullup, HIGH = no fil
 
 `M600` (or the sensor, or a double click) does this inside one command, like M109:
 
-1. wait for the moves to end, pull back 3 mm, lift the nozzle 5 mm (at least to Z 30) and park it at X0 Y-60
+1. wait for the moves to end, pull back 3 mm, lift the nozzle 5 mm and park it at the front (X0, Y at 80 % of the printable radius, never lower than 15 % of the height; both computed from the printer size, see `FILAMENT_PARK_*` in Configuration_adv.h)
 2. heat to 210 degC (or the printing temperature if that is higher) and unload 745 mm
 3. wait for you: pull the old filament out, push the new one in, **click** (or `M701`). The click only counts when the
    sensor has seen the old filament leave and sees the new one
@@ -100,7 +100,9 @@ A **long press** (or `M108`) cancels: heater off, an SD print is cancelled and t
 `M412 S0|1` turns the sensor off and on (until the next reset); `M412` alone prints what it sees. The sensor only counts after it has shown
 filament once since power-on, so an unplugged sensor (an open input reads "no filament") never stops a print. The runout starts a change only while an SD print or a
 host print is running and something was extruded.
-M600 needs a homed machine; with nothing printing the double click homes first, goes to the centre (Z 30), and loads only
+A single click while printing from the SD card pauses the print: the queued moves finish, the filament is pulled back 3 mm, the nozzle lifts and parks away from the part. A click (or M24) brings it back, pushes the filament forward and goes on; a double click changes the filament from there; a long press cancels.
+
+M600 needs a homed machine; with nothing printing the double click homes first, goes to the centre (Z at 15 % of the height), and loads only
 if the sensor sees no filament.
 
 ## Building

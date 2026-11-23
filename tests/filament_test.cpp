@@ -100,7 +100,7 @@ static void reset() {
   max_chunk = 0; wait_began = 0; inserted_at = 0; first_wait = 0; early_done = false; pulled = inserted = false;
   user_pulls_out = user_inserts = true; user_cancels = user_clicks_early = user_m108 = false; insert_after = 3000; click_after = 2000; cancel_after = 2000; target_at_cancel = -1;
   card.sdprinting = card.paused = false;
-  filament_service();   // nothing prints: the sensor is not armed any more
+  filament_service(true);   // nothing prints: the sensor is not armed any more
   current_position[0] = 10; current_position[1] = 20; current_position[2] = 50; current_position[3] = 123.4f;
   filament_sensor_enable(true); filament_sensor_init();
   for (int i = 0; i < 2000; i++) { advance(1); filament_sensor_poll(); }
@@ -125,21 +125,21 @@ int main(int argc, char **argv) {
   CHECK(fabsf(back - (3 + 745)) < 0.01f, "retract 3 + unload 745 = %.1f", back);
   CHECK(fabsf(fwd - (10 + 740 + 5 + 3)) < 0.01f, "load 10 + 740 + purge 5 + unretract 3 = %.1f", fwd);
   CHECK(xyz_moves.size() == 4 && xyz_moves[0][2] == 55 && xyz_moves[0][0] == 10, "first it lifts 5 mm (%.1f)", xyz_moves[0][2]);
-  { bool parked = false; for (auto &m : xyz_moves) if (m[0] == 0 && m[1] == -60) parked = true; CHECK(parked, "parked at 0,-60"); }
+  { bool parked = false; for (auto &m : xyz_moves) if (fabsf(m[0]) < 1e-4 && fabsf(m[1] + 68) < 1e-3) parked = true; CHECK(parked, "parked at X0 Y-68 (80%% of the printable radius 85)"); }
   CHECK(cancels == 0 && busy_depth == 0 && mode == 0, "clean state afterwards (busy %d, mode %d)", busy_depth, mode);
 
-  // 2. the nozzle never lifts less than 5 mm and parks at least 30 mm up; from high up it keeps 5 mm clearance
+  // 2. the nozzle never lifts less than 5 mm and parks at least 15% of the height up; from high up it keeps 5 mm clearance
   reset(); temp = 215; target = 215; card.sdprinting = true; current_position[2] = 100;
   filament_change(false); CHECK(xyz_moves[0][2] == 105, "park height from z=100: %.1f", xyz_moves[0][2]);
   reset(); temp = 215; target = 215; card.sdprinting = true; current_position[2] = 10;
-  filament_change(false); CHECK(xyz_moves[0][2] == 30, "park height from z=10: %.1f", xyz_moves[0][2]);
+  filament_change(false); CHECK(fabsf(xyz_moves[0][2] - 33.75f) < 1e-3f, "park height from z=10: %.1f", xyz_moves[0][2]);
 
   // 3. cold nozzle, hot enough only after heating: nothing is extruded cold, the target goes to 210 and back to 0
   reset(); user_pulls_out = true; filament_note_extrusion();
   ok = filament_change(true);
   printf("3. button, nothing printing, filament in: ok %d, E back %.0f forward %.0f, homes %d\n", ok, sum(e_moves, false), sum(e_moves, true), homes);
   CHECK(ok && cold_extrusions == 0 && target == 0, "service change finished, heater off again (%.0f)", target);
-  CHECK(fabsf(current_position[0]) < 1e-4 && fabsf(current_position[1]) < 1e-4 && fabsf(current_position[2] - 30) < 1e-4, "ends above the centre: %.1f %.1f %.1f", current_position[0], current_position[1], current_position[2]);
+  CHECK(fabsf(current_position[0]) < 1e-4 && fabsf(current_position[1]) < 1e-4 && fabsf(current_position[2] - 33.75f) < 1e-3, "ends above the centre: %.1f %.1f %.1f", current_position[0], current_position[1], current_position[2]);
   CHECK(fabsf(sum(e_moves, false) - 745) < 0.01f, "unloaded (no retract when it starts cold): %.1f", sum(e_moves, false));
 
   // 4. no filament in the extruder: load only
@@ -174,21 +174,21 @@ int main(int argc, char **argv) {
 
   // 7b. the sensor starts the change by itself, but only while something prints and after an extrusion
   reset(); temp = 215; target = 215; card.sdprinting = true; user_pulls_out = false; pin_level = 1; for (int i = 0; i < 2000; i++) { advance(1); filament_sensor_poll(); }
-  filament_service(); CHECK(e_moves.empty(), "not armed: nothing happens");
-  filament_note_extrusion(); filament_service();
+  filament_service(true); CHECK(e_moves.empty(), "not armed: nothing happens");
+  filament_note_extrusion(); filament_service(true);
   printf("7b. runout while printing: %zu E moves, SD printing again %d\n", e_moves.size(), card.sdprinting);
   CHECK(!e_moves.empty() && card.sdprinting, "the runout started a change that finished");
   reset(); temp = 215; target = 215; card.sdprinting = false; pin_level = 1; for (int i = 0; i < 2000; i++) { advance(1); filament_sensor_poll(); }
-  filament_note_extrusion(); filament_service(); CHECK(e_moves.empty(), "nothing printing: no change");
-  reset(); temp = 215; target = 215; card.sdprinting = true; filament_note_extrusion(); filament_service(); CHECK(e_moves.empty(), "filament there: no change");
+  filament_note_extrusion(); filament_service(true); CHECK(e_moves.empty(), "nothing printing: no change");
+  reset(); temp = 215; target = 215; card.sdprinting = true; filament_note_extrusion(); filament_service(true); CHECK(e_moves.empty(), "filament there: no change");
   reset(); temp = 215; target = 215; card.sdprinting = true; pin_level = 1; for (int i = 0; i < 2000; i++) { advance(1); filament_sensor_poll(); }
-  filament_note_extrusion(); filament_sensor_enable(false); filament_service(); CHECK(e_moves.empty(), "sensor off (M412 S0): no change");
+  filament_note_extrusion(); filament_sensor_enable(false); filament_service(true); CHECK(e_moves.empty(), "sensor off (M412 S0): no change");
 
   // 7c. a sensor that never saw filament (nothing plugged in) does not stop the print
   reset(); temp = 215; target = 215; card.sdprinting = true; pin_level = 1; filament_sensor_init();
   for (int i = 0; i < 3000; i++) { advance(1); filament_sensor_poll(); }
   CHECK(filament_absent(), "the open input reads absent");
-  filament_note_extrusion(); filament_service(); CHECK(e_moves.empty(), "never present: no automatic change");
+  filament_note_extrusion(); filament_service(true); CHECK(e_moves.empty(), "never present: no automatic change");
 
   // 8. M701 / M24 / M108 are only answered while a change waits
   reset(); CHECK(!filament_hotkey("M701") && !filament_hotkey("M24"), "no hotkey outside a change");
@@ -202,6 +202,19 @@ int main(int argc, char **argv) {
   pin_level = 0; for (int i = 0; i < 700; i++) { advance(1); filament_sensor_poll(); } CHECK(filament_absent(), "an insertion needs 750 ms");
   for (int i = 0; i < 100; i++) { advance(1); filament_sensor_poll(); } CHECK(filament_present(), "filament in");
   filament_sensor_enable(false); CHECK(!filament_present() && !filament_absent(), "a disabled sensor says nothing");
+
+  // 8. button pause while printing: the nozzle parks, a click brings it back, the extruder is where it was
+  reset(); temp = 215; target = 215; card.sdprinting = true; current_position[2] = 20;
+  card.pauseSDPrint(); filament_pause_request();
+  filament_service(false); CHECK(xyz_moves.empty(), "not parked while commands are still queued");
+  filament_service(true);
+  CHECK(xyz_moves.size() == 2 && fabsf(xyz_moves[1][0]) < 1e-4 && fabsf(xyz_moves[1][1] + 68) < 1e-3 && fabsf(xyz_moves[1][2] - 33.75f) < 1e-3, "pause: lifted, then parked at X0 Y-68 (%zu moves)", xyz_moves.size());
+  CHECK(e_moves.size() == 1 && e_moves[0] < 0, "pause: retracted");
+  xyz_moves.clear(); e_moves.clear();
+  ok = filament_resume();
+  CHECK(ok && xyz_moves.size() == 2 && fabsf(xyz_moves[1][0] - 10) < 1e-4 && fabsf(xyz_moves[1][1] - 20) < 1e-4 && fabsf(xyz_moves[1][2] - 20) < 1e-4, "resume: back at the print position");
+  CHECK(e_moves.size() == 1 && e_moves[0] > 0 && fabsf(current_position[3] - 123.4f) < 1e-3f, "resume: pushed forward again, E counter restored");
+  CHECK(busy_depth == 0, "pause: clean state");
 
   printf(fails ? "filament: %d FAILED\n" : "filament: all ok\n", fails);
   return fails ? 1 : 0;

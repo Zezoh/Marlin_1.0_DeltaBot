@@ -99,13 +99,13 @@ void ui_run()
   } else if (e == OneButton::SHORT) {
     if (card.sdprinting) {
       card.pauseSDPrint();
+      filament_pause_request();   // the nozzle leaves the part when the commands already queued have run
     } else if (card.isPaused()) {
       if (filament_sensor_enabled() && !filament_present()) {
         SERIAL_ECHO_START;
         SERIAL_ECHOLNPGM("FILAMENT_REQUIRED: double click to change it");
       } else {
-        card.startFileprint();
-        starttime = millis();
+        if (filament_resume()) { card.startFileprint(); starttime = millis(); }
       }
     } else
     if (!machine_idle() || target_temperature[0] > 0) {

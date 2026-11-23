@@ -281,7 +281,7 @@ void loop()
   manage_heater();
   manage_inactivity();
   checkHitEndstops();
-  filament_service();
+  filament_service(buflen == 0);
   ui_run();
 }
 
@@ -639,6 +639,7 @@ bool machine_idle() { return buflen == 0 && !blocks_queued(); }
 void cancel_print()
 {
   card.sdprinting = false;
+  filament_pause_reset();
   card.closefile();
   buflen = 0;
   bufindr = bufindw;
@@ -773,7 +774,8 @@ void process_commands()
         *(starpos)='\0';
       card.openFile(strchr_pointer + 4,true);
       break;
-    case 24: //M24 - Start SD print
+    case 24: //M24 - Start SD print (a parked print comes back first)
+      if (!filament_resume()) break;
       card.startFileprint();
       starttime=millis();
       break;

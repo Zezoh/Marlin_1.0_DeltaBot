@@ -141,6 +141,8 @@
 // M600 pauses the print, parks the nozzle, unloads the filament, waits for the new one, loads it, purges, waits for a
 // confirmation and goes back to the print. The runout sensor (RUNOUT_PIN) starts the same sequence by itself.
 // Press the button (or send M701 / M24) to go on, hold it (or M108) to cancel.
+// A click while printing from the SD card does the same park without the filament change: the print waits, the nozzle
+// goes away from the part, a click (or M24) brings it back and the print goes on.
 #define RUNOUT_ENABLED 1               // M412 S0/S1 changes it until the next reset
 #define RUNOUT_ACTIVE_HIGH 1           // the pin reads HIGH when there is no filament
 #define RUNOUT_PULLUP 1
@@ -149,10 +151,11 @@
 
 #define BOWDEN_LENGTH_MM 740.0         // extruder to hotend
 #define FILAMENT_CHANGE_TEMP_C 210.0   // the nozzle is heated to the higher of this and the printing temperature
-#define FILAMENT_PARK_X 0.0
-#define FILAMENT_PARK_Y -60.0
-#define FILAMENT_Z_LIFT 5.0            // lift before parking, but never park lower than PARK_MIN_Z
-#define FILAMENT_PARK_MIN_Z 30.0
+// The park position is worked out from the size of the printer: X0, on the front side (Y negative), at this percentage
+// of the printable radius, and never lower than this percentage of the height (Z_MAX_POS) above the bed.
+#define FILAMENT_PARK_RADIUS_PERCENT 80
+#define FILAMENT_PARK_MIN_Z_PERCENT 15
+#define FILAMENT_Z_LIFT 5.0            // the nozzle is lifted at least this much before parking
 #define FILAMENT_TRAVEL_SPEED 50.0     // mm/s
 #define FILAMENT_Z_SPEED 10.0
 #define FILAMENT_RETRACT_MM 3.0        // pulled back before parking, pushed forward again on return
@@ -170,7 +173,6 @@
 #define FILAMENT_TEMP_HOLD_MS 1000     // the temperature must stay within the tolerance this long
 #define FILAMENT_HEAT_TIMEOUT_MS 180000UL
 #define FILAMENT_IDLE_TIMEOUT_MS 120000UL // the heater is switched off after waiting this long for the user
-#define BUTTON_SERVICE_Z 30.0          // where the nozzle waits above the centre for a filament change from the button
 
 //===========================================================================
 //=============================Buffers           ============================

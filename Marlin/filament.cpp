@@ -22,6 +22,9 @@ static bool armed = false;            // an extrusion happened: runout is worth 
 static bool seen_absent = false;
 static bool seen_present = false;     // the sensor has shown filament since power-on: it is connected and works      // the old filament was out of the sensor at some time since the change began
 
+static float park_y() { return -DELTA_PRINTABLE_RADIUS * FILAMENT_PARK_RADIUS_PERCENT / 100.0; }
+static float min_park_z() { return max_pos[Z_AXIS] * FILAMENT_PARK_MIN_Z_PERCENT / 100.0; }
+
 static bool read_absent() { return READ(RUNOUT_PIN) == (RUNOUT_ACTIVE_HIGH ? HIGH : LOW); }
 
 void filament_sensor_init()
@@ -173,13 +176,66 @@ static bool wait_for_user(const char *what_P)
   return false;
 }
 
+// ---- pause: park the nozzle away from the part, come back on a click ---------------------------------------------------
+
+static bool pause_pending = false;   // the print was paused, the nozzle parks when the queued commands have run
+static bool parked = false;
+static float pk_x, pk_y, pk_z, pk_e, pk_park_z, pk_target;
+static bool pk_retracted;
+
+static bool homed() { return axis_known_position[X_AXIS] && axis_known_position[Y_AXIS] && axis_known_position[Z_AXIS]; }
+
+void filament_pause_request() { pause_pending = true; }
+void filament_pause_reset() { pause_pending = false; parked = false; }
+
+static void park_now()
+{
+  pause_pending = false;
+  if (parked || changing || IsStopped() || !homed()) return;
+  st_synchronize();
+  pk_x = current_position[X_AXIS]; pk_y = current_position[Y_AXIS]; pk_z = current_position[Z_AXIS]; pk_e = current_position[E_AXIS];
+  pk_target = degTargetHotend(0);
+  pk_park_z = pk_z + FILAMENT_Z_LIFT;
+  if (pk_park_z < min_park_z()) pk_park_z = min_park_z();
+  if (pk_park_z > max_pos[Z_AXIS]) pk_park_z = max_pos[Z_AXIS];
+  parked = true;
+  ui_busy(true);
+  pk_retracted = false;
+  if (hot_enough()) pk_retracted = e_move(-FILAMENT_RETRACT_MM, FILAMENT_RETRACT_SPEED);
+  move_to(pk_x, pk_y, pk_park_z, FILAMENT_Z_SPEED); st_synchronize();
+  move_to(0, park_y(), pk_park_z, FILAMENT_TRAVEL_SPEED); st_synchronize();
+  ui_busy(false);
+  SERIAL_ECHO_START;
+  SERIAL_ECHOLNPGM("PRINT paused, nozzle parked: click (or M24) to go on, double click to change the filament, hold to cancel");
+}
+
+// Back to the print position. True when the print may go on.
+bool filament_resume()
+{
+  if (pause_pending) { pause_pending = false; return true; }   // it had not left yet
+  if (!parked) return true;
+  ui_busy(true);
+  bool ok = !(pk_target >= FILAMENT_MIN_EXTRUDE_TEMP_C) || heat_to(pk_target);
+  if (ok) { move_to(pk_x, pk_y, pk_park_z, FILAMENT_TRAVEL_SPEED); st_synchronize(); ok = !stop_requested(); }
+  if (ok) { move_to(pk_x, pk_y, pk_z, FILAMENT_Z_SPEED); st_synchronize(); ok = !stop_requested(); }
+  if (ok && pk_retracted) ok = e_move(FILAMENT_RETRACT_MM, FILAMENT_RETRACT_SPEED);
+  ui_busy(false);
+  if (ok) {
+    parked = false;
+    current_position[E_AXIS] = pk_e;
+    plan_set_e_position(pk_e);
+  }
+  return ok;
+}
+
 bool filament_change(bool service)
 {
+  if (pause_pending) park_now();
   if (changing || IsStopped()) return false;
-  if (!(axis_known_position[X_AXIS] && axis_known_position[Y_AXIS] && axis_known_position[Z_AXIS])) {
+  if (!homed()) {
     if (!service) { SERIAL_ERROR_START; SERIAL_ERRORLNPGM("M600: home first (G28)"); return false; }
     home_all_axes();
-    if (!(axis_known_position[X_AXIS] && axis_known_position[Y_AXIS] && axis_known_position[Z_AXIS])) return false;
+    if (!homed()) return false;
   }
   st_synchronize();
 
@@ -191,11 +247,13 @@ bool filament_change(bool service)
   SERIAL_ECHOLNPGM("FILAMENT change started");
 
   if (service) {   // wait above the centre, away from anything on the bed
-    move_to(0, 0, BUTTON_SERVICE_Z, FILAMENT_Z_SPEED);
+    move_to(0, 0, min_park_z(), FILAMENT_Z_SPEED);
     st_synchronize();
   }
 
-  const float x = current_position[X_AXIS], y = current_position[Y_AXIS], z = current_position[Z_AXIS], e = current_position[E_AXIS];
+  const bool was_parked = parked;   // paused by the button: the print position and the retraction were saved then
+  const float x = was_parked ? pk_x : current_position[X_AXIS], y = was_parked ? pk_y : current_position[Y_AXIS];
+  const float z = was_parked ? pk_z : current_position[Z_AXIS], e = was_parked ? pk_e : current_position[E_AXIS];
   const float saved_target = degTargetHotend(0);
   const float change_target = saved_target > FILAMENT_CHANGE_TEMP_C ? saved_target : FILAMENT_CHANGE_TEMP_C;
   bool was_sd = false;
@@ -203,15 +261,15 @@ bool filament_change(bool service)
   if (was_sd) card.pauseSDPrint();
   const bool load_only = service && filament_absent();   // nothing to unload
   seen_absent = filament_absent() || load_only;
-  bool retracted = false, ok = true;
+  bool retracted = was_parked && pk_retracted, ok = true;
   float park_z = z + FILAMENT_Z_LIFT;
-  if (park_z < FILAMENT_PARK_MIN_Z) park_z = FILAMENT_PARK_MIN_Z;
+  if (park_z < min_park_z()) park_z = min_park_z();
   if (park_z > max_pos[Z_AXIS]) park_z = max_pos[Z_AXIS];
 
   // pull back, lift, park
-  if (ok && !load_only && hot_enough()) { ok = e_move(-FILAMENT_RETRACT_MM, FILAMENT_RETRACT_SPEED); retracted = ok; }
-  if (ok) { move_to(x, y, park_z, FILAMENT_Z_SPEED); st_synchronize(); ok = !stop_requested(); }
-  if (ok) { move_to(FILAMENT_PARK_X, FILAMENT_PARK_Y, park_z, FILAMENT_TRAVEL_SPEED); st_synchronize(); ok = !stop_requested(); }
+  if (ok && !was_parked && !load_only && hot_enough()) { ok = e_move(-FILAMENT_RETRACT_MM, FILAMENT_RETRACT_SPEED); retracted = ok; }
+  if (ok && !was_parked) { move_to(x, y, park_z, FILAMENT_Z_SPEED); st_synchronize(); ok = !stop_requested(); }
+  if (ok) { move_to(0, park_y(), park_z, FILAMENT_TRAVEL_SPEED); st_synchronize(); ok = !stop_requested(); }
 
   // unload
   if (ok && !load_only) ok = heat_to(change_target) && e_move(-(BOWDEN_LENGTH_MM + FILAMENT_UNLOAD_EXTRA_MM), FILAMENT_UNLOAD_SPEED);
@@ -250,6 +308,7 @@ bool filament_change(bool service)
 
   changing = false;
   waiting = false;
+  parked = false;
   ui_filament_mode(0);
   if (ok) {
     current_position[E_AXIS] = e;       // the new filament is primed to the nozzle: what the slicer counted stays valid
@@ -270,9 +329,10 @@ bool filament_change(bool service)
 }
 
 // Filament ran out while printing: change it by itself.
-void filament_service()
+void filament_service(bool no_commands_queued)
 {
   if (changing) return;
+  if (pause_pending && no_commands_queued) park_now();
   bool printing = card.sdprinting;
   if (!printing && !blocks_queued() && machine_idle()) { armed = false; return; }   // nothing is printing any more
   // a sensor that never showed filament is not plugged in (an open input reads "no filament"): it must not stop a print
