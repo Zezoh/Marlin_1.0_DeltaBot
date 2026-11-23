@@ -831,6 +831,12 @@ void process_commands()
         }
       }
       break;
+    default: // G29 and the other bed leveling codes are not implemented
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPGM(MSG_UNKNOWN_COMMAND);
+      SERIAL_ECHO(cmdbuffer[bufindr]);
+      SERIAL_ECHOLNPGM("\"");
+      break;
     }
   }
 

@@ -157,12 +157,15 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
     if (stroke(x, y, from, bed_guess - depth, PROBE_FEED_MM_S, true, zz)) {
       if ((from - zz < PROBE_MIN_STROKE_MM) || (have_deepest && zz > deepest_contact + PROBE_FALSE_TRIGGER_MM)) {
         note_false_trigger();            // right at the start of the move, or in mid-air: vibration or noise, not the bed
+        SERIAL_ECHO_START;
+        SERIAL_ECHOPAIR("ignored a contact at Z", zz);
+        SERIAL_ECHOPAIR(", ", from - zz);
+        SERIAL_ECHOLNPGM(" mm after the stroke started");
         stroke(x, y, zz, zz + 1.0, PROBE_RETRACT_FEED_MM_S, false, zz);
         continue;
       } else {
         false_triggers = 0;
         if (!have_deepest || zz < deepest_contact) { deepest_contact = zz; have_deepest = true; }
-        if (!have_top || zz > bed_top) { bed_top = zz; have_top = true; }
         samples[n++] = zz;
         if (n >= PROBE_AVERAGE_SAMPLES) {  // the last strokes agree?
           float lo = samples[n - 1], hi = lo;
@@ -170,7 +173,6 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
           if (hi - lo <= PROBE_AVERAGE_TOLERANCE_MM) break;
         }
       }
-      bed_guess = zz;
       stroke(x, y, zz, zz + 1.5, PROBE_RETRACT_FEED_MM_S, false, zz);   // lift a little, probe again
     } else {
       // no contact within the depth limit
@@ -189,9 +191,13 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
   float sum = 0;
   for (uint8_t i = n - used; i < n; i++) sum += samples[i];
   result = sum / used;
-  if (n >= PROBE_AVERAGE_MAX_STROKES) {
+  if (!have_top || result > bed_top) { bed_top = result; have_top = true; }   // the moves to the next points clear this
+  if (n > used) {
     SERIAL_ECHO_START;
-    SERIAL_ECHOLNPGM("probe strokes did not agree, using the last ones");
+    if (n >= PROBE_AVERAGE_MAX_STROKES) { SERIAL_ECHOPGM("probe strokes did not agree, using the last ones:"); }
+    else { SERIAL_ECHOPGM("probe strokes before the last ones were off:"); }
+    for (uint8_t i = 0; i < n; i++) { SERIAL_ECHOPGM(" "); SERIAL_PROTOCOL_F(samples[i], 2); }
+    SERIAL_ECHOLN("");
   }
   return true;
 }
@@ -277,7 +283,8 @@ static bool apply_solution(const DeltaGeometry &out, const Geometry3 &start)
   for (int a = 0; a < 3; a++) adj[a] = endstop_adj[a] - v[a] - m;
   float home_z = add_homing[Z_AXIS] - m + (H0 - H1);
 
-  bool ok = fabs(out.R - start.R) <= CALIB_MAX_RADIUS_DELTA_MM && fabs(home_z - start.home_z) <= CALIB_MAX_HEIGHT_DELTA_MM;
+  bool ok = fabs(out.R - start.R) <= CALIB_MAX_RADIUS_DELTA_MM &&
+            fabs(home_z - start.home_z) <= CALIB_MAX_HEIGHT_DELTA_MM;
   for (int a = 0; a < 3; a++) ok = ok && adj[a] >= -CALIB_MAX_TRIM_MM && fabs(out.ang[a]) <= CALIB_MAX_ANGLE_DEG;
   if (!ok) return false;
 

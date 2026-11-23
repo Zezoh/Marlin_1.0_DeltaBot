@@ -194,6 +194,11 @@ int main(int argc, char **argv) {
     printf("10. bed 5 mm too low at the start: after G33 %.3f mm, FSR sensitivity %u, %d low travel moves, %d moves dragging on the bed\n", w, (unsigned)fsr_sensitivity, low_travels, drags);
     CHECK(delta_calibrated && w < 0.12 && fsr_sensitivity == 12, "second pass after a large correction");
     CHECK(low_travels >= 8 && drags == 0, "travel moves stay low (%d) and clear the bed (%d)", low_travels, drags); }
+  // 11. the rod is 2 mm longer than the firmware thinks: the radius absorbs it and the bed is still flat
+  { firmware_defaults(); machine(92.0, 212.0, 0.2, -0.1, 0.0, 1.0, 0.0, -1.0); home_all_axes();
+    probe_g33(6, 10, false); double m, w = flatness(70, m);
+    printf("11. rod 2 mm longer: bed error %.3f mm\n", w);
+    CHECK(w < 0.1, "a wrong rod length is absorbed (%.3f)", w); }
   printf(fails ? "probe: %d FAILED\n" : "probe: all ok\n", fails);
   return fails ? 1 : 0;
 }
