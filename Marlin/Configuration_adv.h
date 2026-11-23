@@ -2,39 +2,6 @@
 #define CONFIGURATION_ADV_H
 
 //===========================================================================
-//=============================Thermal Settings  ============================
-//===========================================================================
-
-#define BED_CHECK_INTERVAL 5000 //ms between checks in bang-bang control
-
-//These defines help to calibrate the AD595 sensor in case you get wrong temperature measurements.
-//The measured temperature is defined as "actualTemp = (measuredTemp * TEMP_SENSOR_AD595_GAIN) + TEMP_SENSOR_AD595_OFFSET"
-#define TEMP_SENSOR_AD595_OFFSET 0.0
-#define TEMP_SENSOR_AD595_GAIN   1.0
-
-//This is for controlling a fan to cool down the stepper drivers
-//it will turn on when any driver is enabled
-//and turn off after the set amount of seconds from last driver being disabled again
-#define CONTROLLERFAN_PIN -1 //Pin used for the fan to cool controller (-1 to disable)
-#define CONTROLLERFAN_SECS 60 //How many seconds, after all motors were disabled, the fan should run
-#define CONTROLLERFAN_SPEED 255  // == full speed
-
-// When first starting the main fan, run it at full speed for the
-// given number of milliseconds.  This gets the fan spinning reliably
-// before setting a PWM value. (Does not work with software PWM for fan on Sanguinololu)
-//#define FAN_KICKSTART_TIME 100
-
-// Extruder cooling fans
-// Configure fan pin outputs to automatically turn on/off when the associated
-// extruder temperature is above/below EXTRUDER_AUTO_FAN_TEMPERATURE.
-// Multiple extruders can be assigned to the same pin in which case 
-// the fan will turn on when any selected extruder is above the threshold.
-#define EXTRUDER_0_AUTO_FAN_PIN   -1
-#define EXTRUDER_1_AUTO_FAN_PIN   -1
-#define EXTRUDER_AUTO_FAN_TEMPERATURE 50
-#define EXTRUDER_AUTO_FAN_SPEED   255  // == full speed
-
-//===========================================================================
 //=============================Mechanical Settings===========================
 //===========================================================================
 
@@ -204,17 +171,5 @@
 //The ASCII buffer for recieving from the serial:
 #define MAX_CMD_SIZE 96
 #define BUFSIZE 4
-
-//===========================================================================
-//=============================  Define Defines  ============================
-//===========================================================================
-
-
-  #define THERMISTORHEATER_0 TEMP_SENSOR_0
-  #define HEATER_0_USES_THERMISTOR
-  #undef HEATER_1_MINTEMP
-  #undef HEATER_1_MAXTEMP
-  #undef BED_MINTEMP
-  #undef BED_MAXTEMP
 
 #endif //__CONFIGURATION_ADV_H

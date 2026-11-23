@@ -67,9 +67,7 @@ volatile unsigned char block_buffer_tail;  // Index of the block to process now
 //===========================================================================
 //============================= private variables ===========================
 //===========================================================================
-#ifdef PREVENT_DANGEROUS_EXTRUDE
 float extrude_min_temp = EXTRUDE_MINTEMP;
-#endif
 
 // Number of moves of each extruder since it was last used, to disable inactive extruders
 static unsigned char extruder_last_move[2] = {0, 0};
@@ -343,7 +341,6 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   target[Z_AXIS] = lround(z*axis_steps_per_unit[Z_AXIS]);
   target[E_AXIS] = lround(e*axis_steps_per_unit[E_AXIS]);
 
-#ifdef PREVENT_DANGEROUS_EXTRUDE
   if (target[E_AXIS] != position[E_AXIS])
   {
     if (degHotend(active_extruder) < extrude_min_temp)
@@ -352,16 +349,13 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
       SERIAL_ECHO_START;
       SERIAL_ECHOLNPGM(MSG_ERR_COLD_EXTRUDE_STOP);
     }
-  #ifdef PREVENT_LENGTHY_EXTRUDE
     if (labs(target[E_AXIS] - position[E_AXIS]) > axis_steps_per_unit[E_AXIS]*EXTRUDE_MAXLENGTH)
     {
       position[E_AXIS] = target[E_AXIS];  // behave as if the move really took place, but ignore E part
       SERIAL_ECHO_START;
       SERIAL_ECHOLNPGM(MSG_ERR_LONG_EXTRUDE_STOP);
     }
-  #endif
   }
-#endif
 
   // Prepare to set up new block
   block_t *block = &block_buffer[block_buffer_head];
@@ -568,12 +562,10 @@ uint8_t movesplanned()
   return (block_buffer_head - block_buffer_tail + BLOCK_BUFFER_SIZE) & (BLOCK_BUFFER_SIZE - 1);
 }
 
-#ifdef PREVENT_DANGEROUS_EXTRUDE
 void set_extrude_min_temp(float temp)
 {
   extrude_min_temp = temp;
 }
-#endif
 
 // Calculate the steps/s^2 acceleration rates, based on the mm/s^2
 void reset_acceleration_rates()

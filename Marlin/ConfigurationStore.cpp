@@ -69,17 +69,9 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i,mesh_have);
   EEPROM_WRITE_VAR(i,mesh_active);
   EEPROM_WRITE_VAR(i,mesh_fade_height);
-  #ifdef PIDTEMP
     EEPROM_WRITE_VAR(i,Kp);
     EEPROM_WRITE_VAR(i,Ki);
     EEPROM_WRITE_VAR(i,Kd);
-  #else
-		float dummy = 3000.0f;
-    EEPROM_WRITE_VAR(i,dummy);
-		dummy = 0.0f;
-    EEPROM_WRITE_VAR(i,dummy);
-    EEPROM_WRITE_VAR(i,dummy);
-  #endif
 
   // Save filament sizes
   
@@ -170,7 +162,6 @@ void Config_PrintSettings()
 	SERIAL_ECHOPAIR("  M420 S",(unsigned long)mesh_active );
 	SERIAL_ECHOPAIR(" Z",mesh_fade_height );
 	SERIAL_ECHOLN("");
-#ifdef PIDTEMP
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM("PID settings:");
     SERIAL_ECHO_START;
@@ -178,7 +169,6 @@ void Config_PrintSettings()
     SERIAL_ECHOPAIR(" I" ,unscalePID_i(Ki)); 
     SERIAL_ECHOPAIR(" D" ,unscalePID_d(Kd));
     SERIAL_ECHOLN(""); 
-#endif
 }
 
 void Config_RetrieveSettings()
@@ -221,9 +211,6 @@ void Config_RetrieveSettings()
 		mesh_changed();
 		if (!mesh_have) mesh_active = false;
 		recalc_delta_settings(delta_radius, delta_diagonal_rod);  // tower positions follow the loaded radius and rod length
-        #ifndef PIDTEMP
-        float Kp,Ki,Kd;
-        #endif
         // do not need to scale PID values as the values in EEPROM are already scaled		
         EEPROM_READ_VAR(i,Kp);
         EEPROM_READ_VAR(i,Ki);
@@ -277,7 +264,6 @@ void Config_ResetDefault()
 	mesh_fade_height = 0;
 	mesh_changed();
 	recalc_delta_settings(delta_radius, delta_diagonal_rod);
-#ifdef PIDTEMP
     Kp = DEFAULT_Kp;
     Ki = scalePID_i(DEFAULT_Ki);
     Kd = scalePID_d(DEFAULT_Kd);
@@ -285,7 +271,6 @@ void Config_ResetDefault()
     // call updatePID (similar to when we have processed M301)
     updatePID();
     
-#endif//PIDTEMP
 
 
 SERIAL_ECHO_START;

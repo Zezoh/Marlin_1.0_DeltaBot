@@ -117,9 +117,7 @@ FORCE_INLINE block_t *plan_get_current_block()
 // Returns true if the buffer has a queued block, false otherwise
 FORCE_INLINE bool blocks_queued() { return (block_buffer_head != block_buffer_tail); }
 
-#ifdef PREVENT_DANGEROUS_EXTRUDE
 void set_extrude_min_temp(float temp);
-#endif
 
 void reset_acceleration_rates();
 #endif

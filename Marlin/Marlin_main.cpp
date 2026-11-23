@@ -1208,7 +1208,6 @@ void process_commands()
     }
     break;
 
-    #ifdef PIDTEMP
     case 301: // M301
       {
         if(code_seen('P')) Kp = code_value();
@@ -1226,8 +1225,6 @@ void process_commands()
         SERIAL_PROTOCOLLN("");
       }
       break;
-    #endif //PIDTEMP
-    #ifdef PREVENT_DANGEROUS_EXTRUDE
     case 302: // allow cold extrudes, or set the minimum extrude temperature
     {
 	  float temp = .0;
@@ -1235,18 +1232,13 @@ void process_commands()
       set_extrude_min_temp(temp);
     }
     break;
-	#endif
-    case 303: // M303 PID autotune
+    case 303: // M303 [S<temperature>] [C<cycles>] PID autotune
     {
       float temp = 150.0;
-      int e=0;
-      int c=5;
-      if (code_seen('E')) e=code_value();
-        if (e<0)
-          temp=70;
-      if (code_seen('S')) temp=code_value();
-      if (code_seen('C')) c=code_value();
-      PID_autotune(temp, e, c);
+      int c = 5;
+      if (code_seen('S')) temp = code_value();
+      if (code_seen('C')) c = code_value();
+      PID_autotune(temp, c);
     }
     break;
     case 400: // M400 finish all moves

@@ -48,132 +48,41 @@
 //===========================================================================
 //=============================Thermal Settings  ============================
 //===========================================================================
-//
-//--NORMAL IS 4.7kohm PULLUP!-- 1kohm pullup can be used on hotend sensor, using correct resistor and table
-//
-//// Temperature sensor settings:
-// -2 is thermocouple with MAX6675 (only for sensor 0)
-// -1 is thermocouple with AD595
-// 0 is not used
-// 1 is 100k thermistor - best choice for EPCOS 100k (4.7k pullup)
-// 5 is 100K thermistor - ATC Semitec 104GT-2 (Used in ParCan & J-Head) (4.7k pullup)
-// 6 is 100k EPCOS - Not as accurate as table 1 (created using a fluke thermocouple) (4.7k pullup)
-// 104 is 100k TDK/EPCOS 104NT-4-R025H42G (Beta 4125, the Creality/Sprite hotend sensor) (4.7k pullup)
-
+// Hotend temperature sensor, a thermistor with a 4.7k pullup (the table is in thermistortables.h):
+// 1 is 100k EPCOS (Beta 4092), 5 is 100k ATC Semitec 104GT-2 (Beta 4267),
+// 104 is 100k TDK/EPCOS 104NT-4-R025H42G (Beta 4125, the Creality/Sprite hotend sensor)
 #define TEMP_SENSOR_0 104
-#define TEMP_SENSOR_1 -1
-#define TEMP_SENSOR_BED 0
-
-// This makes temp sensor 1 a redundant sensor for sensor 0. If the temperatures difference between these sensors is to high the print will be aborted.
-//#define TEMP_SENSOR_1_AS_REDUNDANT
-#define MAX_REDUNDANT_TEMP_SENSOR_DIFF 10
 
 // Actual temperature must be close to target for this long before M109 returns success
 #define TEMP_RESIDENCY_TIME 10  // (seconds)
 #define TEMP_HYSTERESIS 3       // (degC) range of +/- temperatures considered "close" to the target one
 #define TEMP_WINDOW     1       // (degC) Window around target to start the residency timer x degC early.
 
-// The minimal temperature defines the temperature below which the heater will not be enabled It is used
-// to check that the wiring to the thermistor is not broken.
-// Otherwise this would lead to the heater being powered on all the time.
+// Below MINTEMP the heater is switched off and the printer stops: a broken wire or an unplugged thermistor reads cold.
+// Above MAXTEMP too: this is the limit for the hotend, not a protection against a shorted thermistor.
 #define HEATER_0_MINTEMP 5
-#define HEATER_1_MINTEMP 5
-#define BED_MINTEMP 5
-
-// When temperature exceeds max temp, your heater will be switched off.
-// This feature exists to protect your hotend from overheating accidentally, but *NOT* from thermistor short/failure!
-// You should use MINTEMP for thermistor short/failure protection.
 #define HEATER_0_MAXTEMP 285
-#define HEATER_1_MAXTEMP 275
-#define BED_MAXTEMP 150
 
-// If you want the M105 heater power reported in watts, define the BED_WATTS, and (shared for all extruders) EXTRUDER_WATTS
-//#define EXTRUDER_WATTS (12.0*12.0/6.7) //  P=I^2/R
-//#define BED_WATTS (12.0*12.0/1.1)      // P=I^2/R
-
-// PID settings:
-// Comment the following line to disable PID and enable bang-bang.
-#define PIDTEMP
-#define BANG_MAX 255 // limits current to nozzle while in bang-bang mode; 255=full current
-#define PID_MAX 255 // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current
-#ifdef PIDTEMP
-  //#define PID_DEBUG // Sends debug data to the serial port.
-  //#define PID_OPENLOOP 1 // Puts PID in open loop. M104/M140 sets the output power from 0 to PID_MAX
-  #define PID_FUNCTIONAL_RANGE 10 // If the temperature difference between the target temperature and the actual temperature
-                                  // is more then PID_FUNCTIONAL_RANGE then the PID will be shut off and the heater will be set to min/max.
-  #define PID_INTEGRAL_DRIVE_MAX 255  //limit for the integral term
-  #define K1 0.95 //smoothing factor within the PID
-  #define PID_dT ((OVERSAMPLENR * 10.0)/(F_CPU / 64.0 / 256.0)) //sampling period of the temperature routine
+// PID of the hotend: the heater is full on further than PID_FUNCTIONAL_RANGE below the target, off further above it
+#define PID_MAX 255 // the most the PID may give the heater (255 = full power)
+#define PID_FUNCTIONAL_RANGE 10
+#define PID_INTEGRAL_DRIVE_MAX 255  //limit for the integral term
+#define K1 0.95 //smoothing factor within the PID
+#define PID_dT ((OVERSAMPLENR * 10.0)/(F_CPU / 64.0 / 256.0)) //sampling period of the temperature routine
 
 // Default PID constants of the hotend (run M303 to tune your own)
-  #define  DEFAULT_Kp 32.48
-  #define  DEFAULT_Ki 6.4
-  #define  DEFAULT_Kd 41.25
-#endif // PIDTEMP
+#define  DEFAULT_Kp 32.48
+#define  DEFAULT_Ki 6.4
+#define  DEFAULT_Kd 41.25
 
-// Bed Temperature Control
-// Select PID or bang-bang with PIDTEMPBED. If bang-bang, BED_LIMIT_SWITCHING will enable hysteresis
-//
-// Uncomment this to enable PID on the bed. It uses the same frequency PWM as the extruder.
-// If your PID_dT above is the default, and correct for your hardware/configuration, that means 7.689Hz,
-// which is fine for driving a square wave into a resistive load and does not significantly impact you FET heating.
-// This also works fine on a Fotek SSR-10DA Solid State Relay into a 250W heater.
-// If your configuration is significantly different than this and you don't understand the issues involved, you probably
-// shouldn't use bed PID until someone else verifies your hardware works.
-// If this is enabled, find your own PID constants below.
-//#define PIDTEMPBED
-//
-//#define BED_LIMIT_SWITCHING
-
-// This sets the max power delivered to the bed.
-// all forms of bed control obey this (PID, bang-bang, bang-bang with hysteresis)
-// setting this to anything other than 255 enables a form of PWM to the bed,
-// so you shouldn't use it unless you are OK with PWM on your bed.  (see the comment on enabling PIDTEMPBED)
-#define MAX_BED_POWER 255 // limits duty cycle to bed; 255=full current
-
-
-
-
-//this prevents dangerous Extruder moves, i.e. if the temperature is under the limit
-//can be software-disabled for whatever purposes by
-#define PREVENT_DANGEROUS_EXTRUDE
-//if PREVENT_DANGEROUS_EXTRUDE is on, you can still disable (uncomment) very long bits of extrusion separately.
-#define PREVENT_LENGTHY_EXTRUDE
-
+// No extrusion below this temperature, and none of more than this length in one move
 #define EXTRUDE_MINTEMP 170
-#define EXTRUDE_MAXLENGTH (X_MAX_LENGTH+Y_MAX_LENGTH) //prevent extrusion of very large distances.
+#define EXTRUDE_MAXLENGTH (X_MAX_LENGTH+Y_MAX_LENGTH)
 
-/*================== Thermal Runaway Protection ==============================
-This is a feature to protect your printer from burn up in flames if it has
-a thermistor coming off place (this happened to a friend of mine recently and
-motivated me writing this feature).
-
-The issue: If a thermistor come off, it will read a lower temperature than actual.
-The system will turn the heater on forever, burning up the filament and anything
-else around.
-
-After the temperature reaches the target for the first time, this feature will 
-start measuring for how long the current temperature stays below the target 
-minus _HYSTERESIS (set_temperature - THERMAL_RUNAWAY_PROTECTION_HYSTERESIS).
-
-If it stays longer than _PERIOD, it means the thermistor temperature
-cannot catch up with the target, so something *may be* wrong. Then, to be on the
-safe side, the system will halt.
-
-Bear in mind the count down will just start AFTER the first time the 
-thermistor temperature is over the target, so you will have no problem if
-your extruder heater takes 2 minutes to hit the target on heating.
-
-*/
-// Enabled by default. Comment out the defines below to disable it.
-
-// Parameters for all extruder heaters
+// Thermal runaway protection: after the target was reached once, the printer stops if the temperature stays more than
+// HYSTERESIS below it for PERIOD seconds (a thermistor that came off reads cold, the heater would burn forever).
 #define THERMAL_RUNAWAY_PROTECTION_PERIOD 40 //in seconds
 #define THERMAL_RUNAWAY_PROTECTION_HYSTERESIS 4 // in degree Celsius
-
-// Parameters for the bed heater
-#define THERMAL_RUNAWAY_PROTECTION_BED_PERIOD 20 //in seconds
-#define THERMAL_RUNAWAY_PROTECTION_BED_HYSTERESIS 2 // in degree Celsius
 //===========================================================================
 
 

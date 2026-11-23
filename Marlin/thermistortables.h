@@ -5,7 +5,7 @@
 
 #define OVERSAMPLENR 16
 
-#if (THERMISTORHEATER_0 == 1) || (THERMISTORHEATER_1 == 1) || (THERMISTORBED == 1) //100k bed thermistor
+#if TEMP_SENSOR_0 == 1
 
 const short temptable_1[][2] PROGMEM = {
 {       23*OVERSAMPLENR ,       300     },
@@ -72,7 +72,7 @@ const short temptable_1[][2] PROGMEM = {
 };
 #endif
 
-#if (THERMISTORHEATER_0 == 5) || (THERMISTORHEATER_1 == 5) || (THERMISTORBED == 5) //100k ParCan thermistor (104GT-2)
+#if TEMP_SENSOR_0 == 5
 const short temptable_5[][2] PROGMEM = {
 // ATC Semitec 104GT-2 (Used in ParCan)
 // Verified by linagee. Source: http://shop.arcol.hu/static/datasheets/thermistors.pdf
@@ -112,49 +112,7 @@ const short temptable_5[][2] PROGMEM = {
 };
 #endif
 
-#if (THERMISTORHEATER_0 == 6) || (THERMISTORHEATER_1 == 6) || (THERMISTORBED == 6) // 100k Epcos thermistor
-const short temptable_6[][2] PROGMEM = {
-   {1*OVERSAMPLENR, 350},
-   {28*OVERSAMPLENR, 250}, //top rating 250C
-   {31*OVERSAMPLENR, 245},
-   {35*OVERSAMPLENR, 240},
-   {39*OVERSAMPLENR, 235},
-   {42*OVERSAMPLENR, 230},
-   {44*OVERSAMPLENR, 225},
-   {49*OVERSAMPLENR, 220},
-   {53*OVERSAMPLENR, 215},
-   {62*OVERSAMPLENR, 210},
-   {71*OVERSAMPLENR, 205}, //fitted graphically
-   {78*OVERSAMPLENR, 200}, //fitted graphically
-   {94*OVERSAMPLENR, 190},
-   {102*OVERSAMPLENR, 185},
-   {116*OVERSAMPLENR, 170},
-   {143*OVERSAMPLENR, 160},
-   {183*OVERSAMPLENR, 150},
-   {223*OVERSAMPLENR, 140},
-   {270*OVERSAMPLENR, 130},
-   {318*OVERSAMPLENR, 120},
-   {383*OVERSAMPLENR, 110},
-   {413*OVERSAMPLENR, 105},
-   {439*OVERSAMPLENR, 100},
-   {484*OVERSAMPLENR, 95},
-   {513*OVERSAMPLENR, 90},
-   {607*OVERSAMPLENR, 80},
-   {664*OVERSAMPLENR, 70},
-   {781*OVERSAMPLENR, 60},
-   {810*OVERSAMPLENR, 55},
-   {849*OVERSAMPLENR, 50},
-   {914*OVERSAMPLENR, 45},
-   {914*OVERSAMPLENR, 40},
-   {935*OVERSAMPLENR, 35},
-   {954*OVERSAMPLENR, 30},
-   {970*OVERSAMPLENR, 25},
-   {978*OVERSAMPLENR, 22},
-   {1008*OVERSAMPLENR, 3},
-   {1023*OVERSAMPLENR, 0}  //to allow internal 0 degrees C
-};
-#endif
-#if (THERMISTORHEATER_0 == 104) || (THERMISTORHEATER_1 == 104) || (THERMISTORBED == 104)
+#if TEMP_SENSOR_0 == 104
 const short temptable_104[][2] PROGMEM = {
 // 100k TDK/EPCOS 104NT-4-R025H42G: R25 = 100k, Beta(25/85) = 4125 K, 4.7k pullup, single-Beta model
 // raw values are the 10 bit ADC reading times OVERSAMPLENR (16)
@@ -194,44 +152,7 @@ const short temptable_104[][2] PROGMEM = {
 
 #define _TT_NAME(_N) temptable_ ## _N
 #define TT_NAME(_N) _TT_NAME(_N)
-
-#ifdef THERMISTORHEATER_0
-# define HEATER_0_TEMPTABLE TT_NAME(THERMISTORHEATER_0)
-# define HEATER_0_TEMPTABLE_LEN (sizeof(HEATER_0_TEMPTABLE)/sizeof(*HEATER_0_TEMPTABLE))
-#else
-# ifdef HEATER_0_USES_THERMISTOR
-#  error No heater 0 thermistor table specified
-# else  // HEATER_0_USES_THERMISTOR
-#  define HEATER_0_TEMPTABLE NULL
-#  define HEATER_0_TEMPTABLE_LEN 0
-# endif // HEATER_0_USES_THERMISTOR
-#endif
-
-//Set the high and low raw values for the heater, this indicates which raw value is a high or low temperature
-#ifndef HEATER_0_RAW_HI_TEMP
-# ifdef HEATER_0_USES_THERMISTOR   //In case of a thermistor the highest temperature results in the lowest ADC value
-#  define HEATER_0_RAW_HI_TEMP 0
-#  define HEATER_0_RAW_LO_TEMP 16383
-# else                          //In case of an thermocouple the highest temperature results in the highest ADC value
-#  define HEATER_0_RAW_HI_TEMP 16383
-#  define HEATER_0_RAW_LO_TEMP 0
-# endif
-#endif
-
-#  define HEATER_1_TEMPTABLE NULL
-#  define HEATER_1_TEMPTABLE_LEN 0
-
-//Set the high and low raw values for the heater, this indicates which raw value is a high or low temperature
-#ifndef HEATER_1_RAW_HI_TEMP
-#  define HEATER_1_RAW_HI_TEMP 16383
-#  define HEATER_1_RAW_LO_TEMP 0
-#endif
-
-
-//Set the high and low raw values for the heater, this indicates which raw value is a high or low temperature
-#ifndef HEATER_BED_RAW_HI_TEMP
-#  define HEATER_BED_RAW_HI_TEMP 16383
-#  define HEATER_BED_RAW_LO_TEMP 0
-#endif
+#define HEATER_0_TEMPTABLE TT_NAME(TEMP_SENSOR_0)
+#define HEATER_0_TEMPTABLE_LEN (sizeof(HEATER_0_TEMPTABLE)/sizeof(*HEATER_0_TEMPTABLE))
 
 #endif //THERMISTORTABLES_H_
