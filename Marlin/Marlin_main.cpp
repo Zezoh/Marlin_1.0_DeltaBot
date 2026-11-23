@@ -651,7 +651,11 @@ void process_commands()
 {
   unsigned long codenum; //throw away variable
   char *starpos = NULL;
-  if(code_seen('G'))
+  // The command letter is the first G, M or T of the line: a file name or a message can contain more of them
+  // ("M23 SHAPE.GCO" is not a G-code)
+  char *command = strpbrk(cmdbuffer[bufindr], "GMT");
+  char letter = command ? *command : 0;
+  if(letter == 'G' && code_seen('G'))
   {
     switch((int)code_value())
     {
@@ -738,7 +742,7 @@ void process_commands()
     }
   }
 
-  else if(code_seen('M'))
+  else if(letter == 'M' && code_seen('M'))
   {
     switch( (int)code_value() )
     {
@@ -1212,7 +1216,7 @@ void process_commands()
     }
   }
 
-  else if(code_seen('T'))
+  else if(letter == 'T')
   {
     // there is one extruder: T0 is accepted, nothing to select
   }
