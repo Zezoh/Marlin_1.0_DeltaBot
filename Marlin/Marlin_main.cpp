@@ -1373,15 +1373,27 @@ void prepare_move()
   for (int8_t i=0; i < NUM_AXIS; i++) {
     difference[i] = destination[i] - current_position[i];
   }
+  // No extrusion with a cold nozzle, and not of a very long piece at once: the extruder part of the move is skipped
+  // (said once, not for every segment of the move) and the extruder counts as if it had moved
+  if (difference[E_AXIS] != 0 && (degHotend(0) < extrude_min_temp || fabs(difference[E_AXIS]) > EXTRUDE_MAXLENGTH)) {
+    SERIAL_ECHO_START;
+    if (degHotend(0) < extrude_min_temp) { SERIAL_ECHOLNPGM(MSG_ERR_COLD_EXTRUDE_STOP); }
+    else { SERIAL_ECHOLNPGM(MSG_ERR_LONG_EXTRUDE_STOP); }
+    plan_set_e_position(destination[E_AXIS]);
+    current_position[E_AXIS] = destination[E_AXIS];
+    difference[E_AXIS] = 0;
+  }
   float cartesian_mm = sqrt(sq(difference[X_AXIS]) +
                             sq(difference[Y_AXIS]) +
                             sq(difference[Z_AXIS]));
   if (difference[E_AXIS] > 0.0001 && axis_known_position[X_AXIS] && axis_known_position[Y_AXIS] && axis_known_position[Z_AXIS])
     filament_note_extrusion();   // from now on running out of filament matters
-  if (cartesian_mm < 0.000001) { cartesian_mm = abs(difference[E_AXIS]); }
+  bool extruder_only = cartesian_mm < 0.000001;
+  if (extruder_only) { cartesian_mm = abs(difference[E_AXIS]); }
   if (cartesian_mm < 0.000001) { return; }
   float seconds = 6000 * cartesian_mm / feedrate / feedmultiply;
-  long steps = max(1L, long(delta_segments_per_second * seconds));
+  // a move of the extruder alone needs no segments of the nozzle path
+  long steps = extruder_only ? 1 : max(1L, long(delta_segments_per_second * seconds));
   for (long s = 1; s <= steps; s++) {
     float fraction = float(s) / float(steps);
     for(int8_t i=0; i < NUM_AXIS; i++) {

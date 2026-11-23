@@ -118,6 +118,7 @@ FORCE_INLINE block_t *plan_get_current_block()
 FORCE_INLINE bool blocks_queued() { return (block_buffer_head != block_buffer_tail); }
 
 void set_extrude_min_temp(float temp);
+extern float extrude_min_temp;   // no extrusion below this temperature (M302)
 
 void reset_acceleration_rates();
 #endif
