@@ -65,6 +65,7 @@ bool st_probe_hit() { return hit; }
 unsigned int st_probe_peak() { return 0; }
 
 static float target[3]; static bool queued = false;
+float acceleration = 2500, max_xy_jerk = 20, max_z_jerk = 20;
 void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed, const uint8_t &, float) {
   target[0] = x; target[1] = y; target[2] = z; queued = true; feed_now = feed;
 }

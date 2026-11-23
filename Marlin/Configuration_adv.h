@@ -83,6 +83,9 @@
 #define PROBE_FEED_MM_S 5.0            // speed of the last PROBE_SLOW_APPROACH_MM of every stroke: contact is detected here
 #define PROBE_FEED_FAST_MM_S 45.0      // speed of the approach before that
 #define PROBE_SLOW_APPROACH_MM 4.0
+#define PROBE_FAST_MIN_MM 3.0          // the fast approach is only used for a longer way down than this
+#define PROBE_ACCELERATION_MM_S2 600.0 // acceleration and jerk while probing (printing values are restored afterwards)
+#define PROBE_JERK_MM_S 4.0
 #define PROBE_RETRACT_FEED_MM_S 25.0   // lift after contact
 #define PROBE_TRAVEL_FEED_MM_S 150.0   // moves between probe points
 #define PROBE_TRAVEL_SEGMENTS_PER_SECOND 40 // travel moves need no 200 segments/s: fewer segments keep the planner ahead of the steppers

@@ -102,10 +102,28 @@ static void new_pass()
   have_top = false;
 }
 
+// Probe moves are gentle: a delta effector hangs on long rods, and starting or stopping a move at printing
+// acceleration and jerk makes it jolt (a fast drop, a hop at the end of it, then the slow approach).
+static float saved_acceleration, saved_xy_jerk, saved_z_jerk;
+static bool gentle = false;
+
 static void begin_session()
 {
   new_pass();
+  if (!gentle) {
+    gentle = true;
+    saved_acceleration = acceleration; saved_xy_jerk = max_xy_jerk; saved_z_jerk = max_z_jerk;
+    acceleration = PROBE_ACCELERATION_MM_S2;
+    max_xy_jerk = max_z_jerk = PROBE_JERK_MM_S;
+  }
   adapt_to_noise();
+}
+
+static void end_session()
+{
+  if (!gentle) return;
+  gentle = false;
+  acceleration = saved_acceleration; max_xy_jerk = saved_xy_jerk; max_z_jerk = saved_z_jerk;
 }
 
 // Two spurious contacts in a row: the threshold is too low for this sensor.
@@ -140,7 +158,7 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
   if (z < travel) { stroke(current_position[X_AXIS], current_position[Y_AXIS], z, travel, PROBE_TRAVEL_Z_FEED_MM_S, false, zz); }
   move_to(x, y, travel, PROBE_TRAVEL_FEED_MM_S);
   st_synchronize();
-  if (current_position[Z_AXIS] > start) {
+  if (current_position[Z_AXIS] > start + PROBE_FAST_MIN_MM) {   // a short way down is done by the slow approach itself
     wait_ms(PROBE_SETTLE_MS);
     if (stroke(x, y, current_position[Z_AXIS], start, PROBE_FEED_FAST_MM_S, true, zz)) {
       // Contact before the slow approach: a bump of the fast move, or a bed higher than expected. Either way, lift
@@ -248,6 +266,7 @@ void probe_g30()
   }
   lift_to_travel();
   mesh_set_active(mesh_was);
+  end_session();
   ui_busy(false);
 }
 
@@ -300,6 +319,7 @@ void probe_g29(bool save)
     SERIAL_ECHOLNPGM(" mm");
   }
   mesh_set_active(mesh_was);
+  end_session();
   if (committed && save) Config_StoreSettings();   // after the mesh is on: what is stored includes that
   ui_busy(false);
 }
@@ -465,6 +485,7 @@ void probe_g33(uint8_t factors, uint8_t points, bool save)
   }
   lift_to_travel();
   mesh_set_active(mesh_was);
+  end_session();
   if (store) Config_StoreSettings();   // after the mesh is back: what is stored includes whether it is on
   ui_busy(false);
 }
