@@ -6,6 +6,7 @@
 #   calibration_test    the G33 solver recovers a simulated machine's geometry
 #   mesh_test           the bed mesh: interpolation, fade, inverse
 #   filament_test       M600 and the runout sensor on a simulated machine, user and heater
+#   fan_test            the fan: M106/M107, hot-end floor, kick start, cooldown, one fan and two fans
 #   onebutton_test      the button decoder: clicks, long press, boot hold, bounce
 #   probe_test          G30 / G33 end to end on a simulated delta with a wrong geometry and an FSR probe
 #   sdfat_test          the FAT16/FAT32 code on real disk images (needs mkfs.fat and mtools)
@@ -34,6 +35,12 @@ F="$B/filament"; mkdir "$F"
 for f in filament.cpp filament.h ui.h Configuration.h Configuration_adv.h Default_Version.h thermistortables.h; do cp "$ROOT/Marlin/$f" "$F/"; done
 cp "$T"/filament_shim/*.h "$F/"; cp "$T/filament_test.cpp" "$F/"
 (cd "$F" && $CXX -I. filament.cpp filament_test.cpp -o filament_test); "$F/filament_test"
+
+echo "== fan, one and two"
+N="$B/fan"; mkdir "$N"
+for f in fan.cpp fan.h ui.h Configuration.h Configuration_adv.h Default_Version.h thermistortables.h; do cp "$ROOT/Marlin/$f" "$N/"; done
+cp "$T"/filament_shim/*.h "$N/"; cp "$T/fan_test.cpp" "$N/"
+for d in 0 1; do (cd "$N" && $CXX -DFAN_DUAL=$d -I. fan.cpp fan_test.cpp -o fan_test$d); "$N/fan_test$d"; done
 
 echo "== planner speed"
 P="$B/planner"; mkdir "$P"

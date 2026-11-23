@@ -267,30 +267,10 @@ void plan_init()
 }
 
 
-// The fan: M106/M107 set the speed of the block being executed. The same fan cools the heat break, so it never
-// runs below FAN_MIN_PWM while the hotend is hot (from FAN_SAFETY_ON_C until it and its target are below
-// FAN_SAFETY_OFF_C), and it starts with full power for FAN_KICK_MS.
-void check_axes_activity()
+// What M106/M107 ask for: the fan speed of the block being executed (the one of the moment when it was queued)
+unsigned char requested_fan_speed()
 {
-  static bool hot = false, was_on = false;
-  static unsigned long kick_end = 0;
-  unsigned char duty = (block_buffer_tail != block_buffer_head) ? block_buffer[block_buffer_tail].fan_speed : fanSpeed;
-  float t = degHotend(0), target = degTargetHotend(0);
-
-  if (!(t > -50 && t < 1000)) hot = true;                                      // nonsense from the sensor: cool it
-  else if (t >= FAN_SAFETY_ON_C || target >= FAN_SAFETY_ON_C) hot = true;
-  else if (t <= FAN_SAFETY_OFF_C && target <= FAN_SAFETY_OFF_C) hot = false;
-  if (hot && duty < FAN_MIN_PWM) duty = FAN_MIN_PWM;
-
-  if (duty == 0) {
-    was_on = false;
-    kick_end = 0;
-  } else {
-    if (!was_on) { was_on = true; kick_end = millis() + FAN_KICK_MS; }
-    if (kick_end && (long)(millis() - kick_end) < 0) duty = 255;
-    else kick_end = 0;
-  }
-  analogWrite(FAN_PIN, duty);
+  return (block_buffer_tail != block_buffer_head) ? block_buffer[block_buffer_tail].fan_speed : fanSpeed;
 }
 
 // Add a new linear movement to the buffer. x, y and z are the carriage positions in mm

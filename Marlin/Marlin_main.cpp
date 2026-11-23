@@ -40,6 +40,7 @@
 #include "probe.h"
 #include "mesh.h"
 #include "filament.h"
+#include "fan.h"
 #include "ui.h"
 #include "pins_arduino.h"
 #include "math.h"
@@ -235,6 +236,7 @@ void setup()
   st_init();    // Initialize stepper, this enables interrupts!
   ui_init();
   filament_sensor_init();
+  fan_init();
   
 
 
@@ -1429,7 +1431,7 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) //default argument s
     }
   }
   
-  check_axes_activity();
+  fan_service();
   filament_sensor_poll();
   ui_poll();
 }
@@ -1438,6 +1440,10 @@ void kill()
 {
   cli(); // Stop interrupts
   disable_heater();
+  analogWrite(FAN_PIN, 255);   // cool what is hot
+  #if FAN_DUAL
+    WRITE(FAN_SAFETY_PIN, HIGH);
+  #endif
 
   disable_x();
   disable_y();

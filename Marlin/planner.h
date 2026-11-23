@@ -72,7 +72,7 @@ void plan_set_e_position(const float &e);
 
 
 
-void check_axes_activity();
+unsigned char requested_fan_speed();
 uint8_t movesplanned(); //return the nr of buffered moves
 
 extern float max_feedrate[NUM_AXIS]; // set the max speeds

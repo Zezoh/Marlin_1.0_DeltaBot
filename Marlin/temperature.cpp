@@ -22,6 +22,7 @@
 #include "temperature.h"
 #include "watchdog.h"
 #include "language.h"
+#include "fan.h"
 
 int target_temperature[EXTRUDERS] = { 0 };
 int current_temperature_raw[EXTRUDERS] = { 0 };
@@ -191,6 +192,7 @@ static void thermal_runaway_protection(float temperature, float target)
           disable_z();
           disable_e0();
           manage_heater();
+          fan_service();
         }
       }
       break;
@@ -274,7 +276,6 @@ void tp_init()
 {
   updatePID();
   SET_OUTPUT(HEATER_0_PIN);
-  SET_OUTPUT(FAN_PIN);
 
   // Set analog inputs
   ADCSRA = 1<<ADEN | 1<<ADSC | 1<<ADIF | 0x07;
@@ -304,6 +305,7 @@ void tp_init()
 
 void disable_heater()
 {
+  fan_start_cooldown();   // the hotend is hot and the heater is off: cool it at full fan
   target_temperature[0] = 0;
   soft_pwm = 0;
   WRITE(HEATER_0_PIN, LOW);

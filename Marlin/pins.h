@@ -50,6 +50,7 @@
 
 // Power outputs: D10 hotend heater, D9 fan. D8 (the bed output) is not used: there is no heated bed.
 #define FAN_PIN            9
+#define FAN_SAFETY_PIN     8   // the on/off safety fan of FAN_DUAL (the RAMPS bed output)
 #define HEATER_0_PIN      10
 #define HEATER_BED_PIN    -1
 

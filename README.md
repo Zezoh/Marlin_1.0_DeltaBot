@@ -65,6 +65,21 @@ paused or waiting for you 1 s, printing 1.2 s, heating 2 s, cooling 3 s, ready 4
 
 The button does nothing while a host (OctoPrint, Pronterface...) is printing, except the long press that turns the heater off.
 
+## Fan (mono fan)
+
+The fan on D9 does what `M106`/`M107` say (the speed of the move being executed) and cools the heat break of the hotend
+(`Marlin/fan.cpp`, `FAN_*` in `Configuration_adv.h`):
+
+- a fan that starts runs at full power for 0.4 s first
+- hotend at 50 degC or above (or its target): while printing the fan never runs below PWM 120 (M106 can go higher); idle it
+  runs at full power until the hotend and its target are below 49 degC
+- temperature unknown (sensor gone) or the printer stopped by an error: full power
+- cooldown: whenever the heater is shut down (end or cancel of a print, long press, error, M81) the fan runs at full power
+  until the hotend is below 49 degC, and the M106 of the print is forgotten. Heating for the next print ends it
+- "printing" means an SD print (running or paused), or a move or command in the last 3 s
+- `FAN_DUAL 1`: two fans instead: an on/off safety fan on D8 (on from 50 to below 49 degC, and when the temperature is
+  unknown or the printer is stopped) and a print fan on D9 that only does what M106/M107 say (full power in a cooldown)
+
 ## Filament change (M600) and the runout sensor
 
 The sensor goes to D14 (the RAMPS Y-MIN socket, input with pullup, HIGH = no filament, see `RUNOUT_*` in

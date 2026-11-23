@@ -12,12 +12,19 @@
 #define CRITICAL_SECTION_END
 #include "Configuration.h"
 #define RUNOUT_PIN 14
+#define FAN_PIN 9
+#define FAN_SAFETY_PIN 8
+void analogWrite(int pin, int duty);
+extern int fanSpeed;
 #define HIGH 1
 #define LOW 0
 int sim_read(int pin);
 #define READ(p) sim_read(p)
-#define WRITE(p, v)
+extern "C" void sim_write(int pin, int v);
+#define WRITE(p, v) sim_write(p, v)
+#define WRITE_UNUSED(p, v)
 #define SET_INPUT(p)
+#define SET_OUTPUT(p)
 extern int g_verbose;
 #define SAY(...) do { if (g_verbose) printf(__VA_ARGS__); } while (0)
 #define SERIAL_ECHO_START SAY("echo:")

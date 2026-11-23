@@ -1,4 +1,5 @@
 #include "cardreader.h"
+#include "fan.h"
 #include "stepper.h"
 #include "temperature.h"
 #include "language.h"
@@ -354,6 +355,7 @@ void CardReader::printingHasFinished()
   {
     quickStop();
     sdprinting = false;
+    fan_start_cooldown();   // the print is over: cool the hotend at full fan, forget the M106 of the print
     if (SD_FINISHED_STEPPERRELEASE)
     {
       enquecommand_P(PSTR(SD_FINISHED_RELEASECOMMAND));

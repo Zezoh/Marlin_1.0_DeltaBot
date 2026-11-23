@@ -37,6 +37,7 @@ static unsigned long wait_began = 0, inserted_at = 0, first_wait = 0;
 static bool early_done = false;
 
 int sim_read(int) { return pin_level; }
+extern "C" void sim_write(int, int) {}
 unsigned long millis() { return now_ms; }
 bool IsStopped() { return false; }
 static void advance(unsigned long ms) {

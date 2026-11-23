@@ -5,11 +5,17 @@
 //=============================Mechanical Settings===========================
 //===========================================================================
 
-// The fan on FAN_PIN cools the print and the heat break: while the hotend is hot it never runs below FAN_MIN_PWM
-#define FAN_SAFETY_ON_C 50.0
-#define FAN_SAFETY_OFF_C 49.0
-#define FAN_MIN_PWM 120
-#define FAN_KICK_MS 400        // full power for this long when the fan starts
+// Fan: FAN_DUAL 0 = one fan on FAN_PIN cools the print and the hotend (it never runs below FAN_MIN_PWM while the hotend is
+// hot while printing, and at full power while it cools down idle); FAN_DUAL 1 = an on/off safety fan on FAN_SAFETY_PIN
+// for the hotend and a print fan on FAN_PIN that only does what M106/M107 say. See fan.cpp.
+#ifndef FAN_DUAL
+#define FAN_DUAL 0
+#endif
+#define FAN_SAFETY_ON_C 50.0   // the safety fan runs from here...
+#define FAN_SAFETY_OFF_C 49.0  // ...until the hotend and its target are below this
+#define FAN_MIN_PWM 120        // one fan: the least it does while printing and hot
+#define FAN_KICK_MS 400        // full power for this long when a fan starts
+#define FAN_PRINTING_HOLD_MS 3000   // after the last move or command: still "printing" for this long
 
 #define ENDSTOPS_ONLY_FOR_HOMING // If defined the endstops will only be used for homing
 
