@@ -65,7 +65,6 @@ void filament_report()
 
 static bool changing = false;       // a change is running
 static bool waiting = false;        // ... and waits for the user
-static bool cancel_asked = false;   // M108
 static bool failed = false;
 static unsigned long last_report = 0;
 
@@ -77,14 +76,13 @@ bool filament_hotkey(const char *line)
   const char *m = strchr(line, 'M');
   if (m == NULL) return false;
   int code = atoi(m + 1);
-  if (code == 108) cancel_asked = true;
-  else if (code == 24 || code == 701) ui_virtual_short();
+  if (code == 24 || code == 701) ui_virtual_short();
   else return false;
   SERIAL_PROTOCOLLNPGM(MSG_OK);
   return true;
 }
 
-static bool stop_requested() { return cancel_asked || ui_cancel_requested() || IsStopped(); }
+static bool stop_requested() { return cancel_heatup || ui_cancel_requested() || IsStopped(); }
 
 static void tick(const char *what_P)
 {
@@ -182,7 +180,7 @@ bool filament_change(bool service)
   }
   st_synchronize();
 
-  changing = true; failed = false; cancel_asked = false; waiting = false;
+  changing = true; failed = false; cancel_heatup = false; waiting = false;
   ui_busy(true);
   ui_filament_mode(1);
   last_report = millis();

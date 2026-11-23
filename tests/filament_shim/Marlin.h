@@ -43,6 +43,7 @@ enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
 #endif
 extern float current_position[4], max_pos[3];
 extern bool axis_known_position[3];
+extern bool cancel_heatup;
 bool IsStopped();
 void manage_heater();
 void manage_inactivity(bool ignore_stepper_queue = false);

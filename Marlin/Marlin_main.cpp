@@ -97,7 +97,7 @@ int fanSpeed=0;
   float delta_diagonal_rod_2= sq(delta_diagonal_rod);
   float delta_segments_per_second= DELTA_SEGMENTS_PER_SECOND;
 
-bool cancel_heatup = false ;
+bool cancel_heatup = false;   // M108: ends a wait for the temperature or a filament change
 
 const char errormagic[] PROGMEM = "Error:";
 const char echomagic[] PROGMEM = "echo:";
@@ -140,8 +140,6 @@ unsigned long stoptime=0;
 
 bool Stopped=false;
 
-bool CooldownNoWait = true;
-bool target_direction;
 
 
 //===========================================================================
@@ -378,7 +376,10 @@ void get_command()
         if(strcmp(cmdbuffer[bufindw], "M112") == 0)
           kill();
         
-        if(!filament_hotkey(cmdbuffer[bufindw])) {   // M24, M701, M108 are answered at once while a filament change waits
+        if(strstr_P(cmdbuffer[bufindw], PSTR("M108")) != NULL) {   // ends a wait at once
+          cancel_heatup = true;
+          SERIAL_PROTOCOLLNPGM(MSG_OK);
+        } else if(!filament_hotkey(cmdbuffer[bufindw])) {   // M24 and M701 go on at once while a filament change waits
           bufindw = (bufindw + 1)%BUFSIZE;
           buflen += 1;
         }
@@ -880,60 +881,33 @@ void process_commands()
       SERIAL_PROTOCOL(getHeaterPower(0));
       SERIAL_PROTOCOLLN("");
       return;
-    case 109:
-    {// M109 - Wait for extruder heater to reach target.
-      if (code_seen('S')) {
-        setTargetHotend(code_value(), 0);
-        CooldownNoWait = true;
-      } else if (code_seen('R')) {
-        setTargetHotend(code_value(), 0);
-        CooldownNoWait = false;
-      }
+    case 109: // M109 S<temp> (or R<temp>) - set the temperature and wait until it has been held for TEMP_RESIDENCY_TIME
+    {
+      if (code_seen('S') || code_seen('R')) setTargetHotend(code_value(), 0);
       codenum = millis();
-
-      /* See if we are heating up or cooling down */
-      target_direction = isHeatingHotend(0); // true if heating, false if cooling
-
-      cancel_heatup = false;
-
-        long residencyStart;
-        residencyStart = -1;
-        /* continue to loop until we have reached the target temp
-          _and_ until TEMP_RESIDENCY_TIME hasn't passed since we reached it */
-        while((!cancel_heatup)&&((residencyStart == -1) ||
-              (residencyStart >= 0 && (((unsigned int) (millis() - residencyStart)) < (TEMP_RESIDENCY_TIME * 1000UL)))) ) {
-          if( (millis() - codenum) > 1000UL )
-          { //Print Temp Reading and remaining time every 1 second while heating up/cooling down
-            SERIAL_PROTOCOLPGM("T:");
-            SERIAL_PROTOCOL_F(degHotend(0),1);
-            SERIAL_PROTOCOLPGM(" E:");
-            SERIAL_PROTOCOL((int)0);
-              SERIAL_PROTOCOLPGM(" W:");
-              if(residencyStart > -1)
-              {
-                 codenum = ((TEMP_RESIDENCY_TIME * 1000UL) - (millis() - residencyStart)) / 1000UL;
-                 SERIAL_PROTOCOLLN( codenum );
-              }
-              else
-              {
-                 SERIAL_PROTOCOLLN( "?" );
-              }
-            codenum = millis();
-          }
-          manage_heater();
-          manage_inactivity();
-            /* start/restart the TEMP_RESIDENCY_TIME timer whenever we reach target temp for the first time
-              or when current temp falls outside the hysteresis after target temp was reached */
-          if ((residencyStart == -1 &&  target_direction && (degHotend(0) >= (degTargetHotend(0)-TEMP_WINDOW))) ||
-              (residencyStart == -1 && !target_direction && (degHotend(0) <= (degTargetHotend(0)+TEMP_WINDOW))) ||
-              (residencyStart > -1 && labs(degHotend(0) - degTargetHotend(0)) > TEMP_HYSTERESIS) )
-          {
-            residencyStart = millis();
-          }
+      bool heating = isHeatingHotend(0);   // heating up or cooling down to the target
+      cancel_heatup = false;               // M108 sets it
+      long residencyStart = -1;
+      while (!cancel_heatup && (residencyStart == -1 || (unsigned long)(millis() - residencyStart) < TEMP_RESIDENCY_TIME * 1000UL)) {
+        if ((millis() - codenum) > 1000UL) {   // temperature and the seconds left, every second
+          SERIAL_PROTOCOLPGM("T:");
+          SERIAL_PROTOCOL_F(degHotend(0),1);
+          SERIAL_PROTOCOLPGM(" E:0 W:");
+          if (residencyStart > -1) SERIAL_PROTOCOLLN(((TEMP_RESIDENCY_TIME * 1000UL) - (millis() - residencyStart)) / 1000UL);
+          else SERIAL_PROTOCOLLN("?");
+          codenum = millis();
         }
-        starttime=millis();
-        previous_millis_cmd = millis();
+        manage_heater();
+        manage_inactivity();
+        // start (or restart) the residency timer when the target is reached, or the temperature leaves the hysteresis
+        if ((residencyStart == -1 &&  heating && (degHotend(0) >= (degTargetHotend(0)-TEMP_WINDOW))) ||
+            (residencyStart == -1 && !heating && (degHotend(0) <= (degTargetHotend(0)+TEMP_WINDOW))) ||
+            (residencyStart > -1 && labs(degHotend(0) - degTargetHotend(0)) > TEMP_HYSTERESIS))
+          residencyStart = millis();
       }
+      starttime = millis();
+      previous_millis_cmd = millis();
+    }
       break;
     case 117: // M117 display message: there is no display
     case 140: // M140 / M190: there is no heated bed

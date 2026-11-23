@@ -15,6 +15,7 @@ float current_position[4] = {0, 0, 0, 0}, max_pos[3] = {85, 85, 225};
 bool axis_known_position[3] = {true, true, true};
 int g_verbose = 0;
 CardReader card;
+bool cancel_heatup = false;
 
 static unsigned long now_ms = 1000;
 static float temp = 20, target = 0;
@@ -27,6 +28,7 @@ static bool cancel_flag = false, short_flag = false;
 static float max_chunk = 0;
 
 // the "user"
+static bool user_m108 = false;
 static bool user_pulls_out = true, user_inserts = true, user_cancels = false, user_clicks_early = false;
 static unsigned long insert_after = 3000, click_after = 2000, cancel_after = 2000;
 static float target_at_cancel = -1;
@@ -50,6 +52,7 @@ void manage_inactivity(bool) {
   if (mode == 2) {
     unsigned long waited = now_ms - wait_began;
     if (user_cancels && waited > cancel_after) { if (!cancel_flag) target_at_cancel = target; cancel_flag = true; }
+    if (user_m108 && waited > 1000) cancel_heatup = true;
     if (!inserted && user_inserts && now_ms - first_wait >= insert_after) { pin_level = 0; inserted = true; inserted_at = now_ms; }
     if (user_clicks_early && !early_done && !inserted && waited >= 500) { short_flag = true; early_done = true; }
     bool can_click = inserted || !user_inserts;
@@ -92,9 +95,9 @@ static int fails = 0;
 
 static void reset() {
   now_ms = 1000; temp = 20; target = 0; pin_level = 0; e_moves.clear(); xyz_moves.clear();
-  cancels = homes = heater_off = cold_extrusions = busy_depth = mode = 0; e_back_total = 0; last_e_set = -999; cancel_flag = short_flag = false;
+  cancels = homes = heater_off = cold_extrusions = busy_depth = mode = 0; cancel_heatup = false; e_back_total = 0; last_e_set = -999; cancel_flag = short_flag = false;
   max_chunk = 0; wait_began = 0; inserted_at = 0; first_wait = 0; early_done = false; pulled = inserted = false;
-  user_pulls_out = user_inserts = true; user_cancels = user_clicks_early = false; insert_after = 3000; click_after = 2000; cancel_after = 2000; target_at_cancel = -1;
+  user_pulls_out = user_inserts = true; user_cancels = user_clicks_early = user_m108 = false; insert_after = 3000; click_after = 2000; cancel_after = 2000; target_at_cancel = -1;
   card.sdprinting = card.paused = false;
   filament_service();   // nothing prints: the sensor is not armed any more
   current_position[0] = 10; current_position[1] = 20; current_position[2] = 50; current_position[3] = 123.4f;
@@ -151,6 +154,11 @@ int main(int argc, char **argv) {
   printf("5. long press while waiting: ok %d, cancels %d, heater off %d\n", ok, cancels, heater_off);
   CHECK(!ok && cancels == 1 && target == 0 && !card.sdprinting && busy_depth == 0, "cancel: print cancelled, heater off");
 
+  // 5b. M108 from the host cancels as well
+  reset(); temp = 215; target = 215; card.sdprinting = true; user_m108 = true; user_inserts = false;
+  ok = filament_change(false);
+  CHECK(!ok && cancels == 1 && target == 0, "M108 cancels the change");
+
   // 6. a click before the sensor sees the new filament does nothing
   reset(); temp = 215; target = 215; card.sdprinting = true; user_clicks_early = true; insert_after = 6000;
   ok = filament_change(false);
@@ -176,7 +184,7 @@ int main(int argc, char **argv) {
   filament_note_extrusion(); filament_sensor_enable(false); filament_service(); CHECK(e_moves.empty(), "sensor off (M412 S0): no change");
 
   // 8. M701 / M24 / M108 are only answered while a change waits
-  reset(); CHECK(!filament_hotkey("M701") && !filament_hotkey("M108"), "no hotkey outside a change");
+  reset(); CHECK(!filament_hotkey("M701") && !filament_hotkey("M24"), "no hotkey outside a change");
 
   // 9. the sensor: a flicker shorter than the debounce is ignored, a steady loss is seen, and so is the insertion
   reset(); pin_level = 1; for (int i = 0; i < 100; i++) { advance(1); filament_sensor_poll(); } pin_level = 0;

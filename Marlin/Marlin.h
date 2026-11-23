@@ -148,6 +148,7 @@ extern float min_pos[3];
 extern float max_pos[3];
 extern bool axis_known_position[3];
 extern int fanSpeed;
+extern bool cancel_heatup;
 
 
 extern unsigned long starttime;

@@ -30,6 +30,5 @@ FORCE_INLINE float degHotend(uint8_t extruder) { return current_temperature[extr
 FORCE_INLINE float degTargetHotend(uint8_t extruder) { return target_temperature[extruder]; }
 FORCE_INLINE void setTargetHotend(const float &celsius, uint8_t extruder) { target_temperature[extruder] = celsius; }
 FORCE_INLINE bool isHeatingHotend(uint8_t extruder) { return target_temperature[extruder] > current_temperature[extruder]; }
-FORCE_INLINE bool isCoolingHotend(uint8_t extruder) { return target_temperature[extruder] < current_temperature[extruder]; }
 
 #endif
