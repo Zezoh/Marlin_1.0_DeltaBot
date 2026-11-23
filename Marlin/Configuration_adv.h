@@ -157,9 +157,12 @@
 // file on the SD card; printing: pause; paused: resume. Long press: cancel the print or the calibration, heater off.
 // Held at power-on: calibrate (G33) once. The LED on STATUS_LED_PIN blinks the state, the faster the more urgent.
 #define BUTTON_DEBOUNCE_MS 40
+#define BUTTON_DOUBLE_MS 350         // two clicks within this are a double click; a single click is reported after it
 #define BUTTON_LONG_MS 1500
 #define BUTTON_BOOT_HOLD_MS 2500
 #define LED_ERROR_PERIOD_MS 200
+#define LED_CHANGE_PERIOD_MS 400      // a filament change works
+#define LED_WAIT_PERIOD_MS 1000       // ... and waits for you
 #define LED_BUSY_PERIOD_MS 800
 #define LED_PAUSED_PERIOD_MS 1000
 #define LED_PRINT_PERIOD_MS 1200
@@ -167,6 +170,43 @@
 #define LED_COOL_PERIOD_MS 3000
 #define LED_READY_PERIOD_MS 4000
 #define LED_COOL_TEMP 50      // the hotend is "cooling" above this temperature (degC)
+
+//===========================================================================
+//=============================Filament change (M600) and runout=============
+//===========================================================================
+// M600 pauses the print, parks the nozzle, unloads the filament, waits for the new one, loads it, purges, waits for a
+// confirmation and goes back to the print. The runout sensor (RUNOUT_PIN) starts the same sequence by itself.
+// Press the button (or send M701 / M24) to go on, hold it (or M108) to cancel.
+#define RUNOUT_ENABLED 1               // M412 S0/S1 changes it until the next reset
+#define RUNOUT_ACTIVE_HIGH 1           // the pin reads HIGH when there is no filament
+#define RUNOUT_PULLUP 1
+#define RUNOUT_DEBOUNCE_MS 500         // "no filament" must last this long
+#define FILAMENT_INSERT_DEBOUNCE_MS 750 // "filament inserted" must last this long
+
+#define BOWDEN_LENGTH_MM 740.0         // extruder to hotend
+#define FILAMENT_CHANGE_TEMP_C 210.0   // the nozzle is heated to the higher of this and the printing temperature
+#define FILAMENT_PARK_X 0.0
+#define FILAMENT_PARK_Y -60.0
+#define FILAMENT_Z_LIFT 5.0            // lift before parking, but never park lower than PARK_MIN_Z
+#define FILAMENT_PARK_MIN_Z 30.0
+#define FILAMENT_TRAVEL_SPEED 50.0     // mm/s
+#define FILAMENT_Z_SPEED 10.0
+#define FILAMENT_RETRACT_MM 3.0        // pulled back before parking, pushed forward again on return
+#define FILAMENT_RETRACT_SPEED 25.0
+#define FILAMENT_UNLOAD_EXTRA_MM 5.0   // unload = bowden length + this
+#define FILAMENT_UNLOAD_SPEED 30.0
+#define FILAMENT_SLOW_LOAD_MM 10.0     // first the filament is fed slowly into the extruder,
+#define FILAMENT_SLOW_LOAD_SPEED 5.0
+#define FILAMENT_FAST_LOAD_SPEED 30.0  // then the bowden length quickly,
+#define FILAMENT_PURGE_MM 5.0          // then purged
+#define FILAMENT_PURGE_SPEED 3.0
+#define FILAMENT_E_CHUNK_MM 100.0      // longer extruder moves are cut into pieces of this length
+#define FILAMENT_MIN_EXTRUDE_TEMP_C 170.0
+#define FILAMENT_TEMP_TOLERANCE_C 3.0
+#define FILAMENT_TEMP_HOLD_MS 1000     // the temperature must stay within the tolerance this long
+#define FILAMENT_HEAT_TIMEOUT_MS 180000UL
+#define FILAMENT_IDLE_TIMEOUT_MS 120000UL // the heater is switched off after waiting this long for the user
+#define BUTTON_SERVICE_Z 30.0          // where the nozzle waits above the centre for a filament change from the button
 
 //===========================================================================
 //=============================Buffers           ============================

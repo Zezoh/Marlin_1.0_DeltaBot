@@ -39,6 +39,7 @@
 #include "language.h"
 #include "probe.h"
 #include "mesh.h"
+#include "filament.h"
 #include "ui.h"
 #include "pins_arduino.h"
 #include "math.h"
@@ -347,6 +348,7 @@ void setup()
   watchdog_init();
   st_init();    // Initialize stepper, this enables interrupts!
   ui_init();
+  filament_sensor_init();
   
 
   #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
@@ -400,6 +402,7 @@ void loop()
   manage_heater();
   manage_inactivity();
   checkHitEndstops();
+  filament_service();
   ui_run();
 }
 
@@ -496,8 +499,10 @@ void get_command()
         if(strcmp(cmdbuffer[bufindw], "M112") == 0)
           kill();
         
-        bufindw = (bufindw + 1)%BUFSIZE;
-        buflen += 1;
+        if(!filament_hotkey(cmdbuffer[bufindw])) {   // M24, M701, M108 are answered at once while a filament change waits
+          bufindw = (bufindw + 1)%BUFSIZE;
+          buflen += 1;
+        }
       }
       serial_count = 0; //clear buffer
     }
@@ -734,6 +739,19 @@ void move_to(float x, float y, float z, float feed_mm_s)
   feedrate = saved_feed;
   feedmultiply = saved;
   delta_segments_per_second = saved_segments;
+}
+
+// An extruder only move, one block, exactly mm long whatever M221 says.
+void move_e(float mm, float feed_mm_s)
+{
+  int saved = extrudemultiply;
+  extrudemultiply = 100;
+  float target = current_position[E_AXIS] + mm;
+  calculate_delta(current_position);
+  plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], target, feed_mm_s, active_extruder);
+  current_position[E_AXIS] = target;
+  extrudemultiply = saved;
+  previous_millis_cmd = millis();
 }
 
 void keep_steppers_on() { previous_millis_cmd = millis(); }
@@ -1404,6 +1422,15 @@ void process_commands()
         if(code_seen(axis_codes[i])) { endstop_adj[i] = code_value(); delta_calibrated = false; }
       }
       break;
+    case 412: // M412 [S0|S1] - filament runout sensor on/off (until the next reset)
+      if(code_seen('S')) filament_sensor_enable(code_value() != 0);
+      filament_report();
+      break;
+    case 600: // M600 - filament change
+      if(Stopped == false) filament_change(false);
+      break;
+    case 701: // M701 and M24 go on when a filament change waits, otherwise there is nothing to load
+      break;
     case 420: // M420 [S0|S1] [Z<fade height>] - bed mesh on/off, height where its correction has faded out
       if(code_seen('Z')) {
         float fade = code_value();
@@ -1859,6 +1886,8 @@ void prepare_move()
   float cartesian_mm = sqrt(sq(difference[X_AXIS]) +
                             sq(difference[Y_AXIS]) +
                             sq(difference[Z_AXIS]));
+  if (difference[E_AXIS] > 0.0001 && axis_known_position[X_AXIS] && axis_known_position[Y_AXIS] && axis_known_position[Z_AXIS])
+    filament_note_extrusion();   // from now on running out of filament matters
   if (cartesian_mm < 0.000001) { cartesian_mm = abs(difference[E_AXIS]); }
   if (cartesian_mm < 0.000001) { return; }
   float seconds = 6000 * cartesian_mm / feedrate / feedmultiply;
@@ -1963,6 +1992,7 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) //default argument s
     controllerFan(); //Check if fan should be turned on to cool stepper drivers down
   #endif
   check_axes_activity();
+  filament_sensor_poll();
   ui_poll();
 }
 

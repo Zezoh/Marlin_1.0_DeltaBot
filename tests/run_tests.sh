@@ -5,6 +5,7 @@
 #   planner_speed_test  the nozzle speed equals the feed rate
 #   calibration_test    the G33 solver recovers a simulated machine's geometry
 #   mesh_test           the bed mesh: interpolation, fade, inverse
+#   filament_test       M600 and the runout sensor on a simulated machine, user and heater
 #   onebutton_test      the button decoder: clicks, long press, boot hold, bounce
 #   probe_test          G30 / G33 end to end on a simulated delta with a wrong geometry and an FSR probe
 #   sdfat_test          the FAT16/FAT32 code on real disk images (needs mkfs.fat and mtools)
@@ -27,6 +28,12 @@ for f in probe.cpp probe.h ui.h mesh.cpp mesh.h delta_calibration.cpp delta_cali
 cp "$T"/probe_shim/*.h "$Q/"; cp "$T/probe_test.cpp" "$B/"
 ZH=$(awk '/#define Z_HOME_POS/{print $3}' "$ROOT/Marlin/Configuration.h")
 (cd "$Q" && $CXX -DZ_HOME_POS=$ZH -I. -I"$B" probe.cpp mesh.cpp delta_calibration.cpp "$B/probe_test.cpp" -o probe_test); "$Q/probe_test"
+
+echo "== filament change and runout"
+F="$B/filament"; mkdir "$F"
+for f in filament.cpp filament.h ui.h Configuration.h Configuration_adv.h boards.h Default_Version.h thermistortables.h; do cp "$ROOT/Marlin/$f" "$F/"; done
+cp "$T"/filament_shim/*.h "$F/"; cp "$T/filament_test.cpp" "$F/"
+(cd "$F" && $CXX -I. filament.cpp filament_test.cpp -o filament_test); "$F/filament_test"
 
 echo "== planner speed"
 P="$B/planner"; mkdir "$P"

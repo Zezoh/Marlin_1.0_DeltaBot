@@ -85,7 +85,7 @@ SRC = wiring.c \
 CXXSRC = WMath.cpp WString.cpp Print.cpp Marlin_main.cpp MarlinSerial.cpp \
 	Sd2Card.cpp SdFat.cpp cardreader.cpp motion_control.cpp planner.cpp \
 	stepper.cpp temperature.cpp ConfigurationStore.cpp watchdog.cpp \
-	Tone.cpp probe.cpp delta_calibration.cpp mesh.cpp ui.cpp
+	Tone.cpp probe.cpp delta_calibration.cpp mesh.cpp filament.cpp ui.cpp
 # Arduino 1.0 and newer use main.cpp; newer cores (1.6.x and later) also have a few more sources
 CXXSRC += main.cpp
 CXXSRC += $(notdir $(wildcard $(HARDWARE_SRC)/abi.cpp $(HARDWARE_SRC)/new.cpp))

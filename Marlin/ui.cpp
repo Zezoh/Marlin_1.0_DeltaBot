@@ -7,13 +7,17 @@
 #include "stepper.h"
 #include "planner.h"
 #include "probe.h"
+#include "filament.h"
 #include "onebutton.h"
 #include "ui.h"
 
-static OneButton button(BUTTON_DEBOUNCE_MS, BUTTON_LONG_MS, BUTTON_BOOT_HOLD_MS);
+static OneButton button(BUTTON_DEBOUNCE_MS, BUTTON_DOUBLE_MS, BUTTON_LONG_MS, BUTTON_BOOT_HOLD_MS);
 static OneButton::Event pending = OneButton::NONE;
 static uint8_t busy_depth = 0;
 static bool cancel_flag = false;
+static uint8_t filament_mode = 0;
+static bool short_flag = false;
+static bool defer_cancel = false;
 
 static bool button_pressed() { return !READ(BUTTON_PIN); }
 
@@ -30,16 +34,22 @@ void ui_busy(bool busy)
 {
   if (busy) {
     busy_depth++;
-    if (pending == OneButton::SHORT) pending = OneButton::NONE;   // do not carry a click out after the job it was not meant for
+    if (pending == OneButton::SHORT || pending == OneButton::DOUBLE) pending = OneButton::NONE;   // do not carry a click out after the job it was not meant for
   }
   else if (busy_depth > 0 && --busy_depth == 0) cancel_flag = false;
 }
 
 bool ui_cancel_requested() { return cancel_flag; }
+void ui_filament_mode(uint8_t mode) { filament_mode = mode; }
+bool ui_take_short() { bool s = short_flag; short_flag = false; return s; }
+void ui_virtual_short() { short_flag = true; }
+void ui_defer_cancel() { defer_cancel = true; }
 
 static unsigned int led_period()
 {
   if (IsStopped()) return LED_ERROR_PERIOD_MS;
+  if (filament_mode == 2) return LED_WAIT_PERIOD_MS;
+  if (filament_mode == 1) return LED_CHANGE_PERIOD_MS;
   if (target_temperature[0] > 0 && abs(target_temperature[0] - (int)degHotend(0)) > 3) return LED_HEAT_PERIOD_MS;
   #ifdef SDSUPPORT
   if (card.sdprinting) return LED_PRINT_PERIOD_MS;
@@ -58,6 +68,9 @@ void ui_poll()
     if (busy_depth) cancel_flag = true;
     pending = e;
   } else if (e == OneButton::SHORT) {
+    if (filament_mode) short_flag = true;   // goes on with the filament change
+    else if (!busy_depth) pending = e;
+  } else if (e == OneButton::DOUBLE) {
     if (!busy_depth) pending = e;
   } else if (e == OneButton::BOOT_HOLD) {
     pending = e;
@@ -72,7 +85,12 @@ void ui_poll()
 
 void ui_run()
 {
-  if (pending == OneButton::NONE || busy_depth) return;
+  if (busy_depth) return;
+  if (defer_cancel) {
+    defer_cancel = false;
+    cancel_print();
+  }
+  if (pending == OneButton::NONE) return;
   OneButton::Event e = pending;
   pending = OneButton::NONE;
   if (e == OneButton::BOOT_HOLD) {
@@ -87,19 +105,33 @@ void ui_run()
     if (card.sdprinting) {
       card.pauseSDPrint();
     } else if (card.isPaused()) {
-      card.startFileprint();
-      starttime = millis();
+      if (filament_sensor_enabled() && !filament_present()) {
+        SERIAL_ECHO_START;
+        SERIAL_ECHOLNPGM("FILAMENT_REQUIRED: double click to change it");
+      } else {
+        card.startFileprint();
+        starttime = millis();
+      }
     } else
     #endif
     if (!machine_idle() || target_temperature[0] > 0) {
       // a host is printing (or something is heating): the button does not start anything
     } else if (!delta_calibrated) {
       enquecommand_P(PSTR("G33"));
+    } else if (filament_absent()) {
+      filament_change(true);   // load filament first; a click then starts the print
     }
     #ifdef SDSUPPORT
     else {
       card.startNewest();
     }
+    #endif
+  } else if (e == OneButton::DOUBLE) {
+    #ifdef SDSUPPORT
+    if (card.isPaused()) filament_change(false);   // paused print: change the filament, a click resumes it
+    else if (!card.sdprinting && machine_idle() && target_temperature[0] == 0) filament_change(true);
+    #else
+    if (machine_idle() && target_temperature[0] == 0) filament_change(true);
     #endif
   }
 }
