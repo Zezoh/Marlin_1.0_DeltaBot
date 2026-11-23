@@ -7,7 +7,7 @@ Marlin 1.0.2-3 firmware reduced to a clean, English-only build for **delta
 
 - Delta kinematics (`calculate_delta`, tower angle corrections, endstop adjustment, M665/M666)
 - English-only serial messages (`Marlin/language.h`)
-- RAMPS 1.3 / 1.4 boards only (ATmega2560 / ATmega1280); no LCD or panel support
+- RAMPS 1.3 / 1.4 (ATmega2560 / ATmega1280), one hotend, no heated bed, no LCD; M140/M190/M117/T0 are accepted and ignored
 - FSR Z probe (G30), delta auto-calibration (G33), bed mesh (G29), one button, status LED, filament change (M600) and runout sensor, ported from the DeltaCore project (see below)
 - Thermal runaway protection and the hardware watchdog (4 s) enabled by default
 - SD card printing enabled by default (FAT16/FAT32 via `Sd2Card` + `SdFat`, M20-M32, M928, autostart `auto0.g`...`auto9.g`)
@@ -96,10 +96,10 @@ PlatformIO:
 cd PlatformIOAddons && platformio run
 ```
 
-Make (avr-gcc + an Arduino core): `cd Marlin && make ARDUINO_INSTALL_DIR=<arduino dir> HARDWARE_MOTHERBOARD=33`
+Make (avr-gcc + an Arduino core): `cd Marlin && make ARDUINO_INSTALL_DIR=<arduino dir>`
 
-Select your electronics with `MOTHERBOARD` in `Marlin/Configuration.h`
-(board ids are listed in `Marlin/boards.h`) and tune the `DELTA_*` values for your printer.
+The pins are fixed (`Marlin/pins.h`, RAMPS 1.3 / 1.4 with one hotend and one fan). Tune the `DELTA_*` values and the
+other settings in `Marlin/Configuration.h` and `Marlin/Configuration_adv.h`.
 
 ## Tests
 
