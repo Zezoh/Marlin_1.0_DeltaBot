@@ -396,7 +396,7 @@ void get_command()
 
   while (!card.eof() && buflen < BUFSIZE && !stop_buffering) {
     int16_t n = card.get();
-    if (n == -1) {
+    if (n == -1 && !card.eof()) {   // -1 at the end of the file is the normal end of the print (handled below)
       // the card failed mid-print: stop feeding commands, say where, drop the half-read line.
       // The file stays open (paused), so a transient failure can be retried with M24.
       SERIAL_ERROR_START;

@@ -410,12 +410,11 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   float safe_speed = vmax_junction;
 
   int moves_queued = (block_buffer_head - block_buffer_tail + BLOCK_BUFFER_SIZE) & (BLOCK_BUFFER_SIZE - 1);
-  // The junction may only use previous_speed while that block is still planned in the buffer
-  // (moves_queued > 0): it can then be re-calculated to actually exit at this junction speed.
-  // Once the buffer is empty the executing block brakes to MINIMUM_PLANNER_SPEED and was planned
-  // to do so, so a junction computed against it would overrun. Without this, every buffer
-  // starvation braked the machine to max_xy_jerk/2 and stuttered.
-  if ((moves_queued > 0) && (previous_nominal_speed > 0.0001)) {
+  // Junction speed against the previous block only if more than one block is queued: a single block is the one
+  // the stepper is executing (or about to), it can no longer be re-planned and is braking to a stop, so the new
+  // block starts from the safe speed. Planning against it would make the machine jump from a standstill to the
+  // junction speed.
+  if ((moves_queued > 1) && (previous_nominal_speed > 0.0001)) {
     float jerk = sqrt(square(current_speed[X_AXIS] - previous_speed[X_AXIS]) + square(current_speed[Y_AXIS] - previous_speed[Y_AXIS]));
     vmax_junction = block->nominal_speed;
     if (jerk > max_xy_jerk) {
