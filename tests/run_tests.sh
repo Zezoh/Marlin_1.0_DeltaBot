@@ -47,6 +47,8 @@ P="$B/planner"; mkdir "$P"
 for f in planner.cpp planner.h Configuration.h Configuration_adv.h language.h Default_Version.h pins.h thermistortables.h; do cp "$ROOT/Marlin/$f" "$P/"; done
 cp "$T"/shim/*.h "$P/"; cp "$T/planner_speed_test.cpp" "$P/"
 (cd "$P" && $CXX -I. planner_speed_test.cpp planner.cpp -o speed); "$P/speed"
+cp "$T/planner_start_test.cpp" "$P/"
+(cd "$P" && $CXX -I. planner_start_test.cpp planner.cpp -o start); "$P/start" 600 12 150 40 6; "$P/start" 2500 20 150 40 6
 
 echo "== FAT file system"
 if command -v mkfs.fat >/dev/null && command -v mcopy >/dev/null; then

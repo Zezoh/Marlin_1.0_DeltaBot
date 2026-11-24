@@ -98,9 +98,15 @@ FORCE_INLINE void plan_discard_current_block()
 }
 
 // Gets the current block. Returns NULL if buffer empty
+// While plan_hold is set the stepper does not start a block until PLAN_HOLD_BLOCKS are queued (prepare_move sets it
+// while it queues the segments of a move that starts from rest, so the planner sees the move before it runs).
+extern volatile bool plan_hold;
 FORCE_INLINE block_t *plan_get_current_block()
 {
   if (block_buffer_head == block_buffer_tail) {
+    return (NULL);
+  }
+  if (plan_hold && ((block_buffer_head - block_buffer_tail + BLOCK_BUFFER_SIZE) & (BLOCK_BUFFER_SIZE - 1)) < PLAN_HOLD_BLOCKS) {
     return (NULL);
   }
   block_t *block = &block_buffer[block_buffer_tail];

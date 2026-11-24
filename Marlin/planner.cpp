@@ -60,6 +60,7 @@ static float previous_nominal_speed;    // Nominal speed of previous path line s
 //================= semi-private variables, used in inline functions ========
 //===========================================================================
 block_t block_buffer[BLOCK_BUFFER_SIZE];   // A ring buffer for motion instructions
+volatile bool plan_hold = false;
 volatile unsigned char block_buffer_head;  // Index of the next block to be pushed
 volatile unsigned char block_buffer_tail;  // Index of the block to process now
 
@@ -410,11 +411,12 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   float safe_speed = vmax_junction;
 
   int moves_queued = (block_buffer_head - block_buffer_tail + BLOCK_BUFFER_SIZE) & (BLOCK_BUFFER_SIZE - 1);
-  // Junction speed against the previous block only if more than one block is queued: a single block is the one
-  // the stepper is executing (or about to), it can no longer be re-planned and is braking to a stop, so the new
-  // block starts from the safe speed. Planning against it would make the machine jump from a standstill to the
-  // junction speed.
-  if ((moves_queued > 1) && (previous_nominal_speed > 0.0001)) {
+  // Junction speed against the previous block only if that block can still be re-planned. One that the stepper
+  // already executes is braking to a stop (the new block then starts from the safe speed: planning against it
+  // would jump from a standstill to the junction speed). One that has not started yet (the move is still being
+  // queued, see plan_hold) is joined, or the first segment of every move would brake to the safe speed.
+  const bool previous_open = moves_queued > 1 || (moves_queued == 1 && !block_buffer[(block_buffer_head + BLOCK_BUFFER_SIZE - 1) & (BLOCK_BUFFER_SIZE - 1)].busy);
+  if (previous_open && (previous_nominal_speed > 0.0001)) {
     float jerk = sqrt(square(current_speed[X_AXIS] - previous_speed[X_AXIS]) + square(current_speed[Y_AXIS] - previous_speed[Y_AXIS]));
     vmax_junction = block->nominal_speed;
     if (jerk > max_xy_jerk) {
