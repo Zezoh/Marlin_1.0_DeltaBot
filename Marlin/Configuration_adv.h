@@ -91,7 +91,7 @@
 #define PROBE_JERK_MM_S 12.0           // must stay above the speed change between two segments of a travel move (about 10 mm/s at 150 mm/s), or the planner brakes at every segment
 #define PROBE_RETRACT_FEED_MM_S 12.0         // lift after contact
 #define PROBE_TRAVEL_FEED_MM_S 150.0         // moves between probe points
-#define PROBE_TRAVEL_SEGMENTS_PER_SECOND 40  // travel moves need no 200 segments/s: fewer segments keep the planner ahead of the steppers
+#define PROBE_TRAVEL_SEGMENTS_PER_SECOND 100 // a travel move is cut into pieces: at 150 mm/s 40 pieces/s make the towers change speed by up to 10 mm/s 40 times a second (a rough buzz), 100 pieces/s about 4 mm/s
 #define PROBE_TRAVEL_Z_MM 30.0               // height of those moves until the bed height is known
 #define PROBE_CLEARANCE_MM 5.0               // then: this far above the highest contact found in the pass
 #define PROBE_TRAVEL_Z_FEED_MM_S 80.0        // vertical moves between points
