@@ -62,6 +62,7 @@ static unsigned long long out_bytes = 0;
 #define MAXREC 400000
 static unsigned long long rec_cycle[MAXREC];
 static unsigned char rec_pin[MAXREC];
+static signed char rec_dir[MAXREC];
 static long nrec = 0;
 static int recording = 0;
 static long oks = 0, sent_lines = 0;
@@ -97,6 +98,7 @@ static void pin_cb(avr_irq_t *irq, uint32_t value, void *param)
     p->rises++;
     if (recording && nrec < MAXREC && (idx == X_STEP || idx == Y_STEP || idx == Z_STEP || idx == E_STEP)) {
       rec_cycle[nrec] = avr->cycle;
+      rec_dir[nrec] = dir_positive(idx == X_STEP ? X_DIR : idx == Y_STEP ? Y_DIR : idx == Z_STEP ? Z_DIR : E_DIR) ? 1 : -1;
       rec_pin[nrec++] = idx;
     }
     if (idx == X_STEP) tower[0] += dir_positive(X_DIR) ? 1 : -1;
@@ -329,6 +331,13 @@ int main(int argc, char **argv)
         if ((k + 1) % 12 == 0) printf("\n  ");
       }
       printf("\n");
+    } else if (!strcmp(line, "dump")) {  // dump <file>: every recorded step as "cycle tower direction" (tower 0..2, 3 = E)
+      FILE *f = fopen(arg, "w");
+      if (f) {
+        for (long i = 0; i < nrec; i++)
+          fprintf(f, "%llu %d %d\n", rec_cycle[i], rec_pin[i] == X_STEP ? 0 : rec_pin[i] == Y_STEP ? 1 : rec_pin[i] == Z_STEP ? 2 : 3, rec_dir[i]);
+        fclose(f);
+      }
     } else if (!strcmp(line, "pokef")) {
       unsigned a;
       float v;

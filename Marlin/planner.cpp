@@ -167,10 +167,12 @@ static void planner_reverse_pass()
   unsigned char tail = block_buffer_tail;
   CRITICAL_SECTION_END
 
-  // The newest blocks are skipped (nothing newer to plan against), and the oldest block
-  // (at tail) is never changed because it may be executing already.
-  if (((block_buffer_head - tail + BLOCK_BUFFER_SIZE) & (BLOCK_BUFFER_SIZE - 1)) > 3) {
-    uint8_t next = (block_buffer_head - 4) & (BLOCK_BUFFER_SIZE - 1);
+  // Every block except the oldest is planned against the one after it. (The oldest, at tail, may be executing already
+  // and is never changed.) Skipping the newest few blocks, as the original does, left the end of every move without a
+  // planned deceleration: the last blocks each assumed a stop within their own length and the machine cruised at
+  // that low speed for several millimetres before stopping.
+  if (((block_buffer_head - tail + BLOCK_BUFFER_SIZE) & (BLOCK_BUFFER_SIZE - 1)) > 2) {
+    uint8_t next = (block_buffer_head - 1) & (BLOCK_BUFFER_SIZE - 1);
     while (next != tail) {
       uint8_t current = PREV_BLOCK_INDEX(next);
       if (current == tail) break;

@@ -46,4 +46,20 @@ int main(int argc, char **argv) {
   }
   printf("acc %.0f jerk %.0f feed %.0f seg/s %.0f -> %ld segments of %.2f mm, produced every %.0f ms\nstep events per 10 ms (largest axis count): ", acc, jerk, feed, segps, steps, dist/steps, prod_ms);
   for (size_t i = 0; i < win.size(); i++) printf("%.0f ", win[i]); printf("\n");
+  size_t i0 = 0;
+  while (i0 < win.size() && win[i0] < 1) i0++;
+  // the start of the move: the speed rises from the first block on (the first block used to brake to the safe speed)
+  double best = 0; int bad = 0;
+  for (size_t i = i0; i < i0 + 15 && i < win.size(); i++) { if (win[i] < 0.75 * best) bad++; if (win[i] > best) best = win[i]; }
+  if (bad) { puts("FAIL: the speed dips right after the start of a move"); return 1; }
+  // the end of the move: once it is past its fastest point the speed only goes down (the newest blocks used to be left
+  // out of the reverse pass: the last ones cruised at a low speed for several millimetres before the final stop)
+  size_t ipeak = i0;
+  for (size_t i = i0; i < win.size(); i++) if (win[i] > win[ipeak]) ipeak = i;
+  int ups = 0; double worst = 0;
+  for (size_t i = ipeak + 1; i < win.size(); i++)
+    if (win[i - 1] > 0 && win[i] > win[i - 1] * 1.08) { ups++; worst = win[i] / win[i - 1]; }
+  if (ups) { printf("FAIL: the speed goes up again %d times while the move slows down (up to x%.2f)\n", ups, worst); return 1; }
+  puts("planner start and end of a move OK");
+  return 0;
 }
