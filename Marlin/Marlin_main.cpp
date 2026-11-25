@@ -46,7 +46,7 @@
 #include "pins_arduino.h"
 #include "math.h"
 
-// G-codes: G0/G1 move, G2/G3 arc, G4 dwell, G28 home, G29 bed mesh, G30 probe, G33 delta calibration,
+// G-codes: G0/G1 move, G2/G3 arc (I J K or R), G17/G18/G19 arc plane, G4 dwell, G28 home, G29 bed mesh, G30 probe, G33 delta calibration,
 //          G90/G91 absolute/relative, G92 set E
 // M-codes: M17/M18/M84 steppers, M20-M32/M928 SD card, M80/M81, M82/M83, M92 steps per unit, M104/M109 hotend,
 //          M105 temperatures, M106/M107 fan, M112 emergency stop, M114 position, M115 firmware, M119 endstops,
@@ -109,7 +109,10 @@ const char echomagic[] PROGMEM = "echo:";
 const char axis_codes[NUM_AXIS] = {'X', 'Y', 'Z', 'E'};
 static float destination[NUM_AXIS] = {0.0, 0.0, 0.0, 0.0};
 
-static float offset[3] = {0.0, 0.0, 0.0};
+static float offset[3] = {0.0, 0.0, 0.0};  // arc centre from the start: I, J, K
+static float arc_radius = 0.0;
+static bool arc_has_radius = false;         // G2/G3 with R
+static uint8_t arc_plane = 0;               // G17 XY (0), G18 XZ (1), G19 YZ (2)
 static float feedrate = 1500.0, next_feedrate, saved_feedrate;
 static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
 
@@ -711,6 +714,15 @@ void process_commands()
         }
         break;
 
+      case 17:  // G17 - arcs in the XY plane
+        arc_plane = 0;
+        break;
+      case 18:  // G18 - arcs in the XZ plane
+        arc_plane = 1;
+        break;
+      case 19:  // G19 - arcs in the YZ plane
+        arc_plane = 2;
+        break;
       case 90:  // G90
         relative_mode = false;
         break;
@@ -1238,16 +1250,11 @@ void get_arc_coordinates()
 {
   get_coordinates();
 
-  if (code_seen('I')) {
-    offset[0] = code_value();
-  } else {
-    offset[0] = 0.0;
-  }
-  if (code_seen('J')) {
-    offset[1] = code_value();
-  } else {
-    offset[1] = 0.0;
-  }
+  offset[0] = code_seen('I') ? code_value() : 0.0;
+  offset[1] = code_seen('J') ? code_value() : 0.0;
+  offset[2] = code_seen('K') ? code_value() : 0.0;
+  arc_has_radius = code_seen('R');
+  arc_radius = arc_has_radius ? code_value() : 0.0;
 }
 
 void clamp_to_software_endstops(float target[3])
@@ -1367,9 +1374,44 @@ void prepare_move()
   }
 }
 
+static void arc_rejected(const char *why_P)
+{
+  SERIAL_ERROR_START;
+  SERIAL_ERRORPGM("G2/G3: ");
+  serialprintPGM(why_P);
+  SERIAL_ERRORLNPGM(", the move is ignored");
+  for (int8_t i = 0; i < NUM_AXIS; i++) destination[i] = current_position[i];   // the parser stays where it was
+}
+
 void prepare_arc_move(char isclockwise)
 {
-  float r = hypot(offset[X_AXIS], offset[Y_AXIS]);  // Compute arc radius for mc_arc
+  // the plane of the arc: the two axes it turns in, and the one it may rise along (a helix)
+  const uint8_t a0 = arc_plane == 2 ? Y_AXIS : X_AXIS;
+  const uint8_t a1 = arc_plane == 0 ? Y_AXIS : Z_AXIS;
+  const uint8_t lin = arc_plane == 0 ? Z_AXIS : (arc_plane == 1 ? Y_AXIS : X_AXIS);
+  float r;
+  if (arc_has_radius) {   // R: the centre follows from the end point
+    float o0, o1;
+    if (!arc_offsets_from_radius(destination[a0] - current_position[a0], destination[a1] - current_position[a1], arc_radius, isclockwise, o0, o1)) {
+      arc_rejected(PSTR("the radius R does not fit the end point"));
+      return;
+    }
+    offset[a0] = o0;
+    offset[a1] = o1;
+    r = fabs(arc_radius);
+  } else {
+    r = hypot(offset[a0], offset[a1]);
+    if (r < 0.001) {
+      arc_rejected(PSTR("no centre (I J K) or radius (R)"));
+      return;
+    }
+    // the end point must be on the circle that starts at the current position
+    float end_r = hypot(destination[a0] - current_position[a0] - offset[a0], destination[a1] - current_position[a1] - offset[a1]);
+    if (fabs(end_r - r) > ARC_RADIUS_ERROR_MM) {
+      arc_rejected(PSTR("the end point is not on the circle"));
+      return;
+    }
+  }
   // like prepare_move(): no extrusion with a cold nozzle or of a very long piece (said once, not for every segment of the arc)
   float e_travel = destination[E_AXIS] - current_position[E_AXIS];
   if (e_travel != 0 && (degHotend(0) < extrude_min_temp || fabs(e_travel) > EXTRUDE_MAXLENGTH)) {
@@ -1389,7 +1431,7 @@ void prepare_arc_move(char isclockwise)
   plan_hold = !blocks_queued();       // an arc from rest starts when the planner has seen enough of it
 
   // Trace the arc
-  mc_arc(current_position, destination, offset, X_AXIS, Y_AXIS, Z_AXIS, feedrate * feedmultiply / 60 / 100.0, r, isclockwise, active_extruder);
+  mc_arc(current_position, destination, offset, a0, a1, lin, feedrate * feedmultiply / 60 / 100.0, r, isclockwise, active_extruder);
   plan_hold = false;
 
   // As far as the parser is concerned, the position is now == target. In reality the

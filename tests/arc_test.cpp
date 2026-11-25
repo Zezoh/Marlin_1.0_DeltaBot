@@ -72,6 +72,55 @@ int main()
     printf("arc with a bed mesh: %zu segments, the towers rise by up to %.3f mm, worst deviation from the mesh offset %.5f mm\n", segs.size(), biggest, worst);
     assert(worst < 0.002 && biggest > 0.05);
   }
+  // 5. G2/G3 with R: the same circle as with the centre offsets, both directions, and the bigger arc with a negative R
+  {
+    for (int cw = 0; cw < 2; cw++)
+      for (int big = 0; big < 2; big++) {
+        // circle of radius 30 around (5, -4); start at angle a0, end at angle a1 (the sweep is < 180 degrees or more than 180)
+        float cx = 5, cy = -4, R = 30;
+        float a0 = 20 * M_PI / 180, sweep = (big ? 250 : 100) * M_PI / 180;
+        float a1 = cw ? a0 - sweep : a0 + sweep;
+        float sx = cx + R * cos(a0), sy = cy + R * sin(a0), ex = cx + R * cos(a1), ey = cy + R * sin(a1);
+        float o0, o1;
+        // the sweep > 180 degrees takes a negative R
+        bool ok = arc_offsets_from_radius(ex - sx, ey - sy, big ? -R : R, cw, o0, o1);
+        printf("R form %s %s: centre offset (%.3f, %.3f), expected (%.3f, %.3f)\n", cw ? "G2" : "G3", big ? "big" : "small", o0, o1, cx - sx, cy - sy);
+        assert(ok && fabs(o0 - (cx - sx)) < 1e-3 && fabs(o1 - (cy - sy)) < 1e-3);
+      }
+    float a, b;
+    assert(!arc_offsets_from_radius(100, 0, 40, 1, a, b));  // the points are too far apart for the radius
+    assert(!arc_offsets_from_radius(0, 0, 40, 1, a, b));    // the same point
+    assert(arc_offsets_from_radius(80, 0, 40, 1, a, b) && fabs(a - 40) < 1e-3 && fabs(b) < 1e-3);  // a half circle
+  }
+  // 6. arcs in the XZ and YZ planes (with a helix along the third axis), a full circle, small and big radii: every piece is on the circle
+  {
+    struct Case { const char *name; uint8_t a0, a1, lin; float start[3], end[3], off[3]; float radius; uint8_t cw; };
+    Case cases[] = {
+      {"XY helix r=40", X_AXIS, Y_AXIS, Z_AXIS, {40, 0, 10}, {0, 40, 14}, {-40, 0, 0}, 40, 0},
+      {"XZ arc r=20", X_AXIS, Z_AXIS, Y_AXIS, {20, 5, 30}, {0, 15, 50}, {-20, 0, 0}, 20, 0},
+      {"YZ arc r=25", Y_AXIS, Z_AXIS, X_AXIS, {0, 25, 30}, {10, 0, 55}, {0, -25, 0}, 25, 1},
+      {"XY full circle r=3", X_AXIS, Y_AXIS, Z_AXIS, {10, 10, 5}, {10, 10, 5}, {-3, 0, 0}, 3, 1},
+      {"XY half circle r=70", X_AXIS, Y_AXIS, Z_AXIS, {-35, 0, 5}, {35, 0, 5}, {35, 0, 0}, 35, 0},
+    };
+    for (auto &c : cases) {
+      segs.clear();
+      float pos[4] = {c.start[0], c.start[1], c.start[2], 0}, tgt[4] = {c.end[0], c.end[1], c.end[2], 2.0f}, off[4] = {c.off[0], c.off[1], c.off[2], 0};
+      mc_arc(pos, tgt, off, c.a0, c.a1, c.lin, 40, c.radius, c.cw, 0);
+      float cen0 = c.start[c.a0] + c.off[c.a0], cen1 = c.start[c.a1] + c.off[c.a1];
+      double worst = 0, len = 0, longest = 0;
+      for (auto &s : segs) {
+        double rr = hypot(s.cart[c.a0] - cen0, s.cart[c.a1] - cen1);
+        worst = fmax(worst, fabs(rr - c.radius));
+        len += s.len;
+        longest = fmax(longest, s.len);
+      }
+      Seg &last = segs.back();
+      double miss = fmax(fabs(last.cart[0] - c.end[0]), fmax(fabs(last.cart[1] - c.end[1]), fabs(last.cart[2] - c.end[2])));
+      printf("%-22s %3zu pieces, longest %.2f mm, worst distance from the circle %.4f mm, ends %.4f mm from the target, E %.3f\n", c.name, segs.size(), longest, worst, miss, last.e);
+      assert(worst < 0.01 && miss < 0.01 && fabs(last.e - 2.0f) < 1e-4);
+      assert(longest <= ARC_MAX_SEGMENT_MM + 0.01 && longest >= 0.5);
+    }
+  }
   puts("arcs and reach OK");
   return 0;
 }

@@ -69,7 +69,10 @@
 //#define ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED
 
 // Arc interpretation settings:
-#define MM_PER_ARC_SEGMENT 1
+#define MM_PER_ARC_SEGMENT 1      // shortest piece an arc is cut into, mm
+#define ARC_TOLERANCE_MM 0.01     // longest piece: the chord of a piece may be this far inside the circle (a big arc gets longer pieces)
+#define ARC_MAX_SEGMENT_MM 5.0
+#define ARC_RADIUS_ERROR_MM 0.5   // G2/G3 with I J K: the end point may be this far off the circle that starts at the current position
 #define N_ARC_CORRECTION 25
 
 #define dropsegments 5  // everything with less than this number of steps will be ignored as move and joined with the next movement

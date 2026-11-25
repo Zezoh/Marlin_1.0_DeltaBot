@@ -29,4 +29,9 @@
 void mc_arc(float *position, float *target, float *offset, unsigned char axis_0, unsigned char axis_1,
             unsigned char axis_linear, float feed_rate, float radius, unsigned char isclockwise, uint8_t extruder);
 
+// G2/G3 with a radius R instead of a centre: the offset (from the start to the centre, in the plane of the arc) of the
+// circle through the start and an end point dx, dy away. A negative R takes the bigger of the two arcs.
+// False if there is no such circle (the points are too far apart for the radius, or are the same point).
+bool arc_offsets_from_radius(float dx, float dy, float r, unsigned char isclockwise, float &offset0, float &offset1);
+
 #endif

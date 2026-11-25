@@ -38,6 +38,7 @@ own threshold.
 | Code | |
 |---|---|
 | `G30` | probe at the current X/Y and print the bed height |
+| `G2` / `G3` | clockwise / counter-clockwise arc (`X Y Z E F`), with the centre as offsets `I J K` from the start, or with a radius `R` (a negative `R` takes the arc of more than 180 degrees). `G17` / `G18` / `G19` choose the plane XY / XZ / YZ; the third axis moves along a helix. An end point more than 0.5 mm off the circle, or an `R` that does not fit, is refused with an error and the position stays. The pieces are as long as 0.01 mm of chord error allows (1 to 5 mm), they follow the bed mesh and stop where the arms cannot reach. |
 | `G29 [S0]` | bed mesh: probes 19 points (12 at 80 mm, 6 at 40 mm, the centre) and, if the bed is within 5 mm of Z 0, switches the mesh on and saves it (S0: do not save). Z is then corrected by the interpolated bed height. Run G33 first. A failed G29 keeps the old mesh. |
 | `M420 [S0\|1] [Z<mm>]` | mesh on/off without moving the nozzle; Z = height where the correction has faded out (0 = never) |
 | `G33 [F3\|4\|6] [P7\|10] [S0]` | least-squares delta calibration: probes P points, fits F factors (3 = endstops, 4 = + delta radius, **6 = + tower angles, default**), applies the result, re-homes and probes again, up to 6 passes. It ends calibrated (RMS <= 0.05 mm), noise limited (<= 0.25 mm) or uncertified. S0 does not save to EEPROM. A result outside the allowed range is refused and the old settings are restored. |

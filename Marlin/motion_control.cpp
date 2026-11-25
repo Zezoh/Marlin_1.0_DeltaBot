@@ -75,7 +75,11 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
 
   float millimeters_of_travel = hypot(angular_travel * radius, fabs(linear_travel));
   if (millimeters_of_travel < 0.001) { return; }
-  uint16_t segments = floor(millimeters_of_travel / MM_PER_ARC_SEGMENT);
+  // pieces: as long as the tolerance allows (a big, slow arc needs fewer), never shorter than MM_PER_ARC_SEGMENT
+  float piece = 2 * sqrt(2 * radius * ARC_TOLERANCE_MM);
+  if (piece < MM_PER_ARC_SEGMENT) piece = MM_PER_ARC_SEGMENT;
+  if (piece > ARC_MAX_SEGMENT_MM) piece = ARC_MAX_SEGMENT_MM;
+  uint16_t segments = floor(millimeters_of_travel / piece);
   if (segments == 0) segments = 1;
 
   float theta_per_segment = angular_travel / segments;
@@ -88,10 +92,10 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
                 sin(phi)  cos(phi)] * r
      The center of the circle is the axis of rotation and the radius vector is defined from the circle
      center to the initial position. Each line segment is formed by successive vector rotations, with
-     the small angle approximation for cos and sin. Error may accumulate from numerical round-off
+     the exact cos and sin of the angle of one piece. Error may accumulate from numerical round-off
      (single precision), so the exact radius vector is recomputed every N_ARC_CORRECTION segments. */
-  float cos_T = 1 - 0.5 * theta_per_segment * theta_per_segment;  // Small angle approximation
-  float sin_T = theta_per_segment;
+  float cos_T = cos(theta_per_segment);  // exact: a small radius has big angles per piece
+  float sin_T = sin(theta_per_segment);
 
   float arc_target[NUM_AXIS];
   int8_t count = 0;
@@ -133,4 +137,21 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   if (!plan_line_to(target, previous, feed_rate, extruder)) {
     abort_arc(target, previous, arc_target[E_AXIS]);
   }
+}
+
+bool arc_offsets_from_radius(float dx, float dy, float r, uint8_t isclockwise, float &offset0, float &offset1)
+{
+  float d2 = dx * dx + dy * dy;
+  if (d2 < 1.0e-6) return false;  // a full circle has no radius form: the same start and end point fit every circle
+  float h2 = 4 * r * r - d2;
+  if (h2 < 0) {
+    if (h2 > -0.01 * d2) h2 = 0;  // the end points are a diameter apart, within rounding
+    else return false;
+  }
+  float h_x2_div_d = -sqrt(h2) / sqrt(d2);
+  if (!isclockwise) h_x2_div_d = -h_x2_div_d;  // the centre is on the other side of the chord for the other direction
+  if (r < 0) h_x2_div_d = -h_x2_div_d;         // a negative radius: the arc of more than 180 degrees
+  offset0 = 0.5 * (dx - dy * h_x2_div_d);
+  offset1 = 0.5 * (dy + dx * h_x2_div_d);
+  return true;
 }
