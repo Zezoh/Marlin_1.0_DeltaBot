@@ -1354,7 +1354,8 @@ void prepare_move()
   float seconds = 6000 * cartesian_mm / feedrate / feedmultiply;
   // a move of the extruder alone needs no segments of the nozzle path
   // and short segments (a few steps each) only make the planner stutter: at least DELTA_MIN_SEGMENT_MM long
-  long steps = extruder_only ? 1 : max(1L, min(long(delta_segments_per_second * seconds), long(cartesian_mm / DELTA_MIN_SEGMENT_MM)));
+  float segments_per_second = min(delta_segments_per_second, (float)DELTA_MAX_SEGMENTS_PER_SECOND);
+  long steps = extruder_only ? 1 : max(1L, min(long(segments_per_second * seconds), long(cartesian_mm / DELTA_MIN_SEGMENT_MM)));
   plan_hold = steps > 1 && !blocks_queued();   // a move from rest starts when the planner has seen enough of it
   for (long s = 1; s <= steps; s++) {
     float fraction = float(s) / float(steps);
