@@ -93,7 +93,7 @@
 #define PROBE_ACCELERATION_MM_S2 600.0  // acceleration and jerk while probing (printing values are restored afterwards)
 #define PROBE_JERK_MM_S 12.0           // must stay above the speed change between two segments of a travel move (about 10 mm/s at 150 mm/s), or the planner brakes at every segment
 #define PROBE_RETRACT_FEED_MM_S 12.0         // lift after contact
-#define PROBE_TRAVEL_FEED_MM_S 150.0         // moves between probe points
+#define PROBE_TRAVEL_FEED_MM_S 100.0  // moves between probe points. Above this the towers of a long descent need more than 10000 steps/s: the stepper switches to double steps (a jump in speed) and runs close to the processor limit (a hard, uneven motion)
 #define PROBE_TRAVEL_SEGMENTS_PER_SECOND 100 // a travel move is cut into pieces: at 150 mm/s 40 pieces/s make the towers change speed by up to 10 mm/s 40 times a second (a rough buzz), 100 pieces/s about 4 mm/s
 #define PROBE_TRAVEL_Z_MM 30.0               // height of those moves until the bed height is known
 #define PROBE_CLEARANCE_MM 5.0               // then: this far above the highest contact found in the pass
