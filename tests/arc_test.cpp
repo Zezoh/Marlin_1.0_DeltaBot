@@ -43,6 +43,35 @@ int main()
     float last[3] = {segs.back().c[0], segs.back().c[1], segs.back().c[2]};
     (void)last;
   }
+  // 4. the bed mesh moves an arc like any other move: every tower of every segment is raised by the mesh offset at that point
+  {
+    mesh_have = true;
+    for (int k = 0; k < MESH_POINTS; k++) mesh_z[k] = 0.3f * sinf(k * 0.7f) + 0.1f;
+    mesh_changed();
+    float p[4] = {40, 0, 0.3f, 0}, t[4] = {0, 40, 0.3f, 0}, o[4] = {-40, 0, 0, 0};
+    mesh_active = false;
+    segs.clear();
+    mc_arc(p, t, o, X_AXIS, Y_AXIS, Z_AXIS, 50, 40, 0, 0);
+    std::vector<Seg> plain = segs;
+    float p2[4] = {40, 0, 0.3f, 0}, t2[4] = {0, 40, 0.3f, 0};
+    mesh_active = true;
+    segs.clear();
+    mc_arc(p2, t2, o, X_AXIS, Y_AXIS, Z_AXIS, 50, 40, 0, 0);
+    mesh_active = false;
+    double worst = 0, biggest = 0;
+    assert(segs.size() == plain.size() && segs.size() > 10);
+    for (size_t k = 0; k < segs.size(); k++) {
+      float ang = (float)((k + 1) * (M_PI / 2) / segs.size());
+      float off_here = mesh_offset(40 * cosf(ang), 40 * sinf(ang));
+      for (int a = 0; a < 3; a++) {
+        double d = segs[k].c[a] - plain[k].c[a];
+        worst = fmax(worst, fabs(d - off_here));
+        biggest = fmax(biggest, fabs(d));
+      }
+    }
+    printf("arc with a bed mesh: %zu segments, the towers rise by up to %.3f mm, worst deviation from the mesh offset %.5f mm\n", segs.size(), biggest, worst);
+    assert(worst < 0.002 && biggest > 0.05);
+  }
   puts("arcs and reach OK");
   return 0;
 }

@@ -1370,9 +1370,27 @@ void prepare_move()
 void prepare_arc_move(char isclockwise)
 {
   float r = hypot(offset[X_AXIS], offset[Y_AXIS]);  // Compute arc radius for mc_arc
+  // like prepare_move(): no extrusion with a cold nozzle or of a very long piece (said once, not for every segment of the arc)
+  float e_travel = destination[E_AXIS] - current_position[E_AXIS];
+  if (e_travel != 0 && (degHotend(0) < extrude_min_temp || fabs(e_travel) > EXTRUDE_MAXLENGTH)) {
+    SERIAL_ECHO_START;
+    if (degHotend(0) < extrude_min_temp) {
+      SERIAL_ECHOLNPGM(MSG_ERR_COLD_EXTRUDE_STOP);
+    } else {
+      SERIAL_ECHOLNPGM(MSG_ERR_LONG_EXTRUDE_STOP);
+    }
+    plan_set_e_position(destination[E_AXIS]);
+    current_position[E_AXIS] = destination[E_AXIS];
+    e_travel = 0;
+  }
+  if (e_travel > 0.0001 && axis_known_position[X_AXIS] && axis_known_position[Y_AXIS] && axis_known_position[Z_AXIS])
+    filament_note_extrusion();  // from now on running out of filament matters
+  if (feedrate == 0) feedrate = 1.0;  // G2 F0 would divide by zero
+  plan_hold = !blocks_queued();       // an arc from rest starts when the planner has seen enough of it
 
   // Trace the arc
   mc_arc(current_position, destination, offset, X_AXIS, Y_AXIS, Z_AXIS, feedrate * feedmultiply / 60 / 100.0, r, isclockwise, active_extruder);
+  plan_hold = false;
 
   // As far as the parser is concerned, the position is now == target. In reality the
   // motion control system might still be processing the action and the real tool position
