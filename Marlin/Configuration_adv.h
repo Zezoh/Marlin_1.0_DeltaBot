@@ -100,6 +100,9 @@
 #define PROBE_FALSE_LIFT_MM 1.0              // lift after a contact that was vibration or noise
 #define PROBE_LIFT_MM 1.0                    // lift after every real contact, before the next stroke
 #define PROBE_MIN_STROKE_MM 0.3              // a contact sooner than this after a stroke started is vibration, not the bed
+#define PROBE_TRACK_SHIFT 5  // the stroke reference follows slow drift of the FSR with a time constant of 2^this samples (5 ms each)
+#define PROBE_RELAX_MS 300  // after a contact the bed relaxes: wait this long before the next stroke of the same point
+#define PROBE_REPEAT_DEPTH_MM 0.6  // the next strokes of a point may go this far below its first contact, no deeper
 #define PROBE_SETTLE_MS 100                  // wait after a move before the probe is armed
 #define PROBE_AVERAGE_SAMPLES 3              // strokes in agreement that make a probed point
 #define PROBE_AVERAGE_TOLERANCE_MM 0.05
@@ -115,9 +118,11 @@
 #define CALIB_PLATEAU_RATIO 0.7         // "stops improving": a pass is not below this fraction of the previous one
 #define CALIB_MAX_PASSES 6              // probe, solve, re-home, verify: at most this many probe passes
 #define CALIB_FIRST_PASS_DEPTH_MM 10.0  // how far below the expected bed the first pass looks for it
+#define MESH_PLAUSIBLE_MM 1.0           // after G33 a G29 point further from Z = 0 than this is probed again, then refused
+#define MESH_DRIFT_MM 0.25              // G29 probes its first point again at the end: a difference above this means the probe drifted
 #define MESH_MAX_MM 5.0                 // G29 refuses a bed that is further than this from Z = 0: run G33 first
 #define CALIB_PASS_DEPTH_MM 5.0
-#define CALIB_POINT_DEPTH_MM 6.0        // after the first point of a pass, how far below the previous point's height to look
+#define CALIB_POINT_DEPTH_MM 3.0        // after the first point of a pass, how far below the previous point's height to look
 #define CALIB_PROBE_RADIUS_MM 75.0      // the outer ring of probe points (the inner ring is half of it): inside the bed edge
 #define CALIB_MAX_RADIUS_DELTA_MM 15.0  // the solution may move the delta radius by this much from where G33 started,
 #define CALIB_MAX_HEIGHT_DELTA_MM 20.0  // the home height by this much,

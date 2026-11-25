@@ -86,7 +86,7 @@ static void adapt_to_noise()
     manage_heater();
     manage_inactivity();
   }
-  unsigned int noise = hi - lo, cap = 8 * FSR_SENSITIVITY;
+  unsigned int noise = hi - lo, cap = 2 * FSR_SENSITIVITY;
   if (cap < fsr_sensitivity) cap = fsr_sensitivity;
   if (noise >= fsr_sensitivity) {
     unsigned int s = noise + noise / 2 + 2;
@@ -141,7 +141,7 @@ static void note_false_trigger()
 {
   if (++false_triggers < 2) return;
   false_triggers = 0;
-  unsigned int s = fsr_sensitivity + fsr_sensitivity / 2 + 1, cap = 8 * FSR_SENSITIVITY;
+  unsigned int s = fsr_sensitivity + fsr_sensitivity / 2 + 1, cap = 2 * FSR_SENSITIVITY;
   if (cap < fsr_sensitivity) cap = fsr_sensitivity;
   if (s > cap) s = cap;
   if (s > fsr_sensitivity) {
@@ -181,9 +181,11 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
   while (n < PROBE_AVERAGE_MAX_STROKES) {
     if (ui_cancel_requested() || IsStopped()) return false;
     if (attempts++ >= 2 * PROBE_AVERAGE_MAX_STROKES) return false;
-    wait_ms(PROBE_SETTLE_MS);
+    wait_ms(attempts > 1 ? PROBE_RELAX_MS : PROBE_SETTLE_MS);   // after a contact the bed relaxes for a while
     float from = current_position[Z_AXIS];
-    if (stroke(x, y, from, bed_guess - depth, PROBE_FEED_MM_S, true, zz)) {
+    float floor_z = bed_guess - depth;   // the strokes after the first contact of a point do not go much deeper than it
+    if (n > 0 && samples[0] - PROBE_REPEAT_DEPTH_MM > floor_z) floor_z = samples[0] - PROBE_REPEAT_DEPTH_MM;
+    if (stroke(x, y, from, floor_z, PROBE_FEED_MM_S, true, zz)) {
       if ((from - zz < PROBE_MIN_STROKE_MM) || (have_deepest && zz > deepest_contact + PROBE_FALSE_TRIGGER_MM)) {
         note_false_trigger();  // right at the start of the move, or in mid-air: vibration or noise, not the bed
         SERIAL_ECHO_START;
@@ -209,6 +211,15 @@ static bool probe_point(float x, float y, float bed_guess, float depth, float &r
         }
       }
       stroke(x, y, zz, zz + PROBE_LIFT_MM, PROBE_RETRACT_FEED_MM_S, false, zz);  // lift a little, probe again
+    } else if (n > 0) {
+      // no contact within the repeat depth: the probe lost its sensitivity here. Keep what was measured.
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPAIR("probe: no repeat contact down to Z", zz);
+      SERIAL_ECHOLNPGM(", using the highest contact");
+      for (uint8_t k = 1; k < n; k++) if (samples[k] > samples[0]) samples[0] = samples[k];   // deeper ones are presses, not the bed
+      n = 1;
+      stroke(x, y, zz, zz + PROBE_LIFT_MM, PROBE_RETRACT_FEED_MM_S, false, zz);
+      break;
     } else {
       // no contact within the depth limit
       SERIAL_ERROR_START;
@@ -315,6 +326,20 @@ void probe_g29(bool save)
     mesh_point_xy(i, xy);
     if (i == 0) ok = probe_point(xy[0], xy[1], 0.0, delta_calibrated ? CALIB_PASS_DEPTH_MM : CALIB_FIRST_PASS_DEPTH_MM, z);
     else ok = probe_point(xy[0], xy[1], last_z, CALIB_POINT_DEPTH_MM, z);
+    if (ok && delta_calibrated && fabs(z - probe_z_offset) > MESH_PLAUSIBLE_MM) {   // a calibrated bed is not that far from Z 0: again
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPAIR("G29 point ", (unsigned long)i);
+      SERIAL_ECHOPAIR(" Z", z - probe_z_offset);
+      SERIAL_ECHOLNPGM(" is too far from the plane, probing it again");
+      ok = probe_point(xy[0], xy[1], last_z, CALIB_POINT_DEPTH_MM, z);
+      if (ok && fabs(z - probe_z_offset) > MESH_PLAUSIBLE_MM) {
+        SERIAL_ERROR_START;
+        SERIAL_ERRORPGM("G29: point ");
+        SERIAL_ERROR(i);
+        SERIAL_ERRORLNPGM(" is again too far from the plane: the probe is not reliable here (loose bed, sensor?)");
+        ok = false;
+      }
+    }
     if (ok) {
       last_z = z;
       stage[i] = z - probe_z_offset;
@@ -328,12 +353,31 @@ void probe_g29(bool save)
       SERIAL_ECHOLN("");
     }
   }
+  if (ok) {   // the first point again: a probe that drifted during the run shows here
+    float xy[2], z;
+    mesh_point_xy(0, xy);
+    ok = probe_point(xy[0], xy[1], last_z, CALIB_POINT_DEPTH_MM, z);
+    if (ok && fabs(z - probe_z_offset - stage[0]) > MESH_DRIFT_MM) {
+      SERIAL_ERROR_START;
+      SERIAL_ERRORPGM("G29: the probe drifted during the run, point 0 read ");
+      SERIAL_ERROR(stage[0]);
+      SERIAL_ERRORPGM(" first and ");
+      SERIAL_ERROR(z - probe_z_offset);
+      SERIAL_ERRORLNPGM(" at the end");
+      ok = false;
+      i = MESH_POINTS + 1;
+    }
+  }
   lift_to_travel();
   if (!ok) {
     SERIAL_ERROR_START;
-    SERIAL_ERRORPGM("G29 failed at point ");
-    SERIAL_ERROR(i - 1);
-    SERIAL_ERRORLNPGM(", the previous mesh is kept");
+    if (i > MESH_POINTS) {
+      SERIAL_ERRORLNPGM("G29 failed: the previous mesh is kept");
+    } else {
+      SERIAL_ERRORPGM("G29 failed at point ");
+      SERIAL_ERROR(i - 1);
+      SERIAL_ERRORLNPGM(", the previous mesh is kept");
+    }
   } else if (fabs(lo) > MESH_MAX_MM || fabs(hi) > MESH_MAX_MM) {
     SERIAL_ERROR_START;
     SERIAL_ERRORLNPGM("G29: the bed is more than 5 mm from Z 0, run G33 first. The previous mesh is kept");

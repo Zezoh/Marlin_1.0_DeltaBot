@@ -16,6 +16,7 @@ void updatePID();
 void PID_autotune(float temp, int ncycles);
 int getHeaterPower(int heater);
 
+extern volatile unsigned char fsr_seq;  // changes with every new reading
 extern volatile unsigned int fsr_raw;  // latest FSR (Z probe) ADC reading, 0..1023
 extern int target_temperature[EXTRUDERS];
 extern float current_temperature[EXTRUDERS];

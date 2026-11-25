@@ -29,6 +29,9 @@ static int strokes = 0, homes = 0;
 static bool transient_fast = false, transient_slow_once = false, slow_used = false;  // the FSR fires at the start of a move (vibration)
 static float feed_now = 0;
 static int low_travels = 0, drags = 0;
+static bool soft_spot = false;  // near the left edge the probe loses its sensitivity: each stroke there needs to go deeper
+static int soft_hits = 0;
+static float deepest_press = 0;  // the deepest the true nozzle went below the true bed
 
 static float frand() { return 2.0f * rand() / RAND_MAX - 1.0f; }
 static float true_z(const float tower[3])
@@ -100,7 +103,11 @@ void st_synchronize()
     float z = true_z(q);
     bool bump = armed && k <= 10 && ((transient_fast && feed_now > 20) || (transient_slow_once && feed_now < 20 && !slow_used));
     if (bump && feed_now < 20) slow_used = true;
-    if (bump || (armed && z <= bed_z + warp(current_position[0], current_position[1]) + contact_noise * frand())) {
+    static const float soft_extra[4] = {0.0f, 0.3f, 2.5f, 3.7f};
+    float extra = (soft_spot && current_position[0] < -60) ? soft_extra[soft_hits < 3 ? soft_hits : 3] : 0.0f;
+    if (armed && bed_z + warp(current_position[0], current_position[1]) - z > deepest_press) deepest_press = bed_z + warp(current_position[0], current_position[1]) - z;
+    if (bump || (armed && z <= bed_z + warp(current_position[0], current_position[1]) - extra + contact_noise * frand())) {
+      if (extra > 0 || (soft_spot && current_position[0] < -60)) soft_hits++;
       for (int a = 0; a < 3; a++) believed[a] = q[a];
       hit = true;
       strokes++;
@@ -116,6 +123,7 @@ void st_synchronize()
 }
 void move_to(float x, float y, float z, float feed)
 {
+  soft_hits = 0;
   slow_used = false;  // moves between probe points: no probing, straight in Cartesian space
   float c[3] = {x, y, z};
   calculate_delta(c);
@@ -370,6 +378,34 @@ int main(int argc, char **argv)
     probe_g29(false);
     bed_z = 0;
     CHECK(mesh_have && mesh_z[3] == keep, "a failed G29 keeps the mesh");
+    warp_amp = 0;
+    mesh_have = mesh_active = false;
+  }
+  // 13. the probe loses its sensitivity near the left edge, each repeated stroke there has to go deeper: no deep presses
+  {
+    firmware_defaults();
+    machine(90, 210, 0, 0, 0, 0, 0, 0);
+    warp_amp = 0.2;
+    mesh_have = mesh_active = false;
+    mesh_fade_height = 0;
+    home_all_axes();
+    soft_spot = true;
+    deepest_press = 0;
+    probe_g29(false);
+    soft_spot = false;
+    double w29 = 0;
+    for (float x = -70; x <= 70; x += 10)
+      for (float y = -70; y <= 70; y += 10) {
+        if (x * x + y * y > 70 * 70) continue;
+        float c[3] = {x, y, 0.2f};
+        calculate_delta(c);
+        float t[3] = {delta[0], delta[1], delta[2]};
+        double e = true_z(t) - warp(x, y) - 0.2;
+        if (fabs(e) > w29) w29 = fabs(e);
+      }
+    printf("13. a probe that loses sensitivity at the left edge: deepest press %.2f mm below the bed, bed error after G29 %.3f mm\n", deepest_press, w29);
+    CHECK(mesh_have && w29 < 0.15, "the mesh stays right (%.3f)", w29);
+    CHECK(deepest_press < 1.0, "no deep press (%.2f)", deepest_press);
     warp_amp = 0;
     mesh_have = mesh_active = false;
   }

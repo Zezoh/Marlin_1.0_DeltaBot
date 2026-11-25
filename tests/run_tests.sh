@@ -42,6 +42,8 @@ for f in fan.cpp fan.h ui.h Configuration.h Configuration_adv.h Default_Version.
 cp "$T"/filament_shim/*.h "$N/"; cp "$T/fan_test.cpp" "$N/"
 for d in 0 1; do (cd "$N" && $CXX -DFAN_DUAL=$d -I. fan.cpp fan_test.cpp -o fan_test$d); "$N/fan_test$d"; done
 
+echo "== FSR reference"; $CXX -I"$ROOT/Marlin" "$T/fsr_track_test.cpp" -o "$B/fsrtrack"; "$B/fsrtrack"
+
 echo "== planner speed"
 P="$B/planner"; mkdir "$P"
 for f in planner.cpp planner.h Configuration.h Configuration_adv.h language.h Default_Version.h pins.h thermistortables.h; do cp "$ROOT/Marlin/$f" "$P/"; done

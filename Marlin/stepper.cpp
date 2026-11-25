@@ -28,6 +28,7 @@
 #include "language.h"
 #include "cardreader.h"
 #include "speed_lookuptable.h"
+#include "fsr_track.h"
 
 //===========================================================================
 //============================= public variables ============================
@@ -64,7 +65,8 @@ static bool check_endstops = true;
 // FSR Z probe: while armed, a reading that differs from the reference by the threshold stops the block.
 static volatile bool probe_armed = false;
 static volatile bool probe_hit = false;
-static volatile unsigned int probe_reference = 0;
+static volatile long probe_ref16 = 0;  // reference x 16, see fsr_track.h
+static volatile unsigned char probe_seq = 0;
 static volatile unsigned int probe_threshold = 0;
 static volatile unsigned int probe_peak = 0;
 
@@ -175,7 +177,8 @@ void enable_endstops(bool check)
 void st_probe_arm(unsigned int threshold)
 {
   CRITICAL_SECTION_START;
-  probe_reference = fsr_raw;
+  probe_ref16 = (long)fsr_raw << 4;
+  probe_seq = fsr_seq;
   probe_threshold = threshold;
   probe_peak = 0;
   probe_hit = false;
@@ -352,11 +355,17 @@ ISR(TIMER1_COMPA_vect)
 
   if (probe_armed) {
     unsigned int raw = fsr_raw;
-    unsigned int delta = raw > probe_reference ? raw - probe_reference : probe_reference - raw;
+    unsigned int ref = fsr_track_reference(probe_ref16);
+    unsigned int delta = raw > ref ? raw - ref : ref - raw;
     if (delta > probe_peak) probe_peak = delta;
     if (delta >= probe_threshold) {
       probe_hit = true;
       step_events_completed = current_block->step_event_count;
+    } else if (fsr_seq != probe_seq) {  // a new reading, no contact: the reference follows slow drift
+      probe_seq = fsr_seq;
+      long r = probe_ref16;
+      fsr_track_update(r, raw);
+      probe_ref16 = r;
     }
   }
 
